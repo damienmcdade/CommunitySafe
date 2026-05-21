@@ -1,11 +1,14 @@
 "use client";
 import { api } from "./api-client";
 
-function urlBase64ToUint8Array(b64: string): Uint8Array {
+function urlBase64ToUint8Array(b64: string): Uint8Array<ArrayBuffer> {
   const pad = "=".repeat((4 - (b64.length % 4)) % 4);
   const base64 = (b64 + pad).replace(/-/g, "+").replace(/_/g, "/");
   const raw = atob(base64);
-  const arr = new Uint8Array(raw.length);
+  // Allocate against an explicit ArrayBuffer so the returned view satisfies
+  // BufferSource (lib.dom narrows away SharedArrayBuffer-backed views).
+  const buffer = new ArrayBuffer(raw.length);
+  const arr = new Uint8Array(buffer);
   for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
   return arr;
 }
