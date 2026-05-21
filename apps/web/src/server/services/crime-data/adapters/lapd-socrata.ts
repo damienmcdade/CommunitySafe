@@ -97,10 +97,12 @@ async function fetchLapd(): Promise<Incident[]> {
 
 export async function getRowsLA(): Promise<Incident[]> {
   const now = Date.now();
-  if (cache && now - cache.fetchedAt < CACHE_TTL_MS) return cache.rows;
+  // Only honor cache if it actually has data — caching an empty failed fetch
+  // for 6 hours would silently break discovery + UI.
+  if (cache && cache.rows.length > 0 && now - cache.fetchedAt < CACHE_TTL_MS) return cache.rows;
   try {
     const rows = await fetchLapd();
-    cache = { fetchedAt: now, rows };
+    if (rows.length > 0) cache = { fetchedAt: now, rows };
     return rows;
   } catch (err) {
     console.warn("[lapd] fetch failed:", (err as Error).message);
