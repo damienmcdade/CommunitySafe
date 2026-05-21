@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html, body {
+  background-color: theme("colors.sand.50");
+  color: theme("colors.slate2.900");
+  min-height: 100%;
+}
+
+body {
+  font-family: theme("fontFamily.sans");
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Reusable surface — used by cards across tabs. Calm by default. */
+.surface {
+  @apply bg-white border border-sand-200 rounded-xl shadow-[0_1px_0_rgba(0,0,0,0.02)];
+}
+
+.surface-muted {
+  @apply bg-sand-100 border border-sand-200 rounded-xl;
+}
+
+/* Risk-level pills — calm progression. dusk is intentionally restrained. */
+.risk-1 { @apply bg-sage-200 text-sage-700; }
+.risk-2 { @apply bg-sand-200 text-sand-700; }
+.risk-3 { @apply bg-amber2-200 text-amber2-700; }
+.risk-4 { @apply bg-amber2-200 text-amber2-700; }
+.risk-5 { @apply bg-dusk-500/15 text-dusk-700; }

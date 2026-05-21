@@ -1,0 +1,33 @@
+{
+  "name": "travelsafe",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Personal and community safety-awareness app for the San Diego region.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm-run-all --parallel dev:api dev:web",
+    "dev:web": "npm run dev --workspace apps/web",
+    "dev:api": "npm run dev --workspace apps/api",
+    "build": "npm run build --workspaces --if-present",
+    "build:web": "npm run build --workspace apps/web",
+    "build:api": "npm run build --workspace apps/api",
+    "start:web": "npm run start --workspace apps/web",
+    "start:api": "npm run start --workspace apps/api",
+    "db:generate": "npm run prisma:generate --workspace packages/db",
+    "db:migrate": "npm run prisma:migrate --workspace packages/db",
+    "db:seed": "npm run seed --workspace packages/db",
+    "db:studio": "npm run prisma:studio --workspace packages/db",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

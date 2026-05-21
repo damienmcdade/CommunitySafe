@@ -1,0 +1,443 @@
+// =============================================================================
+// TravelSafe Prisma schema
+//
+// HARD RULES (enforced by absence — do not add fields here):
+//   * NO demographic fields anywhere (ethnicity, gender, sexual orientation,
+//     religion, age). Period.
+//   * NO "individual threat" entity. Threats are derived per-area from
+//     external crime feeds, not stored per-person.
+//   * Posts MUST be tied to an Area (neighborhood), never to a street address.
+//     Address-shaped or person-name + accusation text is rejected by the
+//     pre-vetter before reaching the DB.
+//   * Personal-safety artifacts (SOS events, check-in timers, live shares)
+//     are scoped strictly to the owning user and their trusted contacts.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// Identity
+// -----------------------------------------------------------------------------
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  displayName   String?
+  // NO demographic fields. Do not add age, gender, ethnicity, etc.
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Soft-suspension fields driven by the moderation pipeline.
+  suspendedUntil    DateTime?
+  permanentlyBanned Boolean   @default(false)
+
+  alertPreference   AlertPreference?
+  trustedContacts   TrustedContact[]
+  posts             Post[]            @relation("PostAuthor")
+  postReviews       Post[]            @relation("PostReviewer")
+  postEdits         PostEdit[]
+  postComments      PostComment[]
+  postReactions     PostReaction[]
+  reportsFiled      PostReport[]      @relation("ReportFiler")
+  blockedBy         UserBlock[]       @relation("Blocker")
+  blocking          UserBlock[]       @relation("Blocked")
+  mutes             UserMute[]        @relation("Muter")
+  mutedBy           UserMute[]        @relation("Muted")
+  acknowledgements  PostAcknowledgement[]
+  pushSubscriptions PushSubscription[]
+  checkInTimers     CheckInTimer[]
+  liveShareLinks    LiveShareLink[]
+  reviewActions     PostReviewAction[]
+  suspensionEvents  SuspensionEvent[]
+}
+
+// -----------------------------------------------------------------------------
+// Onboarding preferences
+// -----------------------------------------------------------------------------
+
+/// NIBRS / CIBRS top-level crime groupings. These are CATEGORIES, never people.
+enum CrimeCategory {
+  PERSONS    // crimes against persons
+  PROPERTY   // crimes against property
+  SOCIETY    // crimes against society / other
+}
+
+/// Notification cadence — defaults to a daily digest to counter notification
+/// fatigue and the fear feedback loop. REAL_TIME is opt-in and capped at the
+/// service layer.
+enum NotificationFrequency {
+  DIGEST_DAILY
+  REAL_TIME
+}
+
+model AlertPreference {
+  id          String          @id @default(cuid())
+  userId      String          @unique
+  categories  CrimeCategory[]
+  // Risk threshold above which a notification fires: 1 (any) .. 5 (severe only).
+  pushMinRiskLevel      Int                   @default(3)
+  notificationFrequency NotificationFrequency @default(DIGEST_DAILY)
+  // Hard daily ceiling on push notifications (the API caps at 10 regardless).
+  notificationDailyCap  Int                   @default(3)
+
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// -----------------------------------------------------------------------------
+// Trusted contacts (Personal Safety tab) — max 5 enforced in the service layer.
+// Each contact must CONFIRM via an opt-in link before being eligible to receive
+// any check-in or live-share notification. Unconfirmed contacts are excluded
+// from delivery and shown as such in the UI.
+// -----------------------------------------------------------------------------
+
+enum ContactStatus {
+  PENDING
+  CONFIRMED
+  REVOKED
+}
+
+model TrustedContact {
+  id                  String        @id @default(cuid())
+  userId              String
+  label               String        // e.g. "Mom", "Roommate"
+  email               String?       // at least one of email/phone is required (service-layer check)
+  phone               String?
+  status              ContactStatus @default(PENDING)
+  confirmationToken   String?       @unique
+  confirmationSentAt  DateTime?
+  confirmedAt         DateTime?
+  createdAt           DateTime      @default(now())
+
+  user                User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// -----------------------------------------------------------------------------
+// Areas (neighborhoods / SDPD beats). Posts attach to these, not to addresses.
+// -----------------------------------------------------------------------------
+
+enum AreaKind {
+  NEIGHBORHOOD
+  BEAT
+  JURISDICTION
+}
+
+model Area {
+  id          String    @id @default(cuid())
+  slug        String    @unique // e.g. "pacific-beach"
+  name        String              // e.g. "Pacific Beach"
+  kind        AreaKind
+  parentSlug  String?             // e.g. "san-diego" jurisdiction
+  centroidLat Float?
+  centroidLng Float?
+
+  posts       Post[]
+}
+
+// -----------------------------------------------------------------------------
+// Community posts + verification workflow
+// -----------------------------------------------------------------------------
+
+enum PostStatus {
+  PENDING       // submitted, awaiting review
+  NEEDS_EDITS   // returned to author with reason
+  VERIFIED      // visible in feeds
+  REJECTED      // never visible
+}
+
+/// CommunitySafe post categories. These are intentionally original names —
+/// do not mirror Ring/Nextdoor/Citizen taxonomy.
+enum PostKind {
+  HEADS_UP        // suspicious activity / something off
+  AREA_HAZARD     // environmental or infrastructure hazard
+  LOST_FOUND      // lost or found item / pet (no people)
+  SAFETY_NOTICE   // general safety information for the area
+}
+
+enum PostFlagKind {
+  PROFANITY
+  ADDRESS_DETECTED
+  PHONE_DETECTED
+  PLATE_DETECTED
+  NAME_AND_ACCUSATION
+  THREAT_LANGUAGE
+  DUPLICATE
+  RATE_LIMITED
+  TOO_SHORT
+  TOO_LONG
+  // Anti-profiling: post leads with or hinges on a person's physical /
+  // demographic traits rather than behavior or place.
+  PROFILING_BY_APPEARANCE
+}
+
+enum ReactionKind {
+  HELPFUL
+  CONFIRMED   // I saw this too
+  CONCERNED
+}
+
+model Post {
+  id              String     @id @default(cuid())
+  authorId        String
+  areaId          String     // REQUIRED — posts are area-level, never address-level
+  kind            PostKind
+  body            String     @db.Text
+  status          PostStatus @default(PENDING)
+
+  reviewedAt      DateTime?
+  reviewerId      String?
+  rejectionReason String?
+
+  reportCount     Int        @default(0)
+
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  author          User       @relation("PostAuthor", fields: [authorId], references: [id])
+  reviewer        User?      @relation("PostReviewer", fields: [reviewerId], references: [id])
+  area            Area       @relation(fields: [areaId], references: [id])
+
+  flags           PostFlag[]
+  edits           PostEdit[]
+  reports         PostReport[]
+  reviewActions   PostReviewAction[]
+  acknowledgement PostAcknowledgement?
+  comments        PostComment[]
+  reactions       PostReaction[]
+
+  @@index([areaId, status])
+  @@index([authorId, status])
+  @@index([status, createdAt])
+}
+
+model PostComment {
+  id        String     @id @default(cuid())
+  postId    String
+  authorId  String
+  body      String     @db.Text
+  status    PostStatus @default(PENDING)
+  createdAt DateTime   @default(now())
+
+  post      Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    User       @relation(fields: [authorId], references: [id])
+
+  @@index([postId, status])
+}
+
+model PostReaction {
+  id        String       @id @default(cuid())
+  postId    String
+  userId    String
+  kind      ReactionKind
+  createdAt DateTime     @default(now())
+
+  post      Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User         @relation(fields: [userId], references: [id])
+
+  @@unique([postId, userId, kind])
+  @@index([postId])
+}
+
+model PostFlag {
+  id        String       @id @default(cuid())
+  postId    String
+  kind      PostFlagKind
+  detail    String?
+  createdAt DateTime     @default(now())
+
+  post      Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+}
+
+/// Immutable record of every body change — verified posts cannot be silently rewritten.
+model PostEdit {
+  id          String   @id @default(cuid())
+  postId      String
+  editorId    String
+  previousBody String  @db.Text
+  newBody     String   @db.Text
+  reason      String?
+  createdAt   DateTime @default(now())
+
+  post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  editor      User     @relation(fields: [editorId], references: [id])
+
+  @@index([postId])
+}
+
+/// Submission-time defamation/accuracy acknowledgement — required before insert.
+model PostAcknowledgement {
+  id           String   @id @default(cuid())
+  postId       String   @unique
+  userId       String
+  acceptedAt   DateTime @default(now())
+  acceptedText String   @db.Text  // exact wording the user agreed to (for audit)
+
+  post         Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id])
+}
+
+model PostReport {
+  id        String   @id @default(cuid())
+  postId    String
+  reporterId String
+  reason    String?
+  createdAt DateTime @default(now())
+
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reporter  User     @relation("ReportFiler", fields: [reporterId], references: [id])
+
+  @@unique([postId, reporterId])
+  @@index([postId])
+}
+
+enum ReviewActionKind {
+  VERIFY
+  REJECT
+  REQUEST_EDITS
+  REVERT_TO_PENDING
+}
+
+/// Immutable moderator decision log — append-only.
+model PostReviewAction {
+  id         String           @id @default(cuid())
+  postId     String
+  reviewerId String
+  kind       ReviewActionKind
+  reason     String?
+  // Moderator confirmed the post is area-level and names no individual.
+  confirmedAreaLevelAndAnonymized Boolean @default(false)
+  createdAt  DateTime         @default(now())
+
+  post       Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reviewer   User @relation(fields: [reviewerId], references: [id])
+
+  @@index([postId])
+  @@index([reviewerId, createdAt])
+}
+
+// -----------------------------------------------------------------------------
+// Social safety primitives (block / mute)
+// -----------------------------------------------------------------------------
+
+model UserBlock {
+  id         String   @id @default(cuid())
+  blockerId  String
+  blockedId  String
+  createdAt  DateTime @default(now())
+
+  blocker    User     @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked    User     @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+}
+
+model UserMute {
+  id        String   @id @default(cuid())
+  muterId   String
+  mutedId   String
+  createdAt DateTime @default(now())
+
+  muter     User     @relation("Muter", fields: [muterId], references: [id], onDelete: Cascade)
+  muted     User     @relation("Muted", fields: [mutedId], references: [id], onDelete: Cascade)
+
+  @@unique([muterId, mutedId])
+}
+
+// -----------------------------------------------------------------------------
+// Suspension events (driven by per-user rejection rate threshold)
+// -----------------------------------------------------------------------------
+
+enum SuspensionKind {
+  TEMPORARY
+  PERMANENT
+  LIFTED
+}
+
+model SuspensionEvent {
+  id        String         @id @default(cuid())
+  userId    String
+  kind     SuspensionKind
+  reason    String?
+  until     DateTime?
+  createdAt DateTime       @default(now())
+
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+// -----------------------------------------------------------------------------
+// Push notifications (Web Push)
+// -----------------------------------------------------------------------------
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// -----------------------------------------------------------------------------
+// Personal Safety artifacts
+// -----------------------------------------------------------------------------
+
+enum CheckInStatus {
+  ACTIVE
+  CANCELLED
+  TRIGGERED
+}
+
+model CheckInTimer {
+  id           String        @id @default(cuid())
+  userId       String
+  scheduledFor DateTime
+  message      String?
+  cancelToken  String        @unique
+  status       CheckInStatus @default(ACTIVE)
+  // Last known location captured when timer was set.
+  lastLat      Float?
+  lastLng      Float?
+  createdAt    DateTime      @default(now())
+  triggeredAt  DateTime?
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([status, scheduledFor])
+}
+
+model LiveShareLink {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// NOTE: There is intentionally NO SosEvent / alert-dispatch model. Per the
+// product spec, the app does not contact emergency services or trusted contacts
+// on the user's behalf in an emergency — the Personal Safety tab only surfaces
+// guidance to call 911 directly via a device-native dial action.

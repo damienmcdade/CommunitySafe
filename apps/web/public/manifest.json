@@ -1,0 +1,10 @@
+{
+  "name": "TravelSafe",
+  "short_name": "TravelSafe",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAF7F2",
+  "theme_color": "#3A4654",
+  "description": "San Diego neighborhood safety awareness — area-level only.",
+  "icons": []
+}

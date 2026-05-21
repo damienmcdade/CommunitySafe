@@ -1,0 +1,41 @@
+import "dotenv/config";
+import { z } from "zod";
+
+const Env = z.object({
+  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  API_PORT: z.coerce.number().default(4000),
+  DATABASE_URL: z.string().url(),
+  JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 chars"),
+  JWT_EXPIRES_IN: z.string().default("7d"),
+  BCRYPT_ROUNDS: z.coerce.number().default(12),
+  CORS_ORIGINS: z.string().default("http://localhost:3000"),
+
+  // Crime-data adapters
+  SANDAG_SOCRATA_BASE: z.string().url().default("https://data.sandiegocounty.gov"),
+  SANDAG_CRIME_RATES_RESOURCE_ID: z.string().default("486f-q228"),
+  SANDAG_SOCRATA_APP_TOKEN: z.string().optional(),
+  SDPD_NIBRS_CSV_BASE: z.string().url().default("https://seshat.datasd.org/police_nibrs"),
+  CRIME_DATA_ADAPTER: z.enum(["auto", "sandag", "sdpd", "mock"]).default("auto"),
+
+  // Web Push
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_SUBJECT: z.string().default("mailto:ops@travelsafe.example"),
+
+  // Trusted-contact notifications
+  TRUSTED_CONTACT_CHANNEL: z.enum(["email", "sms", "both"]).default("email"),
+  LIVE_SHARE_BASE_URL: z.string().optional(),
+  TWILIO_ACCOUNT_SID: z.string().optional(),
+  TWILIO_AUTH_TOKEN: z.string().optional(),
+  TWILIO_FROM_NUMBER: z.string().optional(),
+  NOTIFY_EMAIL_FROM: z.string().default("alerts@travelsafe.example"),
+  SMTP_URL: z.string().optional(),
+
+  // Check-in worker
+  CHECKIN_WORKER_INTERVAL_SECONDS: z.coerce.number().default(30),
+  CHECKIN_GRACE_SECONDS: z.coerce.number().default(120),
+});
+
+export const env = Env.parse(process.env);
+
+export const corsOrigins = env.CORS_ORIGINS.split(",").map((s) => s.trim()).filter(Boolean);
