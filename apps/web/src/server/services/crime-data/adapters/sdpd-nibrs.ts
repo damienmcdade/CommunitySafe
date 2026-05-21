@@ -17,15 +17,12 @@ const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 let cache: { fetchedAt: number; year: number; rows: Incident[] } | null = null;
 
 function mapCrimeAgainst(value: string | undefined): CrimeCategory {
-  switch ((value ?? "").toLowerCase()) {
-    case "person":
-    case "persons":
-      return CrimeCategory.PERSONS;
-    case "property":
-      return CrimeCategory.PROPERTY;
-    default:
-      return CrimeCategory.SOCIETY;
-  }
+  // SDPD's column uses two-letter NIBRS codes: PE = Persons, PR = Property,
+  // SO = Society. Older formats and some adjacent feeds spell them out.
+  const v = (value ?? "").trim().toUpperCase();
+  if (v === "PE" || v === "PERSON" || v === "PERSONS") return CrimeCategory.PERSONS;
+  if (v === "PR" || v === "PROPERTY") return CrimeCategory.PROPERTY;
+  return CrimeCategory.SOCIETY;
 }
 
 const PROVENANCE: DataProvenance = {
