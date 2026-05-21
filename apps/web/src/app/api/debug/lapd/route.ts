@@ -25,6 +25,13 @@ export async function GET() {
     const { CITIES } = await import("@/server/services/crime-data/cities");
     out.citiesCount = CITIES.length;
     out.cityLabels = CITIES.map((c) => c.label);
+    // Independently re-run each city's discover and see what each yields
+    const perCity: Record<string, number> = {};
+    for (const c of CITIES) {
+      const d = await c.discover().catch((e) => { perCity[`${c.slug}_error`] = -1 as never; return [] as Awaited<ReturnType<typeof c.discover>>; });
+      perCity[c.slug] = d.length;
+    }
+    out.perCityDiscoverDirect = perCity;
   } catch (e) { out.citiesError = (e as Error).message; }
   return NextResponse.json(out);
 }
