@@ -51,19 +51,37 @@ export const crimeData = {
   /// Citywide aggregate for the Awareness tab default view. Sums incidents
   /// across all known SD neighborhoods and emits one alert card per NIBRS
   /// category so users get a city-of-San-Diego overview without picking an area.
-  async getCitywide(): Promise<{ totalIncidents: number; alerts: AreaRiskAlert[]; perArea: Array<{ slug: string; label: string; incidentCount: number; riskLevel: 1 | 2 | 3 | 4 | 5 }> }> {
+  /// Per-area payload now carries a category breakdown so the Crime Map can
+  /// surface "what kind of incidents drive this area's score" in its tooltip.
+  async getCitywide(): Promise<{
+    totalIncidents: number;
+    alerts: AreaRiskAlert[];
+    perArea: Array<{
+      slug: string;
+      label: string;
+      incidentCount: number;
+      riskLevel: 1 | 2 | 3 | 4 | 5;
+      byCategory: { PERSONS: number; PROPERTY: number; SOCIETY: number };
+      dominantCategory: "PERSONS" | "PROPERTY" | "SOCIETY" | null;
+    }>;
+  }> {
     const { SD_AREAS } = await import("./neighborhoods");
-    const perArea: Array<{ slug: string; label: string; incidentCount: number; riskLevel: 1 | 2 | 3 | 4 | 5 }> = [];
+    const perArea: Awaited<ReturnType<typeof crimeData.getCitywide>>["perArea"] = [];
     const totalByCategory = new Map<string, Incident[]>();
     for (const area of SD_AREAS) {
-      const incidents = await this.getIncidents(area.slug, { limit: 200 });
-      const riskLevel = (incidents.length > 200 ? 5 : incidents.length > 100 ? 4 : incidents.length > 40 ? 3 : incidents.length > 10 ? 2 : 1) as 1 | 2 | 3 | 4 | 5;
-      perArea.push({ slug: area.slug, label: area.label, incidentCount: incidents.length, riskLevel });
+      const incidents = await this.getIncidents(area.slug, { limit: 500 });
+      const byCategory = { PERSONS: 0, PROPERTY: 0, SOCIETY: 0 };
       for (const i of incidents) {
+        const k = i.nibrsCategory as keyof typeof byCategory;
+        if (k in byCategory) byCategory[k] += 1;
         const arr = totalByCategory.get(i.nibrsCategory) ?? [];
         arr.push(i);
         totalByCategory.set(i.nibrsCategory, arr);
       }
+      const dominantCategory = (Object.entries(byCategory) as Array<["PERSONS" | "PROPERTY" | "SOCIETY", number]>)
+        .sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+      const riskLevel = (incidents.length > 400 ? 5 : incidents.length > 200 ? 4 : incidents.length > 80 ? 3 : incidents.length > 25 ? 2 : 1) as 1 | 2 | 3 | 4 | 5;
+      perArea.push({ slug: area.slug, label: area.label, incidentCount: incidents.length, riskLevel, byCategory, dominantCategory: incidents.length > 0 ? dominantCategory : null });
     }
     const sample = perArea[0] ? await this.getAreaStats(perArea[0].slug) : null;
     const alerts: AreaRiskAlert[] = Array.from(totalByCategory.entries()).map(([category, items]) => ({

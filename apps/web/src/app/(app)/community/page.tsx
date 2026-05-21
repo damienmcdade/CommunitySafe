@@ -4,23 +4,19 @@ import { api, useApi } from "@/lib/api-client";
 import { useTextStream } from "@/lib/use-stream";
 import { useCommunityStream, relativeTime } from "@/lib/sse";
 import { DataProvenanceBanner, CommunityReportedLabel, type ProvenanceLike } from "@/components/DataProvenanceBanner";
-import { RiskBadge } from "@/components/RiskBadge";
 import { SignInGate } from "@/components/SignInGate";
 import { LocationSearch } from "@/components/LocationSearch";
 import { AreaInsightsPanel } from "@/components/AreaInsightsPanel";
 import { OfficialAlertsPanel } from "@/components/OfficialAlertsPanel";
 import { LiveActivityBadge } from "@/components/LiveActivityBadge";
+import { CategoryBreakdown } from "@/components/CategoryBreakdown";
+import { RecentIncidentsCards } from "@/components/RecentIncidentsCards";
+import { NewsPanel } from "@/components/NewsPanel";
 
 const REGISTRY_URL = process.env.NEXT_PUBLIC_SEX_OFFENDER_REGISTRY_URL || "https://www.meganslaw.ca.gov/";
 
 interface Area { slug: string; label: string; jurisdiction: string }
-interface AreaStats {
-  area: string;
-  crimeRate: number | null;
-  riskLevel: 1 | 2 | 3 | 4 | 5;
-  year?: number;
-  provenance: ProvenanceLike;
-}
+interface AreaStats { area: string; crimeRate: number | null; riskLevel: 1|2|3|4|5; year?: number; provenance: ProvenanceLike }
 interface PostListItem {
   id: string;
   body: string;
@@ -31,12 +27,21 @@ interface PostListItem {
   author: { id: string; displayName: string | null };
   _count: { comments: number; reactions: number };
 }
+interface PerArea { slug: string; byCategory: { PERSONS: number; PROPERTY: number; SOCIETY: number } }
+interface Citywide { perArea: PerArea[] }
 
 const KIND_LABEL: Record<PostListItem["kind"], string> = {
   HEADS_UP: "Heads-up",
   AREA_HAZARD: "Area hazard",
   LOST_FOUND: "Lost / found",
   SAFETY_NOTICE: "Safety notice",
+};
+
+const KIND_TONE: Record<PostListItem["kind"], string> = {
+  HEADS_UP: "border-l-amber2-500",
+  AREA_HAZARD: "border-l-coral-500",
+  LOST_FOUND: "border-l-bay-500",
+  SAFETY_NOTICE: "border-l-sage-500",
 };
 
 export default function CommunityPage() {
@@ -51,8 +56,17 @@ export default function CommunityPage() {
     `/crime-data/area-stats?${area ? `neighborhood=${areaSlug}` : "jurisdiction=san-diego"}`,
     [areaSlug],
   );
+  const { data: citywide } = useApi<Citywide>("/crime-data/citywide");
 
-  // Live insertion: reload feed when a new VERIFIED post lands in this area
+  const counts = (() => {
+    if (!citywide) return { PERSONS: 0, PROPERTY: 0, SOCIETY: 0 };
+    if (area) return citywide.perArea.find((p) => p.slug === area.slug)?.byCategory ?? { PERSONS: 0, PROPERTY: 0, SOCIETY: 0 };
+    return citywide.perArea.reduce(
+      (acc, p) => ({ PERSONS: acc.PERSONS + p.byCategory.PERSONS, PROPERTY: acc.PROPERTY + p.byCategory.PROPERTY, SOCIETY: acc.SOCIETY + p.byCategory.SOCIETY }),
+      { PERSONS: 0, PROPERTY: 0, SOCIETY: 0 },
+    );
+  })();
+
   const [livePulse, setLivePulse] = useState(0);
   useCommunityStream((e) => {
     if (e.type === "post.verified" && (!area || e.areaSlug === areaSlug)) {
@@ -67,8 +81,8 @@ export default function CommunityPage() {
         <div>
           <h1 className="font-display text-3xl text-slate2-900">CommunitySafe</h1>
           <p className="mt-1 text-slate2-500 max-w-2xl">
-            Citywide by default. Search a neighborhood, ZIP, or landmark to focus the feed.
-            Reports describe <strong>behavior</strong> and <strong>place</strong> — never individuals.
+            Citywide by default. Search a neighborhood, ZIP, or landmark to focus the feed below.
+            Verified neighbor reports, recent SDPD incidents, headlines, and official alerts — all in one read.
           </p>
         </div>
         <LiveActivityBadge />
@@ -78,55 +92,48 @@ export default function CommunityPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 space-y-6">
-          {stats && (
-            <section className="surface p-6">
-              <div className="flex items-center gap-3">
-                <h2 className="font-display text-lg text-slate2-900">{stats.area}</h2>
-                <RiskBadge level={stats.riskLevel} />
-              </div>
-              <p className="mt-2 text-sm text-slate2-700">
-                {stats.crimeRate != null ? `${stats.crimeRate}/1,000 — annual rate` : "Rate unavailable"}
-                {stats.year ? ` (${stats.year})` : ""}
-              </p>
-              <DataProvenanceBanner provenance={stats.provenance} />
-            </section>
-          )}
-
-          <AreaInsightsPanel
-            areaQueryString={area ? `neighborhood=${areaSlug}` : "jurisdiction=san-diego"}
+          <AreaInsightsPanel areaQueryString={area ? `neighborhood=${areaSlug}` : "jurisdiction=san-diego"} />
+          <CategoryBreakdown
+            counts={counts}
+            title={area ? `${area.label} — incident mix` : "Citywide incident mix"}
+            subtitle="SDPD NIBRS, recent cached window."
+          />
+          <RecentIncidentsCards
+            area={area?.slug}
+            jurisdiction={!area ? "san-diego" : undefined}
+            title={area ? `Recently reported in ${area.label}` : "Recently reported across San Diego"}
           />
 
           <section className="surface p-6 border-amber2-500/30">
-            <h2 className="font-display text-lg text-slate2-900">Official registries (link-out)</h2>
+            <h2 className="font-display text-lg text-slate2-900">Official registries</h2>
             <p className="text-sm text-slate2-700 mt-1">
-              For sex-offender information, TravelSafe links to the official public registry. We do not re-host or display individuals here.
+              For sex-offender information, TravelSafe sends you to the official public registry. We don&apos;t re-host or display individuals here.
             </p>
-            <a href={REGISTRY_URL} target="_blank" rel="noreferrer" className="mt-3 inline-block underline text-slate2-900">
+            <a href={REGISTRY_URL} target="_blank" rel="noreferrer" className="mt-3 inline-block underline text-slate2-900 hover:text-bay-700 transition-colors">
               Open Megan&apos;s Law (California) →
             </a>
           </section>
 
-          <SignInGate message="Sign in to post a heads-up. We tie posts to accounts so the moderation queue can apply the rate limit and suspension ladder.">
+          <SignInGate message="Sign in to post a heads-up. Posts go through moderation and stay tied to your account so the rate limit and suspension ladder actually work.">
             <PostComposer areaSlug={areaSlug} onPosted={reload} />
           </SignInGate>
 
           <section className="space-y-3">
             <header className="flex items-center justify-between">
-              <h2 className="font-display text-lg text-slate2-900">Verified community posts</h2>
-              {livePulse > 0 && (
-                <span className="text-xs text-sage-700 animate-pulse">{livePulse} new since you arrived</span>
-              )}
+              <h2 className="font-display text-xl text-slate2-900">Verified neighbor reports</h2>
+              {livePulse > 0 && <span className="text-xs text-sage-700 animate-pulse">{livePulse} new since you arrived</span>}
             </header>
             {(posts ?? []).length === 0 && (
               <div className="surface-muted p-4 text-sm text-slate2-500">
-                Nothing recent in this area. Most San Diego neighborhoods stay quiet most days — that&apos;s a good thing.
+                Nothing posted here recently. Most San Diego neighborhoods stay quiet most days — that&apos;s a good thing.
               </div>
             )}
             {(posts ?? []).map((p) => <PostCard key={p.id} post={p} />)}
           </section>
+          <DataProvenanceBanner provenance={stats?.provenance ?? null} />
         </div>
-
         <aside className="space-y-4">
+          <NewsPanel areaSlug={area?.slug} />
           <OfficialAlertsPanel />
         </aside>
       </div>
@@ -143,19 +150,17 @@ function PostCard({ post }: { post: PostListItem }) {
     await api(`/community/posts/${post.id}/react`, { method: "POST", body: JSON.stringify({ kind }) });
   }
   return (
-    <article className="surface p-5 transition-transform hover:-translate-y-0.5">
-      <header className="flex justify-between items-center">
-        <div className="text-xs text-slate2-500">
-          {post.area.name} · {KIND_LABEL[post.kind]} · {relativeTime(post.createdAt)}
-        </div>
+    <article className={`surface p-5 border-l-4 ${KIND_TONE[post.kind]} transition-transform hover:-translate-y-0.5 animate-rise-in`}>
+      <header className="flex justify-between items-center text-xs">
+        <span className="text-slate2-700">{post.area.name} · <span className="text-bay-700 font-medium">{KIND_LABEL[post.kind]}</span> · {relativeTime(post.createdAt)}</span>
         <CommunityReportedLabel reviewedAt={post.reviewedAt} />
       </header>
       <pre className="mt-3 whitespace-pre-wrap text-slate2-900 font-sans">{post.body}</pre>
       <footer className="mt-4 flex flex-wrap items-center gap-2 text-xs">
-        <button onClick={() => react("HELPFUL")} className="px-2 py-1 surface-muted hover:bg-sand-200 transition-colors">Helpful</button>
-        <button onClick={() => react("CONFIRMED")} className="px-2 py-1 surface-muted hover:bg-sand-200 transition-colors">I saw this too</button>
-        <button onClick={() => react("CONCERNED")} className="px-2 py-1 surface-muted hover:bg-sand-200 transition-colors">Concerned</button>
-        <button onClick={report} className="ml-auto text-dusk-700 underline">Report this post</button>
+        <button onClick={() => react("HELPFUL")} className="px-2.5 py-1 surface-muted hover:bg-bay-200 hover:text-bay-700 transition-all">Helpful</button>
+        <button onClick={() => react("CONFIRMED")} className="px-2.5 py-1 surface-muted hover:bg-sage-200 hover:text-sage-700 transition-all">I saw this too</button>
+        <button onClick={() => react("CONCERNED")} className="px-2.5 py-1 surface-muted hover:bg-amber2-200 hover:text-amber2-700 transition-all">Concerned</button>
+        <button onClick={report} className="ml-auto text-dusk-700 underline hover:text-dusk-500">Report this post</button>
       </footer>
     </article>
   );
@@ -176,13 +181,10 @@ function PostComposer({ areaSlug, onPosted }: { areaSlug: string; onPosted: () =
 
   const { text: aiFeedback, status: aiStatus, start: aiStart } = useTextStream("/ai/compose-feedback");
 
-  // Debounced AI coaching as the user types.
   useEffect(() => {
     if (!what || !where || !when) return;
     if (what.length < 15) return;
-    const id = window.setTimeout(() => {
-      void aiStart({ what, where, when });
-    }, 1200);
+    const id = window.setTimeout(() => void aiStart({ what, where, when }), 1200);
     return () => window.clearTimeout(id);
   }, [what, where, when, aiStart]);
 
@@ -201,8 +203,8 @@ function PostComposer({ areaSlug, onPosted }: { areaSlug: string; onPosted: () =
         }),
       });
       setSuccess(r.heldForReview
-        ? "Submitted — held for human review before it appears in the feed."
-        : "Submitted — awaiting moderator verification.");
+        ? "Thanks — your post is queued for human review before it goes live."
+        : "Thanks — your post is in the moderator queue.");
       setWhat(""); setWhere(""); setWhen("");
       onPosted();
     } catch (err) {
@@ -215,28 +217,28 @@ function PostComposer({ areaSlug, onPosted }: { areaSlug: string; onPosted: () =
 
   return (
     <section className="surface p-6">
-      <h2 className="font-display text-lg text-slate2-900">Post a heads-up</h2>
+      <h2 className="font-display text-lg text-slate2-900">Share a heads-up</h2>
       <p className="mt-1 text-sm text-slate2-500">
-        Describe what you saw, where (a landmark — not a street address), and roughly when.
-        Posts about specific people, addresses, license plates, or that lead with appearance/race are blocked or held for review.
+        Describe <strong>what you saw</strong>, <strong>where</strong> (a landmark — not a street address), and <strong>when</strong>.
+        Posts about specific people, addresses, license plates, or that lead with appearance get blocked or held for review.
       </p>
       <form className="mt-4 space-y-3" onSubmit={submit}>
         <div>
           <label className="text-sm text-slate2-700">Category</label>
           <select value={kind} onChange={(e) => setKind(e.target.value as PostListItem["kind"])} className="mt-1 input">
-            <option value="HEADS_UP">Heads-up</option>
-            <option value="AREA_HAZARD">Area hazard</option>
-            <option value="LOST_FOUND">Lost / found</option>
-            <option value="SAFETY_NOTICE">Safety notice</option>
+            <option value="HEADS_UP">Heads-up — something to be aware of</option>
+            <option value="AREA_HAZARD">Area hazard — physical / environmental</option>
+            <option value="LOST_FOUND">Lost / found — items or pets only</option>
+            <option value="SAFETY_NOTICE">Safety notice — general info for the area</option>
           </select>
         </div>
         <div>
           <label className="text-sm text-slate2-700">What happened (behavior)</label>
-          <textarea required value={what} onChange={(e) => setWhat(e.target.value)} className="mt-1 input" rows={3} />
+          <textarea required value={what} onChange={(e) => setWhat(e.target.value)} className="mt-1 input" rows={3} placeholder="e.g. multiple cars had their windows smashed overnight" />
         </div>
         <div>
           <label className="text-sm text-slate2-700">Where (landmark, not address)</label>
-          <input required value={where} onChange={(e) => setWhere(e.target.value)} className="mt-1 input" />
+          <input required value={where} onChange={(e) => setWhere(e.target.value)} className="mt-1 input" placeholder="e.g. parking lot behind the Belmont Park area" />
         </div>
         <div>
           <label className="text-sm text-slate2-700">When</label>
@@ -244,13 +246,13 @@ function PostComposer({ areaSlug, onPosted }: { areaSlug: string; onPosted: () =
         </div>
         {(aiStatus === "streaming" || aiStatus === "done") && aiFeedback && (
           <div className="surface-muted p-3 text-sm text-slate2-700">
-            <div className="text-xs text-slate2-500 mb-1">AI coach (powered by Vercel AI Gateway)</div>
+            <div className="text-xs text-slate2-500 mb-1">AI coach (Vercel AI Gateway)</div>
             {aiFeedback}
             {aiStatus === "streaming" && <span className="ml-1 animate-pulse">▍</span>}
           </div>
         )}
         {aiStatus === "disabled" && (
-          <p className="text-xs text-slate2-500">AI coaching is off — set AI_GATEWAY_API_KEY on the API to enable.</p>
+          <p className="text-xs text-slate2-500">AI coaching is off — set <code>AI_GATEWAY_API_KEY</code> on Vercel to enable.</p>
         )}
         <label className="flex items-start gap-2 text-sm text-slate2-700">
           <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} className="mt-1" />
