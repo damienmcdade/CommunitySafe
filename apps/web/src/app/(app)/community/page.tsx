@@ -14,6 +14,8 @@ import { RecentIncidentsCards } from "@/components/RecentIncidentsCards";
 import { NewsPanel } from "@/components/NewsPanel";
 import { CrimeMixCard } from "@/components/CrimeMixCard";
 import { SafetyTipsPanel } from "@/components/SafetyTipsPanel";
+import { CityBanner } from "@/components/CitySelector";
+import { useCity } from "@/lib/use-city";
 
 const REGISTRY_URL = process.env.NEXT_PUBLIC_SEX_OFFENDER_REGISTRY_URL || "https://www.meganslaw.ca.gov/";
 
@@ -47,18 +49,20 @@ const KIND_TONE: Record<PostListItem["kind"], string> = {
 };
 
 export default function CommunityPage() {
+  const { city } = useCity();
   const [area, setArea] = useState<Area | null>(null);
-  const areaSlug = area?.slug ?? "san-diego";
+  useEffect(() => { setArea(null); }, [city.slug]);
+  const areaSlug = area?.slug ?? city.defaultArea;
 
   const { data: posts, reload } = useApi<PostListItem[]>(
     area ? `/community/posts?area=${areaSlug}` : "/community/posts",
     [areaSlug],
   );
   const { data: stats } = useApi<AreaStats | null>(
-    `/crime-data/area-stats?${area ? `neighborhood=${areaSlug}` : "jurisdiction=san-diego"}`,
-    [areaSlug],
+    `/crime-data/area-stats?${area ? `neighborhood=${areaSlug}` : `jurisdiction=${city.defaultArea}`}`,
+    [areaSlug, city.slug],
   );
-  const { data: citywide } = useApi<Citywide>("/crime-data/citywide");
+  const { data: citywide } = useApi<Citywide>(`/crime-data/citywide?city=${city.slug}`, [city.slug]);
 
   const counts = (() => {
     if (!citywide) return { PERSONS: 0, PROPERTY: 0, SOCIETY: 0 };
@@ -86,34 +90,36 @@ export default function CommunityPage() {
             Verified neighbor reports, side-by-side with the data
           </h1>
           <p className="mt-2 text-slate2-700 max-w-2xl">
-            Citywide by default. Search a neighborhood, ZIP, or landmark to focus the feed.
-            Headlines, official alerts, and SDPD incidents flank every post.
+            {city.label} by default. Search a neighborhood, ZIP, or landmark to focus the feed.
+            Headlines, official alerts, and police incidents flank every post.
           </p>
         </div>
         <LiveActivityBadge />
       </header>
 
+      <CityBanner />
+
       <LocationSearch current={area} onResolved={setArea} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 space-y-6">
-          <AreaInsightsPanel areaQueryString={area ? `neighborhood=${areaSlug}` : "jurisdiction=san-diego"} />
+          <AreaInsightsPanel areaQueryString={area ? `neighborhood=${areaSlug}` : "jurisdiction=${city.defaultArea}"} />
           <CategoryBreakdown
             counts={counts}
-            title={area ? `${area.label} — incident mix` : "Citywide incident mix"}
+            title={area ? `${area.label} — incident mix` : `${city.label} incident mix`}
             subtitle="SDPD NIBRS, recent cached window."
           />
           <CrimeMixCard
             areaSlug={area?.slug}
-            jurisdictionSlug={!area ? "san-diego" : undefined}
-            title={area ? `${area.label} — specific offenses, last 30 days` : "Citywide specific offenses, last 30 days"}
+            jurisdictionSlug={!area ? city.defaultArea : undefined}
+            title={area ? `${area.label} — specific offenses, last 30 days` : `${city.label} specific offenses, last 30 days`}
           />
           <RecentIncidentsCards
             area={area?.slug}
-            jurisdiction={!area ? "san-diego" : undefined}
-            title={area ? `Recently reported in ${area.label}` : "Recently reported across San Diego"}
+            jurisdiction={!area ? city.defaultArea : undefined}
+            title={area ? `Recently reported in ${area.label}` : `Recently reported across ${city.label}`}
           />
-          <SafetyTipsPanel areaSlug={area?.slug} jurisdictionSlug={!area ? "san-diego" : undefined} />
+          <SafetyTipsPanel areaSlug={area?.slug} jurisdictionSlug={!area ? city.defaultArea : undefined} />
 
           <section className="surface p-6 border-amber2-500/30">
             <h2 className="font-display text-lg text-slate2-900">Official registries</h2>
@@ -144,7 +150,7 @@ export default function CommunityPage() {
           <DataProvenanceBanner provenance={stats?.provenance ?? null} />
         </div>
         <aside className="space-y-4">
-          <NewsPanel areaSlug={area?.slug} />
+          <NewsPanel areaSlug={area?.slug ?? city.slug} />
           <OfficialAlertsPanel />
         </aside>
       </div>

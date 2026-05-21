@@ -4,6 +4,7 @@ import Link from "next/link";
 import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { useApi } from "@/lib/api-client";
+import { useCity } from "@/lib/use-city";
 
 interface KnownArea { slug: string; label: string; jurisdiction: string; centroid: { lat: number; lng: number } }
 interface AreaBreakdown {
@@ -29,15 +30,18 @@ const NEUTRAL = { fill: "#A48E63", stroke: "#6B5A38" };
 interface Combined { area: KnownArea; stats: AreaBreakdown | null }
 
 export default function CrimeMap() {
+  const { city } = useCity();
   const { data: areas, loading: areasLoading } = useApi<KnownArea[]>("/geo/areas");
-  const { data: citywide, loading: cityLoading, error } = useApi<Citywide>("/crime-data/citywide");
+  const { data: citywide, loading: cityLoading, error } = useApi<Citywide>(`/crime-data/citywide?city=${city.slug}`, [city.slug]);
   const [hovered, setHovered] = useState<string | null>(null);
 
+  // Filter areas to just this city's jurisdiction.
   const combined: Combined[] = useMemo(() => {
     if (!areas) return [];
+    const cityAreas = areas.filter((a) => a.jurisdiction.toLowerCase() === city.label.toLowerCase());
     const byArea = new Map((citywide?.perArea ?? []).map((p) => [p.slug, p]));
-    return areas.map((a) => ({ area: a, stats: byArea.get(a.slug) ?? null }));
-  }, [areas, citywide]);
+    return cityAreas.map((a) => ({ area: a, stats: byArea.get(a.slug) ?? null }));
+  }, [areas, citywide, city.label]);
 
   const maxCount = useMemo(
     () => Math.max(1, ...combined.map((c) => c.stats?.incidentCount ?? 0)),

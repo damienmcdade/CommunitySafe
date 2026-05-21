@@ -1,8 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api, useApi } from "@/lib/api-client";
 import { requestLocation } from "@/lib/geolocation";
 import { ensurePushSubscription } from "@/lib/push";
+import { useCity } from "@/lib/use-city";
 import { DataProvenanceBanner, type ProvenanceLike } from "@/components/DataProvenanceBanner";
 import { LocationSearch } from "@/components/LocationSearch";
 import { AreaInsightsPanel } from "@/components/AreaInsightsPanel";
@@ -12,18 +13,23 @@ import { RecentIncidentsCards } from "@/components/RecentIncidentsCards";
 import { NewsPanel } from "@/components/NewsPanel";
 import { CrimeMixCard } from "@/components/CrimeMixCard";
 import { SafetyTipsPanel } from "@/components/SafetyTipsPanel";
+import { CityBanner } from "@/components/CitySelector";
 
 interface Area { slug: string; label: string; jurisdiction: string }
 interface PerArea { slug: string; label: string; incidentCount: number; riskLevel: 1|2|3|4|5; byCategory: { PERSONS: number; PROPERTY: number; SOCIETY: number }; dominantCategory: "PERSONS"|"PROPERTY"|"SOCIETY"|null }
 interface Alert { area: string; category: "PERSONS"|"PROPERTY"|"SOCIETY"; riskLevel: 1|2|3|4|5; summary: string; recency: string; provenance: ProvenanceLike }
-interface Citywide { totalIncidents: number; alerts: Alert[]; perArea: PerArea[] }
+interface Citywide { city: string; totalIncidents: number; alerts: Alert[]; perArea: PerArea[] }
 
 export default function ThreatsPage() {
+  const { city } = useCity();
   const [area, setArea] = useState<Area | null>(null);
   const [pushStatus, setPushStatus] = useState<string | null>(null);
   const [locError, setLocError] = useState<string | null>(null);
 
-  const { data: citywide } = useApi<Citywide>(area ? null : "/crime-data/citywide", [area]);
+  // Clear selection on city switch so we land on the new city's overview.
+  useEffect(() => { setArea(null); }, [city.slug]);
+
+  const { data: citywide } = useApi<Citywide>(area ? null : `/crime-data/citywide?city=${city.slug}`, [area, city.slug]);
   const showingCitywide = !area;
 
   const citywideCounts = (citywide?.perArea ?? []).reduce(
@@ -51,7 +57,7 @@ export default function ThreatsPage() {
       const r = await api<{ area: string; alerts: Alert[] }>(
         `/crime-data/alerts?lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`,
       );
-      setArea({ slug: r.area, label: r.area, jurisdiction: "San Diego" });
+      setArea({ slug: r.area, label: r.area, jurisdiction: city.label });
     } catch (err) {
       setLocError(`Couldn't use your location (${(err as Error).message}). Showing the citywide view.`);
     }
@@ -66,9 +72,9 @@ export default function ThreatsPage() {
     <main className="space-y-8">
       <header className="page-hero flex flex-wrap items-center gap-3 justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.18em] text-bay-700 font-medium">Awareness · San Diego</p>
+          <p className="text-xs uppercase tracking-[0.18em] text-bay-700 font-medium">Awareness · {city.label}</p>
           <h1 className="mt-1 font-display text-3xl sm:text-4xl text-slate2-900">
-            What&apos;s happening in <span className="bg-title-stripe bg-clip-text text-transparent bg-[length:200%_100%] animate-gradient-x">San Diego</span>
+            What&apos;s happening in <span className="bg-title-stripe bg-clip-text text-transparent bg-[length:200%_100%] animate-gradient-x">{city.label}</span>
           </h1>
           <p className="mt-2 text-slate2-700 max-w-2xl">
             Defaults to the whole city. Search a neighborhood, ZIP, or landmark to focus.
@@ -77,6 +83,8 @@ export default function ThreatsPage() {
         </div>
         <LiveActivityBadge />
       </header>
+
+      <CityBanner />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2"><LocationSearch current={area} onResolved={setArea} /></div>
@@ -91,23 +99,23 @@ export default function ThreatsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 space-y-6">
-          <AreaInsightsPanel areaQueryString={showingCitywide ? "jurisdiction=san-diego" : `neighborhood=${area!.slug}`} />
+          <AreaInsightsPanel areaQueryString={showingCitywide ? `jurisdiction=${city.defaultArea}` : `neighborhood=${area!.slug}`} />
           <CategoryBreakdown
             counts={showingCitywide ? citywideCounts : selectedCounts}
-            title={showingCitywide ? "Citywide category mix" : `${area!.label} — category mix`}
-            subtitle="SDPD NIBRS incidents in the recent cached window."
+            title={showingCitywide ? `${city.label} category mix` : `${area!.label} — category mix`}
+            subtitle="Recent cached window — see source banner below for refresh cadence."
           />
           {showingCitywide && citywide && (
             <section className="surface p-5">
               <h2 className="font-display text-lg text-slate2-900">Neighborhoods by recent incident count</h2>
               <ol className="mt-3 space-y-2 text-sm">
-                {citywide.perArea.slice(0, 7).map((p) => {
+                {citywide.perArea.slice(0, 10).map((p) => {
                   const max = Math.max(1, citywide.perArea[0]?.incidentCount ?? 1);
                   const pct = (p.incidentCount / max) * 100;
                   return (
                     <li key={p.slug}>
                       <div className="flex items-baseline justify-between">
-                        <button onClick={() => setArea({ slug: p.slug, label: p.label, jurisdiction: "San Diego" })} className="text-slate2-900 hover:text-bay-700 transition-colors">{p.label}</button>
+                        <button onClick={() => setArea({ slug: p.slug, label: p.label, jurisdiction: city.label })} className="text-slate2-900 hover:text-bay-700 transition-colors">{p.label}</button>
                         <span className="text-xs text-slate2-500 tabular-nums">{p.incidentCount.toLocaleString()}</span>
                       </div>
                       <div className="mt-1 h-1.5 rounded-full bg-sand-100 overflow-hidden">
@@ -121,20 +129,20 @@ export default function ThreatsPage() {
           )}
           <CrimeMixCard
             areaSlug={area?.slug}
-            jurisdictionSlug={!area ? "san-diego" : undefined}
-            title={showingCitywide ? "Specific offenses citywide — last 30 days" : `${area!.label} — last 30 days`}
+            jurisdictionSlug={!area ? city.defaultArea : undefined}
+            title={showingCitywide ? `Specific offenses across ${city.label} — last 30 days` : `${area!.label} — last 30 days`}
           />
           <RecentIncidentsCards
             area={area?.slug}
-            jurisdiction={!area ? "san-diego" : undefined}
-            title={showingCitywide ? "Recently reported across San Diego" : `Recently reported in ${area!.label}`}
+            jurisdiction={!area ? city.defaultArea : undefined}
+            title={showingCitywide ? `Recently reported across ${city.label}` : `Recently reported in ${area!.label}`}
             limit={8}
           />
-          <SafetyTipsPanel areaSlug={area?.slug} jurisdictionSlug={!area ? "san-diego" : undefined} />
+          <SafetyTipsPanel areaSlug={area?.slug} jurisdictionSlug={!area ? city.defaultArea : undefined} />
           <DataProvenanceBanner provenance={citywide?.alerts[0]?.provenance ?? selectedAreaStats?.alerts[0]?.provenance ?? null} />
         </div>
         <aside className="space-y-4">
-          <NewsPanel areaSlug={area?.slug} />
+          <NewsPanel areaSlug={area?.slug ?? city.slug} />
         </aside>
       </div>
     </main>

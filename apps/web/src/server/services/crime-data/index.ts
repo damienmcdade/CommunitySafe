@@ -62,7 +62,8 @@ export const crimeData = {
   /// category so users get a city-of-San-Diego overview without picking an area.
   /// Per-area payload now carries a category breakdown so the Crime Map can
   /// surface "what kind of incidents drive this area's score" in its tooltip.
-  async getCitywide(): Promise<{
+  async getCitywide(citySlug: string = "san-diego"): Promise<{
+    city: string;
     totalIncidents: number;
     alerts: AreaRiskAlert[];
     perArea: Array<{
@@ -74,14 +75,12 @@ export const crimeData = {
       dominantCategory: "PERSONS" | "PROPERTY" | "SOCIETY" | null;
     }>;
   }> {
-    // Citywide is per-jurisdiction by default — pass jurisdiction slug ("san-diego"
-    // / "los-angeles") via the existing getCitywide call sites. For backwards
-    // compat, undefined falls back to San Diego.
-    const { listKnownAreas } = await import("./neighborhoods");
-    const allAreas = await listKnownAreas();
-    // Filter to just the discovered SD areas for the city-of-SD overview.
-    // LA + future cities each get their own citywide call when requested.
-    const areas = allAreas.filter((a) => !a.slug.startsWith("la-"));
+    // Per-city aggregate. Each registered city's discover() is the source of
+    // truth for which neighborhoods belong to it — we don't have to maintain
+    // a separate slug→city map.
+    const { cityBySlug } = await import("./cities");
+    const city = cityBySlug(citySlug) ?? CITIES[0];
+    const areas = await city.discover().catch(() => [] as Awaited<ReturnType<typeof city.discover>>);
     const perArea: Awaited<ReturnType<typeof crimeData.getCitywide>>["perArea"] = [];
     const totalByCategory = new Map<string, Incident[]>();
     for (const area of areas) {
@@ -101,21 +100,21 @@ export const crimeData = {
     }
     const sample = perArea[0] ? await this.getAreaStats(perArea[0].slug) : null;
     const alerts: AreaRiskAlert[] = Array.from(totalByCategory.entries()).map(([category, items]) => ({
-      area: "City of San Diego",
+      area: `City of ${city.label}`,
       category: category as AreaRiskAlert["category"],
       riskLevel: items.length > 800 ? 5 : items.length > 400 ? 4 : items.length > 150 ? 3 : items.length > 40 ? 2 : 1,
-      summary: `${items.length} ${category.toLowerCase()} incidents reported across SD neighborhoods in the cached window.`,
+      summary: `${items.length} ${category.toLowerCase()} incidents reported across ${city.label} neighborhoods in the cached window.`,
       recency: sample?.provenance.recency ?? "see source",
       provenance: sample?.provenance ?? {
-        source: "SDPD NIBRS (City of San Diego Open Data)",
-        datasetUrl: "https://data.sandiego.gov/datasets/police-nibrs/",
-        recency: "Quarterly refresh",
+        source: `${city.label} public crime data`,
+        datasetUrl: "about:blank",
+        recency: "see adapter",
         granularity: "neighborhood",
-        disclaimer: "Aggregated from SDPD NIBRS. Not live, not street-level.",
+        disclaimer: `Aggregated for ${city.label}. Not live, not street-level.`,
       },
     }));
     const totalIncidents = perArea.reduce((s, a) => s + a.incidentCount, 0);
-    return { totalIncidents, alerts, perArea: perArea.sort((a, b) => b.incidentCount - a.incidentCount) };
+    return { city: city.label, totalIncidents, alerts, perArea: perArea.sort((a, b) => b.incidentCount - a.incidentCount) };
   },
 
   /// Derive area-level risk alert cards for the Threat Detection tab from
