@@ -69,7 +69,7 @@ async function fetchLapd(): Promise<Incident[]> {
   const url = new URL(BASE);
   url.searchParams.set("$select", "dr_no,date_occ,area_name,crm_cd,crm_cd_desc,part_1_2,rpt_dist_no,lat,lon");
   url.searchParams.set("$order", "date_occ DESC");
-  url.searchParams.set("$limit", "10000");
+  url.searchParams.set("$limit", "3000");
   const res = await fetch(url, {
     headers: {
       Accept: "application/json",
