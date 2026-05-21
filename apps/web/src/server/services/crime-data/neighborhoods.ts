@@ -38,13 +38,16 @@ function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: num
 /// Async — preferred. Pulls fresh discovered list from the SDPD CSV cache
 /// and merges in the small fallback so the legacy seven always resolve too.
 export async function listKnownAreas(): Promise<KnownArea[]> {
-  // Lazy dynamic import keeps this module dep-free for the sync helpers.
-  const { getDiscoveredAreas } = await import("./adapters/sdpd-nibrs");
-  const discovered = await getDiscoveredAreas().catch(() => [] as KnownArea[]);
-  lastDiscovered = discovered;
+  const { CITIES } = await import("./cities");
+  const all: KnownArea[] = [];
+  for (const c of CITIES) {
+    const discovered = await c.discover().catch(() => [] as KnownArea[]);
+    all.push(...discovered);
+  }
+  lastDiscovered = all;
   const merged = new Map<string, KnownArea>();
   for (const a of FALLBACK_AREAS) merged.set(a.slug, a);
-  for (const a of discovered) merged.set(a.slug, a);
+  for (const a of all) merged.set(a.slug, a);
   return Array.from(merged.values()).sort((a, b) => a.label.localeCompare(b.label));
 }
 
