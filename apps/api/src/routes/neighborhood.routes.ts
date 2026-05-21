@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
-import { PostStatus, AreaKind } from "@travelsafe/db";
+import { PostStatus, AreaKind } from "@prisma/client";
 import { optionalAuth } from "../middleware/auth.js";
 import { crimeData } from "../services/crime-data/index.js";
 

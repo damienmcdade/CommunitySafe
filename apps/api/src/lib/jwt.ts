@@ -1,4 +1,4 @@
-import jwt from "jsonwebtoken";
+import jwt, { type SignOptions } from "jsonwebtoken";
 import { env } from "../env.js";
 
 export interface SessionPayload {
@@ -7,7 +7,10 @@ export interface SessionPayload {
 }
 
 export function signSession(payload: SessionPayload): string {
-  return jwt.sign(payload, env.JWT_SECRET, { expiresIn: env.JWT_EXPIRES_IN });
+  // jsonwebtoken v9 narrows expiresIn to its internal StringValue alias, but
+  // we receive a plain string from env validation — the runtime accepts it.
+  const options: SignOptions = { expiresIn: env.JWT_EXPIRES_IN as SignOptions["expiresIn"] };
+  return jwt.sign(payload, env.JWT_SECRET, options);
 }
 
 export function verifySession(token: string): SessionPayload {

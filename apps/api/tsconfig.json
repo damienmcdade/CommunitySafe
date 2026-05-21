@@ -5,10 +5,7 @@
     "moduleResolution": "Bundler",
     "outDir": "dist",
     "rootDir": "src",
-    "types": ["node"],
-    "paths": {
-      "@travelsafe/db": ["../../packages/db/src/index.ts"]
-    }
+    "types": ["node"]
   },
   "include": ["src/**/*"]
 }

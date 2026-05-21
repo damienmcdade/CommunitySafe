@@ -1,4 +1,4 @@
-import type { CrimeCategory } from "@travelsafe/db";
+import type { CrimeCategory } from "@prisma/client";
 
 export interface DataProvenance {
   source: string;          // human-readable source name

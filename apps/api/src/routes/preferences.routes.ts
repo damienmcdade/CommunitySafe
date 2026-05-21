@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
-import { CrimeCategory, NotificationFrequency } from "@travelsafe/db";
+import { CrimeCategory, NotificationFrequency } from "@prisma/client";
 
 export const preferencesRouter = Router();
 

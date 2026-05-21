@@ -1,6 +1,6 @@
 import { parse as parseCsv } from "csv-parse/sync";
 import { env } from "../../../env.js";
-import { CrimeCategory } from "@travelsafe/db";
+import { CrimeCategory } from "@prisma/client";
 import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../types.js";
 import { findArea } from "../neighborhoods.js";
 

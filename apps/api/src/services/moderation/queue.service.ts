@@ -1,5 +1,5 @@
 import { prisma } from "../../lib/prisma.js";
-import { PostStatus, ReviewActionKind } from "@travelsafe/db";
+import { PostStatus, ReviewActionKind } from "@prisma/client";
 import { HttpError } from "../../middleware/error.js";
 import { evaluateSuspension } from "./suspension.service.js";
 import { REPORT_AUTO_REVERT_THRESHOLD } from "./post-prevet.js";
@@ -68,7 +68,7 @@ export async function reportPost(reporterId: string, postId: string, reason?: st
     if (post?.status === PostStatus.VERIFIED) {
       await prisma.post.update({ where: { id: postId }, data: { status: PostStatus.PENDING, reviewedAt: null, reviewerId: null } });
       await prisma.postReviewAction.create({
-        data: { postId, reviewerId, kind: ReviewActionKind.REVERT_TO_PENDING, reason: `auto-reverted after ${reportCount} reports` },
+        data: { postId, reviewerId: reporterId, kind: ReviewActionKind.REVERT_TO_PENDING, reason: `auto-reverted after ${reportCount} reports` },
       });
     }
   }

@@ -1,4 +1,4 @@
-import { CrimeCategory } from "@travelsafe/db";
+import { CrimeCategory } from "@prisma/client";
 import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../types.js";
 import { findArea } from "../neighborhoods.js";
 

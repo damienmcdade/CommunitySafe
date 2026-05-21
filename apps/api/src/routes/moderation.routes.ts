@@ -1,7 +1,7 @@
-import { Router } from "express";
+import { Router, type Request } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
-import { ReviewActionKind } from "@travelsafe/db";
+import { ReviewActionKind } from "@prisma/client";
 import { requireAuth } from "../middleware/auth.js";
 import { HttpError } from "../middleware/error.js";
 import { listPendingPosts, reportPost, reviewPost } from "../services/moderation/queue.service.js";
@@ -10,7 +10,7 @@ export const moderationRouter = Router();
 
 // MVP authorization: any user whose email is in MODERATOR_EMAILS env var is a
 // moderator. TODO: real role table / RBAC.
-function requireModerator(req: Parameters<Parameters<typeof moderationRouter.use>[0]>[0]) {
+function requireModerator(req: Request) {
   const email = req.session?.email;
   const list = (process.env.MODERATOR_EMAILS ?? "")
     .split(",")

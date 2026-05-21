@@ -1,5 +1,5 @@
 import { prisma } from "../../lib/prisma.js";
-import { CheckInStatus } from "@travelsafe/db";
+import { CheckInStatus } from "@prisma/client";
 import { env } from "../../env.js";
 import { triggerExpiry } from "./check-in.service.js";
 
