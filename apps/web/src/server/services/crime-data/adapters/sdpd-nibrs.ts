@@ -47,7 +47,9 @@ async function fetchYear(year: number): Promise<Incident[]> {
   return records.map((r, i) => ({
     id: `${year}-${r.nibrs_uniq ?? r.objectid ?? i}`,
     area: r.neighborhood?.trim() || r.beat?.trim() || "Unknown",
-    occurredAt: r.occurred_on ?? new Date().toISOString(),
+    // SDPD's CSV column is the misspelled "occured_on" (single r). Fall back
+    // to month/year if the day-level value is missing.
+    occurredAt: parseOccurredAt(r),
     nibrsCategory: mapCrimeAgainst(r.crime_against),
     ibrOffenseDescription: r.ibr_offense_description ?? r.ibr_category ?? "Unknown",
     beat: r.beat ?? null,
@@ -55,6 +57,20 @@ async function fetchYear(year: number): Promise<Incident[]> {
     // Never combined with lat/lng for display.
     blockLabel: r.block_addr ?? undefined,
   }));
+}
+
+function parseOccurredAt(r: Record<string, string>): string {
+  const raw = r.occured_on ?? r.occurred_on ?? "";
+  if (raw) {
+    const d = new Date(raw);
+    if (!isNaN(d.getTime())) return d.toISOString();
+  }
+  const y = Number(r.year);
+  const m = Number(r.month);
+  if (y && m) return new Date(Date.UTC(y, m - 1, 15)).toISOString();
+  // Last resort: leave at unix epoch so insights bucket it out of the window
+  // instead of inflating "this week".
+  return new Date(0).toISOString();
 }
 
 async function getRows(): Promise<Incident[]> {

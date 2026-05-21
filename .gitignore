@@ -47,3 +47,4 @@ packages/db/prisma/dev.db*
 # turborepo / next telemetry
 .turbo
 next-env.d.ts
+.env*.local
