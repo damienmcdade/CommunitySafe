@@ -3,6 +3,7 @@ import type { AreaRiskAlert, AreaStats, CrimeDataAdapter, Incident } from "./typ
 import { sandagSocrataAdapter } from "./adapters/sandag-socrata";
 import { sdpdNibrsAdapter } from "./adapters/sdpd-nibrs";
 import { mockAdapter } from "./adapters/mock";
+import { cityForArea, CITIES } from "./cities";
 
 export * from "./types";
 
@@ -28,23 +29,31 @@ export const crimeData = {
   async getAreaStats(area: string): Promise<AreaStats | null> {
     const mode = env.CRIME_DATA_ADAPTER;
     if (mode !== "auto") return adapters[mode].getAreaStats(area);
-    const stats = await tryAdapter(sandagSocrataAdapter, (a) => a.getAreaStats(area));
+    // Route by city: LA-prefixed slugs hit LAPD, others hit SDPD primary.
+    const cityAdapter = cityForArea(area).adapter;
+    const stats = await tryAdapter(cityAdapter, (a) => a.getAreaStats(area));
     if (stats) return stats;
-    const fallback = await tryAdapter(sdpdNibrsAdapter, (a) => a.getAreaStats(area));
-    return fallback ?? (await mockAdapter.getAreaStats(area));
+    // SANDAG jurisdiction-level stats still answer for city-of-SD overview.
+    if (cityAdapter === sdpdNibrsAdapter) {
+      const sandag = await tryAdapter(sandagSocrataAdapter, (a) => a.getAreaStats(area));
+      if (sandag) return sandag;
+    }
+    return mockAdapter.getAreaStats(area);
   },
 
   async getIncidents(area: string, opts?: { limit?: number; since?: Date }): Promise<Incident[]> {
     const mode = env.CRIME_DATA_ADAPTER;
     if (mode !== "auto") return adapters[mode].getIncidents(area, opts);
-    const incidents = await tryAdapter(sdpdNibrsAdapter, (a) => a.getIncidents(area, opts));
+    const cityAdapter = cityForArea(area).adapter;
+    const incidents = await tryAdapter(cityAdapter, (a) => a.getIncidents(area, opts));
     return incidents ?? (await mockAdapter.getIncidents(area, opts));
   },
 
   async getRecentReports(area: string, opts?: { limit?: number }): Promise<Incident[]> {
     const mode = env.CRIME_DATA_ADAPTER;
     if (mode !== "auto") return adapters[mode].getRecentReports(area, opts);
-    const reports = await tryAdapter(sdpdNibrsAdapter, (a) => a.getRecentReports(area, opts));
+    const cityAdapter = cityForArea(area).adapter;
+    const reports = await tryAdapter(cityAdapter, (a) => a.getRecentReports(area, opts));
     return reports ?? (await mockAdapter.getRecentReports(area, opts));
   },
 
@@ -65,8 +74,14 @@ export const crimeData = {
       dominantCategory: "PERSONS" | "PROPERTY" | "SOCIETY" | null;
     }>;
   }> {
+    // Citywide is per-jurisdiction by default — pass jurisdiction slug ("san-diego"
+    // / "los-angeles") via the existing getCitywide call sites. For backwards
+    // compat, undefined falls back to San Diego.
     const { listKnownAreas } = await import("./neighborhoods");
-    const areas = await listKnownAreas();
+    const allAreas = await listKnownAreas();
+    // Filter to just the discovered SD areas for the city-of-SD overview.
+    // LA + future cities each get their own citywide call when requested.
+    const areas = allAreas.filter((a) => !a.slug.startsWith("la-"));
     const perArea: Awaited<ReturnType<typeof crimeData.getCitywide>>["perArea"] = [];
     const totalByCategory = new Map<string, Incident[]>();
     for (const area of areas) {
