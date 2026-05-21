@@ -4,31 +4,23 @@ import { useCallback, useEffect, useState } from "react";
 export interface CityInfo {
   slug: string;
   label: string;
-  /// Default area to show when the user lands on a tab without selecting an
-  /// area (used as the jurisdiction for citywide views + insights).
+  /// Default jurisdiction slug used for citywide views when no specific area
+  /// is selected.
   defaultArea: string;
   /// Map centroid for re-centering the Crime Map.
   centroid: { lat: number; lng: number };
-  /// Status banner shown when this city is selected (empty for fully-wired
-  /// cities, populated for stub cities so we never lie about data coverage).
-  banner?: string;
 }
 
+// Only cities with verified, current public crime APIs.
 export const CITIES: CityInfo[] = [
   { slug: "san-diego",     label: "San Diego",     defaultArea: "san-diego",     centroid: { lat: 32.78, lng: -117.18 } },
   { slug: "los-angeles",   label: "Los Angeles",   defaultArea: "la-hollywood",  centroid: { lat: 34.05, lng: -118.32 } },
   { slug: "san-francisco", label: "San Francisco", defaultArea: "sf-mission",    centroid: { lat: 37.76, lng: -122.44 } },
-  { slug: "oakland",       label: "Oakland",       defaultArea: "oakland",       centroid: { lat: 37.80, lng: -122.27 },
-    banner: "Oakland's public crime feed is older than the other cities — counts shown are historical, not current week." },
-  { slug: "long-beach",    label: "Long Beach",    defaultArea: "long-beach-city", centroid: { lat: 33.77, lng: -118.19 },
-    banner: "Long Beach: no public crime API confirmed yet. Search and routing work; incident data is empty until a feed is wired." },
-  { slug: "san-jose",      label: "San Jose",      defaultArea: "san-jose-city", centroid: { lat: 37.34, lng: -121.89 },
-    banner: "San Jose: no public crime API confirmed yet. Search and routing work; incident data is empty until a feed is wired." },
 ];
 
 const STORAGE_KEY = "travelsafe.city.v1";
 
-let listeners = new Set<(c: CityInfo) => void>();
+const listeners = new Set<(c: CityInfo) => void>();
 let current: CityInfo | null = null;
 
 function load(): CityInfo {
@@ -46,9 +38,9 @@ function save(city: CityInfo) {
   for (const cb of listeners) cb(city);
 }
 
-/// React hook giving the currently-selected city + a setter. Backed by
-/// localStorage so the choice persists across visits, and broadcasts to any
-/// other useCity() consumer so the whole UI re-renders on switch.
+/// React hook returning the currently-selected city + a setter. The choice
+/// is persisted to localStorage and broadcasts to every other useCity()
+/// consumer so the whole UI re-renders on a switch.
 export function useCity() {
   const [city, setCityState] = useState<CityInfo>(() => (typeof window === "undefined" ? CITIES[0] : load()));
 

@@ -4,14 +4,16 @@ import type { KnownArea } from "./neighborhoods";
 import { sdpdNibrsAdapter, getDiscoveredAreas as getDiscoveredAreasSD } from "./adapters/sdpd-nibrs";
 import { lapdAdapter, getDiscoveredAreasLA } from "./adapters/lapd-socrata";
 import { sfAdapter, getDiscoveredAreasSF } from "./adapters/sf-socrata";
-import { oaklandAdapter, getDiscoveredAreasOakland } from "./adapters/oakland-socrata";
-import { createCityStub } from "./adapters/stub-city";
 
-// City registry. Each city pairs a bounding box (for lat/lng -> city detection)
-// with its incident adapter and its discovery function. Adding a new city is
-// a single entry here + one adapter file. See adapters/lapd-socrata.ts and
-// adapters/sf-socrata.ts for full examples; adapters/stub-city.ts for the
-// "no public API yet" pattern.
+// City registry.
+//
+// Only cities with verified, current public crime APIs are listed. Earlier
+// iterations included Oakland (data stops in 2013), Long Beach, and San Jose
+// (no usable public crime API found). They were misleading without real data
+// and have been removed.
+//
+// To add a city: confirm a current public API, write an adapter, then add
+// an entry below. See adapters/lapd-socrata.ts or sf-socrata.ts for templates.
 
 export interface CityEntry {
   slug: string;
@@ -20,9 +22,6 @@ export interface CityEntry {
   adapter: CrimeDataAdapter;
   discover: () => Promise<KnownArea[]>;
 }
-
-const longBeachStub = createCityStub("Long Beach", { lat: 33.770, lng: -118.193 });
-const sanJoseStub   = createCityStub("San Jose",   { lat: 37.336, lng: -121.890 });
 
 export const CITIES: CityEntry[] = [
   {
@@ -46,27 +45,6 @@ export const CITIES: CityEntry[] = [
     adapter: sfAdapter,
     discover: getDiscoveredAreasSF,
   },
-  {
-    slug: "oakland",
-    label: "Oakland",
-    bbox: { south: 37.69, west: -122.36, north: 37.89, east: -122.11 },
-    adapter: oaklandAdapter,
-    discover: getDiscoveredAreasOakland,
-  },
-  {
-    slug: "long-beach",
-    label: "Long Beach",
-    bbox: { south: 33.72, west: -118.27, north: 33.89, east: -118.07 },
-    adapter: longBeachStub.adapter,
-    discover: longBeachStub.discover,
-  },
-  {
-    slug: "san-jose",
-    label: "San Jose",
-    bbox: { south: 37.15, west: -122.05, north: 37.47, east: -121.75 },
-    adapter: sanJoseStub.adapter,
-    discover: sanJoseStub.discover,
-  },
 ];
 
 export function cityFromLatLng(point: { lat: number; lng: number }): CityEntry | null {
@@ -78,14 +56,11 @@ export function cityFromLatLng(point: { lat: number; lng: number }): CityEntry |
   return null;
 }
 
-/// Route an area slug to the city that owns it. Slugs are prefixed by adapter
-/// (la-*, sf-*, oak-*, etc.) — bare slugs default to San Diego.
+/// Route an area slug to its city. Slugs are prefixed by adapter
+/// (la-*, sf-*); bare slugs default to San Diego.
 export function cityForArea(slug: string): CityEntry {
-  if (slug.startsWith("la-")  || slug === "los-angeles")   return CITIES[1];
-  if (slug.startsWith("sf-")  || slug === "san-francisco") return CITIES[2];
-  if (slug.startsWith("oak-") || slug === "oakland")       return CITIES[3];
-  if (slug.startsWith("long-beach-") || slug === "long-beach") return CITIES[4];
-  if (slug.startsWith("san-jose-") || slug === "san-jose") return CITIES[5];
+  if (slug.startsWith("la-") || slug === "los-angeles")   return CITIES[1];
+  if (slug.startsWith("sf-") || slug === "san-francisco") return CITIES[2];
   return CITIES[0];
 }
 
