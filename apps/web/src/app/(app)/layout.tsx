@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { TabNav } from "@/components/TabNav";
 import { CitySelector } from "@/components/CitySelector";
+import { AIAssistant } from "@/components/AIAssistant";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
@@ -25,6 +26,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <div key={typeof window === "undefined" ? "ssr" : window.location.pathname} className="max-w-5xl mx-auto px-4 py-8 animate-fade-in">
         {children}
       </div>
+      <AIAssistant />
     </>
   );
 }
