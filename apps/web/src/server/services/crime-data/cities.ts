@@ -28,6 +28,7 @@ import { boiseAdapter, getDiscoveredAreasBoise } from "./adapters/boise-arcgis";
 import { buffaloAdapter, getDiscoveredAreasBuffalo } from "./adapters/buffalo-socrata";
 import { tucsonAdapter, getDiscoveredAreasTucson } from "./adapters/tucson-arcgis";
 import { kansasCityAdapter, getDiscoveredAreasKansasCity } from "./adapters/kansas-city-socrata";
+import { saintPaulAdapter, getDiscoveredAreasSaintPaul } from "./adapters/saint-paul-arcgis";
 
 // City registry.
 //
@@ -237,6 +238,13 @@ export const CITIES: CityEntry[] = [
     adapter: kansasCityAdapter,
     discover: getDiscoveredAreasKansasCity,
   },
+  {
+    slug: "saint-paul",
+    label: "Saint Paul",
+    bbox: { south: 44.87, west: -93.22, north: 45.01, east: -93.00 },
+    adapter: saintPaulAdapter,
+    discover: getDiscoveredAreasSaintPaul,
+  },
 ];
 
 export function cityFromLatLng(point: { lat: number; lng: number }): CityEntry | null {
@@ -277,6 +285,7 @@ export function cityForArea(slug: string): CityEntry {
   if (slug.startsWith("buf-")  || slug === "buffalo")      return CITIES[24];
   if (slug.startsWith("tuc-")  || slug === "tucson")       return CITIES[25];
   if (slug.startsWith("kc-")   || slug === "kansas-city")  return CITIES[26];
+  if (slug.startsWith("sp-")   || slug === "saint-paul")   return CITIES[27];
   return CITIES[0];
 }
 

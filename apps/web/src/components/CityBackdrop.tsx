@@ -280,6 +280,16 @@ const PHOTOS: Record<string, string[]> = {
     // J.C. Nichols Fountain
     "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/JC_Nichols_Fountain_by_Henri-L%C3%A9on_Gr%C3%A9ber_Kansas_City.jpg/1920px-JC_Nichols_Fountain_by_Henri-L%C3%A9on_Gr%C3%A9ber_Kansas_City.jpg",
   ],
+  "saint-paul": [
+    // Saint Paul skyline from West Side
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/59/Saint_Paul_skyline%2C_West_Side_%28cropped%29.jpg/1920px-Saint_Paul_skyline%2C_West_Side_%28cropped%29.jpg",
+    // Cathedral of St Paul from Landmark Center
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Cathedral_of_St._Paul_from_the_Landmark_Center.jpg/1920px-Cathedral_of_St._Paul_from_the_Landmark_Center.jpg",
+    // Minnesota State Capitol
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Minnesota_State_Capitol_2017.jpg/1920px-Minnesota_State_Capitol_2017.jpg",
+    // Saint Paul City Hall
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Saint_Paul_City_Hall.jpg/1920px-Saint_Paul_City_Hall.jpg",
+  ],
 };
 
 // 30-second rotation — keeps the backdrop visibly dynamic without distracting
