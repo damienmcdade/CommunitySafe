@@ -9,7 +9,7 @@ interface Message {
 const STORAGE_KEY = "travelsafe.assistant.v1";
 const INTRO: Message = {
   role: "assistant",
-  content: "Hi — I can answer questions about the 11 US cities TravelSafe tracks, their neighborhoods, and how they compare to the FBI national averages. Try \"what's the safest neighborhood in San Diego?\" or \"how does Chicago compare to Boston?\"",
+  content: "Hi — I can answer questions about the US cities and counties TravelSafe tracks, their neighborhoods, and how they compare to the FBI national averages. Try \"what's the safest neighborhood in San Diego?\" or \"how does Chicago compare to Boston?\"",
 };
 
 /// Floating AI safety guide. Bottom-right pill on every app tab; click to
@@ -124,10 +124,16 @@ export function AIAssistant() {
       </button>
 
       {open && (
+        // Pin the chat panel to the top-right of the VIEWPORT (not the page),
+        // so it sits above the fold no matter how far the user has scrolled.
+        // `top-5 right-5` matches the launcher's right offset; `max-h` caps
+        // the panel to the viewport height minus a small inset and lets it
+        // shrink on short screens. The dialog stays clear of the launcher
+        // pill at the bottom-right so both are reachable at once.
         <section
           role="dialog"
           aria-label="TravelSafe assistant"
-          className="fixed bottom-20 right-5 z-[1500] w-[min(24rem,calc(100vw-2.5rem))] h-[min(28rem,calc(100vh-7rem))] flex flex-col surface bg-white animate-pop-in"
+          className="fixed top-5 right-5 z-[1500] w-[min(24rem,calc(100vw-2.5rem))] max-h-[min(34rem,calc(100vh-2.5rem))] flex flex-col surface bg-white animate-pop-in"
         >
           <header className="flex items-center justify-between gap-2 px-4 py-3 border-b border-sand-200">
             <div>
