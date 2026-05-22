@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { TabNav } from "@/components/TabNav";
 import { CitySelector } from "@/components/CitySelector";
-import { CityBackdrop } from "@/components/CityBackdrop";
 import { isSignedIn, setToken } from "@/lib/api-client";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
@@ -18,7 +17,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <>
-      <CityBackdrop />
+      {/* CityBackdrop is mounted in the root layout — it's available on every page. */}
       <header className="bg-white/80 backdrop-blur border-b border-sand-200 sticky top-0 z-30">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <Link href="/" className="font-display text-xl text-slate2-900 transition-colors hover:text-bay-700">

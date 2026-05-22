@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { CityBackdrop } from "@/components/CityBackdrop";
 
 export const metadata: Metadata = {
   title: "TravelSafe",
@@ -13,7 +14,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {/* Mounted at the root so the rotating cityscape backdrop is present
+            on every page — welcome, auth, app tabs, and dynamic routes alike. */}
+        <CityBackdrop />
+        {children}
+      </body>
     </html>
   );
 }
