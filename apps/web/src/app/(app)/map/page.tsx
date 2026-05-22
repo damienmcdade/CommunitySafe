@@ -35,6 +35,7 @@ const SOURCES: Record<string, string> = {
   "cleveland":     "Cleveland Division of Police Calls for Service (City of Cleveland Open Data, ArcGIS Feature Server). Administrative dispatches filtered at ingest. Includes non-NIBRS reports.",
   "montgomery-county": "Montgomery County Police Crime (Montgomery County MD Open Data, Socrata). NIBRS-classified per row by MCPD, aggregated to one of seven MCPD policing districts.",
   "las-vegas":     "LVMPD Calls for Service (Opendata Las Vegas, ArcGIS Feature Server). Administrative dispatches and ambiguous calls filtered at ingest. Geocoded to one of 26 named Las Vegas neighborhoods.",
+  "boise":         "Boise Police Calls for Service (City of Boise Open Data, ArcGIS). BPD's own Violent/Property/Society category labels are honored, aggregated to one of 35 official Boise neighborhood associations.",
 };
 
 export default function MapPage() {

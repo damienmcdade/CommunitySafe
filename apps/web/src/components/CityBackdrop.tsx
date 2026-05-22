@@ -240,6 +240,16 @@ const PHOTOS: Record<string, string[]> = {
     // Symphony Park downtown
     "https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/LasVegasSymphonyPark1.jpg/1920px-LasVegasSymphonyPark1.jpg",
   ],
+  "boise": [
+    // Boise downtown panoramic
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Boise_Downtown_Panoramic.jpg/1920px-Boise_Downtown_Panoramic.jpg",
+    // Idaho State Capitol
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/Idaho_Capitol_Building.JPG/1920px-Idaho_Capitol_Building.JPG",
+    // Boise River with downtown
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/Idaho_-_Boise_through_Boise_River_-_NARA_-_23939399_%28cropped%29.jpg/1920px-Idaho_-_Boise_through_Boise_River_-_NARA_-_23939399_%28cropped%29.jpg",
+    // Hyde Park neighborhood
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Hyde_Park_Boise.jpg/1920px-Hyde_Park_Boise.jpg",
+  ],
 };
 
 // 30-second rotation — keeps the backdrop visibly dynamic without distracting
