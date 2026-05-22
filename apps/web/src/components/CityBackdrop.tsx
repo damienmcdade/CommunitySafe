@@ -120,6 +120,16 @@ const PHOTOS: Record<string, string[]> = {
     // Philadelphia City Hall aerial view + downtown
     "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Philadelphia_City_Hall%2C_aerial_view%2C_cropped.png/1920px-Philadelphia_City_Hall%2C_aerial_view%2C_cropped.png",
   ],
+  "oakland": [
+    // Downtown Oakland Historic District — dense urban
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Downtown_Oakland_Historic_District-6_%28cropped%29.jpg/1920px-Downtown_Oakland_Historic_District-6_%28cropped%29.jpg",
+    // Fox Oakland Theatre — iconic Art Deco landmark
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Fox_Oakland_Theatre.jpg/1920px-Fox_Oakland_Theatre.jpg",
+    // Grand Avenue side of Lake Merritt — Oakland skyline reflected
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Grand_Avenue_side_of_Lake_Merritt%2C_Oakland.jpg/1920px-Grand_Avenue_side_of_Lake_Merritt%2C_Oakland.jpg",
+    // Lake Merritt with downtown Oakland surrounding it
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Lake_Merritt_2022-06-16.png/1920px-Lake_Merritt_2022-06-16.png",
+  ],
 };
 
 // 30-second rotation — keeps the backdrop visibly dynamic without distracting
