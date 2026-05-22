@@ -150,6 +150,16 @@ const PHOTOS: Record<string, string[]> = {
     // French Quarter street scene
     "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/French_Quarter03_New_Orleans.JPG/1920px-French_Quarter03_New_Orleans.JPG",
   ],
+  "baton-rouge": [
+    // Downtown Baton Rouge from Tiger Stadium (Wikipedia infobox)
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Downtown_Baton_Rouge%2C_Louisiana_from_Tiger_Stadium_%28LSU%29.jpg/1920px-Downtown_Baton_Rouge%2C_Louisiana_from_Tiger_Stadium_%28LSU%29.jpg",
+    // Old Louisiana State Capitol — Gothic Revival landmark
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Baton_Rouge_-_Old_State_Capitol_from_the_riverfront%2C_April_2024.jpg/1920px-Baton_Rouge_-_Old_State_Capitol_from_the_riverfront%2C_April_2024.jpg",
+    // Mississippi River waterfront, aerial
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Baton_Rouge_Louisiana_waterfront_aerial_view.jpg/1920px-Baton_Rouge_Louisiana_waterfront_aerial_view.jpg",
+    // Riverfront from the I-10 bridge
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Baton_Rouge_riverfront_from_I-10_bridge_5_November_2016_-_1.jpg/1920px-Baton_Rouge_riverfront_from_I-10_bridge_5_November_2016_-_1.jpg",
+  ],
 };
 
 // 30-second rotation — keeps the backdrop visibly dynamic without distracting

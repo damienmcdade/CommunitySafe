@@ -15,6 +15,7 @@ import { phlAdapter, getDiscoveredAreasPhl } from "./adapters/phl-carto";
 import { oaklandAdapter, getDiscoveredAreasOakland } from "./adapters/oakland-socrata";
 import { cincinnatiAdapter, getDiscoveredAreasCincinnati } from "./adapters/cincinnati-socrata";
 import { nolaAdapter, getDiscoveredAreasNola } from "./adapters/nola-socrata";
+import { batonRougeAdapter, getDiscoveredAreasBatonRouge } from "./adapters/baton-rouge-socrata";
 
 // City registry.
 //
@@ -133,6 +134,13 @@ export const CITIES: CityEntry[] = [
     adapter: nolaAdapter,
     discover: getDiscoveredAreasNola,
   },
+  {
+    slug: "baton-rouge",
+    label: "Baton Rouge",
+    bbox: { south: 30.30, west: -91.27, north: 30.59, east: -91.00 },
+    adapter: batonRougeAdapter,
+    discover: getDiscoveredAreasBatonRouge,
+  },
 ];
 
 export function cityFromLatLng(point: { lat: number; lng: number }): CityEntry | null {
@@ -160,6 +168,7 @@ export function cityForArea(slug: string): CityEntry {
   if (slug.startsWith("oak-") || slug === "oakland")       return CITIES[11];
   if (slug.startsWith("cin-")  || slug === "cincinnati")   return CITIES[12];
   if (slug.startsWith("nola-") || slug === "new-orleans")  return CITIES[13];
+  if (slug.startsWith("br-")   || slug === "baton-rouge")  return CITIES[14];
   return CITIES[0];
 }
 
