@@ -69,12 +69,18 @@ const DISTRICT_NEIGHBORHOODS: Record<number, string> = {
   77: "Citywide / Administrative",
 };
 
+function ordinal(n: number): string {
+  const k = n % 100, j = n % 10;
+  if (k >= 11 && k <= 13) return `${n}th`;
+  return `${n}${j === 1 ? "st" : j === 2 ? "nd" : j === 3 ? "rd" : "th"}`;
+}
+
 function enrich(dc_dist: string | null | undefined): string {
   if (!dc_dist) return "Unknown";
   const n = parseInt(dc_dist, 10);
   if (!Number.isFinite(n)) return "Unknown";
   const nbh = DISTRICT_NEIGHBORHOODS[n];
-  return nbh ? `${n}th District: ${nbh}` : `${n}th District`;
+  return nbh ? `${ordinal(n)} District: ${nbh}` : `${ordinal(n)} District`;
 }
 
 const PROVENANCE: DataProvenance = {
