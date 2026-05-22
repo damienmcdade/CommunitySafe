@@ -26,6 +26,44 @@ export function isSignedIn(): boolean {
   return token() != null;
 }
 
+/// Silently mint (and persist) a per-device anonymous session on first visit
+/// so every feature works without a visible login flow. Subsequent calls are
+/// a no-op once a token is stored. Safe to call from a useEffect on app mount.
+let bootstrapPromise: Promise<void> | null = null;
+export async function ensureAnonymousAuth(): Promise<void> {
+  if (typeof window === "undefined") return;
+  if (token()) return;
+  if (bootstrapPromise) return bootstrapPromise;
+  bootstrapPromise = (async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/anonymous`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      if (!res.ok) return;
+      const body = await res.json();
+      if (body?.token) setToken(body.token);
+    } catch {
+      // Silently fail — the user can still browse public data. We retry on the
+      // next mount via the same hook below.
+    } finally {
+      bootstrapPromise = null;
+    }
+  })();
+  return bootstrapPromise;
+}
+
+/// React hook: kicks off anonymous bootstrap on mount and returns a tri-state.
+export function useAnonymousAuth(): { ready: boolean } {
+  const [ready, setReady] = useState<boolean>(() => typeof window !== "undefined" && isSignedIn());
+  useEffect(() => {
+    if (ready) return;
+    void ensureAnonymousAuth().then(() => setReady(isSignedIn()));
+  }, [ready]);
+  return { ready };
+}
+
 export async function api<T = unknown>(path: string, init: RequestInit = {}): Promise<T> {
   const headers: HeadersInit = {
     "Content-Type": "application/json",

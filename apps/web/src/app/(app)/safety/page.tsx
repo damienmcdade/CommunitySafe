@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { api, isSignedIn, useApi } from "@/lib/api-client";
+import { api, useAnonymousAuth, useApi } from "@/lib/api-client";
 import { requestLocation } from "@/lib/geolocation";
 import { SafetyTipsPanel } from "@/components/SafetyTipsPanel";
 import { CityBanner } from "@/components/CitySelector";
@@ -83,19 +82,6 @@ export default function PersonalSafetyPage() {
   );
 }
 
-/// Inline auth prompt that replaces the SignInGate. Used by Check-in / Live-
-/// share *when the user actually tries to arm or create* — viewing is always
-/// free, only the act of binding a timer / link to an account requires sign-in.
-function AuthPrompt({ message }: { message: string }) {
-  return (
-    <div className="mt-3 surface-muted p-3 text-sm text-slate2-700 flex flex-wrap items-center gap-2">
-      <span>{message}</span>
-      <Link href="/login" className="btn-primary text-xs">Sign in</Link>
-      <Link href="/register" className="btn-secondary text-xs">Create account</Link>
-    </div>
-  );
-}
-
 function EmergencyPanel() {
   return (
     <section className="surface p-6">
@@ -119,9 +105,7 @@ function EmergencyPanel() {
 }
 
 function CheckInPanel() {
-  const [signedIn, setSignedIn] = useState(false);
-  useEffect(() => setSignedIn(isSignedIn()), []);
-
+  const { ready: signedIn } = useAnonymousAuth();
   const { data, reload } = useApi<ActiveTimer[]>(signedIn ? "/safety/check-in/active" : null, [signedIn]);
   const active = data?.[0] ?? null;
 
@@ -209,7 +193,7 @@ function CheckInPanel() {
       )}
       {error && <p className="mt-3 text-sm text-dusk-700">{error}</p>}
       {!signedIn && (
-        <AuthPrompt message="Arming a timer requires an account so we can notify your confirmed contacts if it expires." />
+        <p className="mt-3 text-xs text-slate2-500">Setting up your anonymous device session…</p>
       )}
     </section>
   );
@@ -222,9 +206,7 @@ function formatRemaining(ms: number) {
 }
 
 function LiveSharePanel() {
-  const [signedIn, setSignedIn] = useState(false);
-  useEffect(() => setSignedIn(isSignedIn()), []);
-
+  const { ready: signedIn } = useAnonymousAuth();
   const { data, reload } = useApi<LiveShare[]>(signedIn ? "/safety/live-share" : null, [signedIn]);
   const active = (data ?? []).filter((s) => !s.revokedAt && new Date(s.expiresAt) > new Date());
 
@@ -272,7 +254,7 @@ function LiveSharePanel() {
         </button>
       </div>
       {!signedIn && (
-        <AuthPrompt message="Generating a live-share link requires an account so you can revoke it from any device." />
+        <p className="mt-3 text-xs text-slate2-500">Setting up your anonymous device session…</p>
       )}
 
       {lastShare && (

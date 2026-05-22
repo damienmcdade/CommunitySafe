@@ -2,6 +2,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { CityBackdrop } from "@/components/CityBackdrop";
+import { SessionBootstrap } from "@/components/SessionBootstrap";
 
 export const metadata: Metadata = {
   title: "TravelSafe",
@@ -20,6 +21,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             backdrop instead of underneath. The body is transparent so the
             backdrop is the actual paint at the bottom of the viewport. */}
         <CityBackdrop />
+        <SessionBootstrap />
         <div className="relative z-10">{children}</div>
       </body>
     </html>
