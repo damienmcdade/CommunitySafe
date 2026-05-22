@@ -25,6 +25,7 @@ const SOURCES: Record<string, string> = {
   "philadelphia":  "Philadelphia Crime Incidents Part 1 & Part 2 (OpenDataPhilly, CARTO SQL), aggregated to PPD district.",
   "oakland":       "Oakland Police Department CrimeWatch Reports (City of Oakland Open Data), geocoded to named neighborhood.",
   "cincinnati":    "Cincinnati Police Department Crime Incidents (City of Cincinnati Open Data), aggregated to CPD neighborhood.",
+  "new-orleans":   "NOPD Calls for Service 2026 (City of New Orleans Open Data), geocoded to named neighborhood. Includes non-crime dispatches.",
 };
 
 export default function MapPage() {

@@ -140,6 +140,16 @@ const PHOTOS: Record<string, string[]> = {
     // Cincinnati Union Terminal — Art Deco landmark
     "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Cincinnati_Union_Terminal_principal_facade.jpg/1920px-Cincinnati_Union_Terminal_principal_facade.jpg",
   ],
+  "new-orleans": [
+    // Central Business District skyline aerial (Wikipedia infobox)
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/New_Orleans_from_the_Air_September_2019_-_Central_Business_District_Skyline_%28cropped%29.jpg/1920px-New_Orleans_from_the_Air_September_2019_-_Central_Business_District_Skyline_%28cropped%29.jpg",
+    // Skyline from Uptown
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/New_Orleans_Skyline_from_Uptown.jpg/1920px-New_Orleans_Skyline_from_Uptown.jpg",
+    // St. Louis Cathedral at night — Jackson Square
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Stlouiscathedralnight.jpg/1920px-Stlouiscathedralnight.jpg",
+    // French Quarter street scene
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/French_Quarter03_New_Orleans.JPG/1920px-French_Quarter03_New_Orleans.JPG",
+  ],
 };
 
 // 30-second rotation — keeps the backdrop visibly dynamic without distracting

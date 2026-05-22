@@ -21,6 +21,7 @@ const SOURCE_LABELS: Record<string, string> = {
   "philadelphia":  "PPD Crime Incidents Part 1 & 2 · refreshed every 5 min",
   "oakland":       "OPD CrimeWatch Reports · refreshed every 5 min",
   "cincinnati":    "CPD Crime Incidents · refreshed every 5 min",
+  "new-orleans":   "NOPD Calls for Service · refreshed every 5 min",
 };
 
 export function RecentIncidentsCards({
