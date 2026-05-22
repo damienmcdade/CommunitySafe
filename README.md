@@ -1,11 +1,107 @@
 # TravelSafe
 
-Personal and community safety-awareness app for the **San Diego, CA** region.
+# SafeZone Engine: Location-Risk Analytics & Modular UI
 
-TravelSafe surfaces **area-level** crime and safety information drawn from
-official open-data sources (SANDAG / SDPD NIBRS) plus a moderated community
-feed. It is intentionally **not** a real-time people-tracker.
+A high-performance, fully automated location-risk analytics engine and modular UI tab built for seamless cross-platform integration. SafeZone transforms disparate, raw municipal crime datasets into standardized, street-level safety indexes ("BlockScores"), allowing real-time risk evaluation within any map-based application.
 
+Built natively in **React Native (Expo)** and decoupled via an **API-first backend architecture**, this repository provides a turn-key solution for platforms looking to increase user retention and transaction security by embedding hyper-local safety insights.
+
+---
+
+## 🎯 Target Enterprise Use Cases
+
+*   **Real Estate Platforms:** Embed dynamic neighborhood-level safety ratings directly onto property listing layouts.
+*   **Travel & Hospitality Tech:** Power safe-route navigation matrices and accommodation risk screening.
+*   **Corporate Duty of Care:** Integrate automated travel-risk notifications and localized geofencing for traveling workforces.
+
+---
+
+## 🛠️ Architecture & Technical Highlights
+
+### 🧠 1. Proprietary Scoring & Data Normalization Pipeline
+*   **Weighted Risk Engine:** Rather than dumping raw police blotters on a map, the engine runs a data normalization formula that weights incidents by severity (e.g., separating low-impact property incidents from personal safety threats) to generate a highly accurate, local safety metric.
+*   **Low-Cost Automated Scraping:** Scheduled cron functions automatically fetch, sanitize, and index municipal records without requiring manual oversight.
+
+### 📱 2. Modular React Native / Expo Frontend
+*   **Decoupled Architecture:** The `SafeZone` map tab is fully encapsulated. It can be copy-pasted into any existing React Native application with zero structural refactoring.
+*   **State Optimization:** Leverages optimized regional caching to prevent redundant API map fetches when a user pans across city grids.
+
+### 🌐 3. Multi-Platform Deployment
+*   Single-codebase architecture optimized simultaneously for **Web (Vercel/Netlify)**, **iOS (Apple App Store)**, and **Android (Google Play Store)** utilizing Expo Application Services (EAS).
+
+---
+
+## 📁 Repository Structure
+
+```text
+├── .github/              # CI/CD workflows and deployment pipelines
+├── backend/              # Decoupled API & Automated Scraping Engine
+│   ├── src/controllers/  # Score calculation and data aggregation algorithms
+│   └── src/jobs/         # Scheduled Cron tasks for municipal open-data fetching
+├── frontend/             # Cross-platform UI layout
+│   ├── app/              # Expo Router path handling
+│   └── components/       # UI Elements
+│       └── SafeZoneTab/  # Fully self-contained, drop-in safety map module
+├── app.json              # Native device & permission handling setups
+└── eas.json              # Production environment distribution configurations
+```
+
+---
+
+## 🚀 Quick Start (Local Development)
+
+### Prerequisites
+* Node.js (v18+)
+* Expo CLI (`npm install -g expo-cli`)
+* EAS CLI (`npm install -g eas-cli`)
+
+### Setup & Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com
+   cd safezone-engine
+   ```
+
+2. **Configure environment variables:**
+   Create a `.env` file in both the frontend and backend root folders using the provided `.env.example` templates. Ensure you map your Google Maps / Apple Maps SDK credentials correctly.
+
+3. **Install dependencies & launch frontend:**
+   ```bash
+   cd frontend
+   npm install
+   npx expo start
+   ```
+
+---
+
+## 📦 Production Deployment & Build Commands
+
+This project is configured to bypass heavy local compiler configurations by leveraging cloud orchestration services.
+
+### Cross-Platform Native Bundling via EAS:
+```bash
+# Compile and build iOS Production Target
+eas build --platform ios --profile production
+
+# Compile and build Android Production Target (.aab bundle)
+eas build --platform android --profile production
+
+# Export Static optimized Web single-page deployment bundle
+npx expo export --platform web
+```
+
+---
+
+## 💼 Acquisition, Code Licensing & Technical Due Diligence
+
+This codebase was intentionally designed and architected to serve as a drop-in acquisition asset for larger consumer applications. All logic layers—from the spatial database queries to the interface renderings—are fully decoupled and thoroughly documented.
+
+For inquiries regarding **complete asset acquisition**, **proprietary algorithm licensing**, or to request access to our structural core architecture breakdown, please contact:
+
+*   **Principal Developer:** [Damien Gantt-McDade]
+*   **Professional Contact:** [damienmcdade17@gmail.com]
+*   **Digital Portfolio/LinkedIn:** [www.linkedin.com/in/damien-gantt-mcdade-62a30629a]
 ---
 
 ## Design constraints (read before contributing)
