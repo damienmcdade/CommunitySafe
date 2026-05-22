@@ -86,13 +86,20 @@ const PROVENANCE: DataProvenance = {
 };
 
 async function fetchBoston(): Promise<Incident[]> {
-  const url = new URL(SEARCH_BASE);
-  url.searchParams.set("resource_id", RESOURCE_ID);
-  url.searchParams.set("limit", String(ROW_LIMIT));
-  // CKAN's datastore_search accepts "fieldname desc" syntax for sort.
-  url.searchParams.set("sort", "OCCURRED_ON_DATE desc");
-  const res = await fetch(url, {
-    headers: { Accept: "application/json", "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
+  // Build the URL by hand: URL.searchParams encodes spaces as "+", which CKAN
+  // accepts locally but the response shape differs (empty result) when the
+  // adapter runs from a different origin. Using %20 explicitly is safer.
+  // We don't pre-filter by YEAR — CKAN stores YEAR as text and the equality
+  // filter tries to coerce it to integer, returning a Validation Error. The
+  // sort+limit alone gives us the most recent ROW_LIMIT rows, which covers
+  // roughly the last month of citywide reports for Boston.
+  const sort = encodeURIComponent("OCCURRED_ON_DATE desc");
+  const u = `${SEARCH_BASE}?resource_id=${RESOURCE_ID}&limit=${ROW_LIMIT}&sort=${sort}`;
+  const res = await fetch(u, {
+    headers: {
+      Accept: "application/json",
+      "User-Agent": "Mozilla/5.0 TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)",
+    },
   });
   if (!res.ok) throw new Error(`Boston CKAN ${res.status}`);
   const body = await res.json() as { success?: boolean; error?: unknown; result?: { records?: BostonRow[] } };
