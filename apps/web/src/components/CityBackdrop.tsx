@@ -130,6 +130,16 @@ const PHOTOS: Record<string, string[]> = {
     // Lake Merritt with downtown Oakland surrounding it
     "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Lake_Merritt_2022-06-16.png/1920px-Lake_Merritt_2022-06-16.png",
   ],
+  "cincinnati": [
+    // Downtown Cincinnati skyline from Devou Park
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Downtown_Cincinnati_viewed_from_Devou_Park_%28cropped%29.jpg/1920px-Downtown_Cincinnati_viewed_from_Devou_Park_%28cropped%29.jpg",
+    // Downtown Cincinnati from Mt. Adams
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Downtown_Cincinnati_viewed_from_Mt._Adams_%28cropped%29.jpg/1920px-Downtown_Cincinnati_viewed_from_Mt._Adams_%28cropped%29.jpg",
+    // Carew Tower — iconic Cincinnati Art Deco skyscraper
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Carew_Tower%2C_Cincinnati%2C_Ohio.jpg/1920px-Carew_Tower%2C_Cincinnati%2C_Ohio.jpg",
+    // Cincinnati Union Terminal — Art Deco landmark
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Cincinnati_Union_Terminal_principal_facade.jpg/1920px-Cincinnati_Union_Terminal_principal_facade.jpg",
+  ],
 };
 
 // 30-second rotation — keeps the backdrop visibly dynamic without distracting

@@ -24,6 +24,7 @@ const SOURCES: Record<string, string> = {
   "boston":        "Boston Police Department Crime Incident Reports (City of Boston Open Data, CKAN), aggregated to BPD district.",
   "philadelphia":  "Philadelphia Crime Incidents Part 1 & Part 2 (OpenDataPhilly, CARTO SQL), aggregated to PPD district.",
   "oakland":       "Oakland Police Department CrimeWatch Reports (City of Oakland Open Data), geocoded to named neighborhood.",
+  "cincinnati":    "Cincinnati Police Department Crime Incidents (City of Cincinnati Open Data), aggregated to CPD neighborhood.",
 };
 
 export default function MapPage() {
