@@ -18,10 +18,10 @@ const RESOURCE_ID = "b973d8cb-eeb2-4e7e-99da-c92938efc9c0";
 // limit/offset URL params with much better tail latency, and supports sort
 // directly via &sort= so we still get the freshest rows first.
 const SEARCH_BASE = "https://data.boston.gov/api/3/action/datastore_search";
-// 5,000 rows worked from a developer machine but the 2.2 MB JSON parse
-// silently fails from Vercel's serverless function (returns 0 records).
-// Dropping to 2,000 rows / ~900 KB makes the function reliable.
-const ROW_LIMIT = 2_000;
+// Even 2,000 rows fails silently from Vercel. Dropping further to 500
+// rows (~200 KB). If THIS fails too, the failure mode is network-level
+// (IP filtering or unusually strict TLS handshake), not response size.
+const ROW_LIMIT = 500;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
 
