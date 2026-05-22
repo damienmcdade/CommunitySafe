@@ -7,6 +7,7 @@ import type { Feature, FeatureCollection, Geometry } from "geojson";
 import "leaflet/dist/leaflet.css";
 import { useApi } from "@/lib/api-client";
 import { useCity } from "@/lib/use-city";
+import { useArea } from "@/lib/use-area";
 
 // Module-level polygon cache shared across remounts of CrimeMap. Wiping
 // when the user reloads the page is fine; everything that matters lives
@@ -195,12 +196,16 @@ export default function CrimeMap() {
   const { data: citywide, loading: cityLoading, error: cityErr } = useApi<Citywide>(path, [path]);
 
   // Match polygon name → our area slug via fuzzy normalized comparison.
-  const polygonStats = useMemo(() => {
-    if (!polygons) return new Map<string, AreaBreakdown | null>();
+  // Returns BOTH a stats lookup and a slug lookup so polygon clicks can
+  // sync the global area selection (used by /safety-score, /trends, etc.)
+  // and the "View safety details" CTA can deep-link by slug.
+  const { polygonStats, polygonSlugByName } = useMemo(() => {
+    const stats = new Map<string, AreaBreakdown | null>();
+    const slugByName = new Map<string, string>();
+    if (!polygons) return { polygonStats: stats, polygonSlugByName: slugByName };
     const cityAreas = (areas ?? []).filter((a) => a.jurisdiction.toLowerCase() === city.label.toLowerCase());
     const byNormLabel = new Map(cityAreas.map((a) => [normName(a.label), a.slug]));
     const statsBySlug = new Map((citywide?.perArea ?? []).map((p) => [p.slug, p]));
-    const out = new Map<string, AreaBreakdown | null>();
     for (const feat of polygons.features) {
       const polyName = (feat.properties as { name?: string } | null)?.name ?? "";
       const norm = normName(polyName);
@@ -212,9 +217,10 @@ export default function CrimeMap() {
           if (labelNorm.includes(norm) || norm.includes(labelNorm)) { slug = s; break; }
         }
       }
-      out.set(polyName, slug ? (statsBySlug.get(slug) ?? null) : null);
+      stats.set(polyName, slug ? (statsBySlug.get(slug) ?? null) : null);
+      if (slug) slugByName.set(polyName, slug);
     }
-    return out;
+    return { polygonStats: stats, polygonSlugByName: slugByName };
   }, [polygons, areas, citywide, city.label]);
 
   const maxCount = useMemo(() => Math.max(1, ...Array.from(polygonStats.values()).map((s) => s?.incidentCount ?? 0)), [polygonStats]);
@@ -222,6 +228,15 @@ export default function CrimeMap() {
   // ---- Selection (autocomplete + zoom + drill-down) ------------------------
   const [query, setQuery] = useState("");
   const [selectedName, setSelectedName] = useState<string | null>(null);
+  // Sync selection to the global area store so picking a polygon here also
+  // updates /threats, /safety-score, /trends, etc. via useArea.
+  const { setArea } = useArea(city.slug);
+  function pickPolygon(name: string | null) {
+    setSelectedName(name);
+    if (!name) { setArea(null); return; }
+    const slug = polygonSlugByName.get(name);
+    if (slug) setArea({ slug, label: name, jurisdiction: city.label });
+  }
   const polygonNames = useMemo(
     () => (polygons?.features ?? []).map((f) => (f.properties as { name?: string } | null)?.name ?? "").filter(Boolean).sort(),
     [polygons],
@@ -266,7 +281,7 @@ export default function CrimeMap() {
     const stats = polygonStats.get(name) ?? null;
     layer.bindTooltip(tooltipHtml(name, stats), { sticky: true });
     layer.on({
-      click: () => setSelectedName(name),
+      click: () => pickPolygon(name),
       mouseover: (e: LeafletMouseEvent) => { (e.target as L.Path).setStyle({ weight: 2 }); },
       mouseout:  (e: LeafletMouseEvent) => { (e.target as L.Path).setStyle({ weight: name === selectedName ? 2.5 : 0.9 }); },
     });
@@ -278,8 +293,8 @@ export default function CrimeMap() {
         value={query}
         onChange={setQuery}
         suggestions={suggestions}
-        onSelect={(name) => { setSelectedName(name); setQuery(name); }}
-        onClear={() => { setSelectedName(null); setQuery(""); }}
+        onSelect={(name) => { pickPolygon(name); setQuery(name); }}
+        onClear={() => { pickPolygon(null); setQuery(""); }}
         selectedName={selectedName}
         cityLabel={city.label}
       />
@@ -346,7 +361,7 @@ export default function CrimeMap() {
             maxCount={maxCount}
             totalIncidents={citywide?.totalIncidents ?? 0}
             cityLabel={city.label}
-            onSelect={setSelectedName}
+            onSelect={pickPolygon}
             error={!!cityErr}
           />
         )}
@@ -515,6 +530,27 @@ function NeighborhoodPanel({ name, stats, recent }: { name: string; stats: AreaB
           <p className="mt-2 text-xs text-slate2-500">From the most recent {recent.length} reports the data source returned for this neighborhood.</p>
         </div>
       )}
+
+      <div className="mt-5 flex flex-wrap gap-2 text-xs">
+        <a
+          href="/safety-score"
+          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-bay-500 text-white hover:bg-bay-700 transition-colors"
+        >
+          Safety Index for {name} →
+        </a>
+        <a
+          href="/trends"
+          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg surface-muted hover:bg-bay-200 hover:text-bay-700 text-slate2-700 transition-colors"
+        >
+          30-day timeline →
+        </a>
+        <a
+          href="/threats"
+          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg surface-muted hover:bg-bay-200 hover:text-bay-700 text-slate2-700 transition-colors"
+        >
+          Awareness brief →
+        </a>
+      </div>
     </section>
   );
 }
