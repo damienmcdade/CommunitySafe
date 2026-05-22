@@ -111,6 +111,15 @@ const PROVENANCE: DataProvenance = {
     "range; refresh by running `node tools/refresh-boston.mjs` and committing the result.",
 };
 
+function safeIsoFromBostonDate(raw: string | null | undefined): string {
+  // BPD CSV stamps dates as "2026-04-21 02:49:00+00" but some rows have
+  // truncated/missing values. new Date().toISOString() throws RangeError on
+  // any invalid Date — fall back to epoch so the whole map() doesn't bail.
+  if (!raw) return new Date(0).toISOString();
+  const d = new Date(raw.replace(" ", "T"));
+  return Number.isNaN(d.getTime()) ? new Date(0).toISOString() : d.toISOString();
+}
+
 function rowsFromSnapshot(): Incident[] {
   return snapshot.rows.map((r, i) => {
     const lat = r.Lat ? Number(r.Lat) : NaN;
@@ -118,7 +127,7 @@ function rowsFromSnapshot(): Incident[] {
     return {
       id: `bos-${r.INCIDENT_NUMBER ?? i}`,
       area: enrich(r.DISTRICT),
-      occurredAt: r.OCCURRED_ON_DATE ? new Date(r.OCCURRED_ON_DATE.replace(" ", "T")).toISOString() : new Date(0).toISOString(),
+      occurredAt: safeIsoFromBostonDate(r.OCCURRED_ON_DATE),
       nibrsCategory: mapToNibrs({ OFFENSE_DESCRIPTION: r.OFFENSE_DESCRIPTION }),
       ibrOffenseDescription: r.OFFENSE_DESCRIPTION?.trim() || "Unknown",
       beat: r.DISTRICT ?? null,
@@ -170,7 +179,7 @@ async function fetchBoston(): Promise<Incident[]> {
     return {
       id: `bos-${r.INCIDENT_NUMBER ?? i}`,
       area: enrich(r.DISTRICT),
-      occurredAt: r.OCCURRED_ON_DATE ? new Date(r.OCCURRED_ON_DATE.replace(" ", "T")).toISOString() : new Date(0).toISOString(),
+      occurredAt: safeIsoFromBostonDate(r.OCCURRED_ON_DATE),
       nibrsCategory: mapToNibrs(r),
       ibrOffenseDescription: r.OFFENSE_DESCRIPTION?.trim() || "Unknown",
       beat: r.DISTRICT ?? null,
