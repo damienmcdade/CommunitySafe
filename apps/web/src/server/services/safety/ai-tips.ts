@@ -41,7 +41,9 @@ const TipsSchema = z.array(
     source: z.string().min(2).optional().default("Official safety guidance"),
     sourceUrl: z.string().optional().default("https://www.ready.gov/"),
     group:  z.string().optional().default("prevention"),
-    addresses: z.string().optional(),
+    // Llama emits this as an array of offense strings; Gemini as a single
+    // string. Accept either and normalize downstream.
+    addresses: z.union([z.string(), z.array(z.string())]).optional(),
   }),
 ).min(1).max(20);
 
@@ -198,7 +200,7 @@ Generate the JSON array now.
       // Force a valid http(s) URL — strip anything malformed.
       sourceUrl: /^https?:\/\//.test(t.sourceUrl || "") ? t.sourceUrl! : "https://www.ready.gov/",
       group,
-      addresses: t.addresses,
+      addresses: Array.isArray(t.addresses) ? t.addresses.join(", ") : t.addresses,
     };
   });
 
