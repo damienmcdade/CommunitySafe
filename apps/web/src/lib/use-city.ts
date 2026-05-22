@@ -38,16 +38,11 @@ export const CITIES: CityInfo[] = [
   // When each adapter lands they flip to status: "live".
   { slug: "new-york",      label: "New York City", state: "NY", stateLabel: "New York",       defaultArea: "ny-1st-precinct", centroid: { lat: 40.71, lng: -74.01 }, status: "live",        source: "NYPD Complaint Data · data.cityofnewyork.us" },
   { slug: "seattle",       label: "Seattle",       state: "WA", stateLabel: "Washington",     defaultArea: "sea-downtown",   centroid: { lat: 47.61,  lng: -122.33 }, status: "live",        source: "SPD Crime Data · data.seattle.gov" },
-  // Boston: data.boston.gov returns 0 records from Vercel's serverless
-  // runtime for every approach we've tried (single 5k pull, single 500 pull,
-  // 10×100 paginated, varying User-Agent, varying sort encoding). The same
-  // requests succeed in <1.5s from every dev machine. Root cause appears to
-  // be at the CKAN host (probably an ASN-level filter on Vercel's IP range);
-  // no Vercel-side fetch tweak we tried bypasses it. Next attempts: static
-  // snapshot in /public, GitHub Actions weekly refresh, or proxying through
-  // a different host. Status stays coming-soon; adapter + polygon are
-  // wired so the flip back is a one-liner once a path through is found.
-  { slug: "boston",        label: "Boston",        state: "MA", stateLabel: "Massachusetts",  defaultArea: "bos-a1",         centroid: { lat: 42.36,  lng: -71.06  }, status: "coming-soon", source: "BPD Crime Incident Reports · data.boston.gov" },
+  // Boston serves bundled snapshot data (refreshed via tools/refresh-boston.mjs)
+  // because data.boston.gov rejects Vercel's IP range for non-trivial pulls.
+  // If BOSTON_PROXY_URL is set (Cloudflare Worker deployed), the adapter
+  // prefers the live feed; otherwise it serves the snapshot.
+  { slug: "boston",        label: "Boston",        state: "MA", stateLabel: "Massachusetts",  defaultArea: "bos-a1",         centroid: { lat: 42.36,  lng: -71.06  }, status: "live",        source: "BPD Crime Incident Reports · data.boston.gov (bundled snapshot)" },
   { slug: "philadelphia",  label: "Philadelphia",  state: "PA", stateLabel: "Pennsylvania",   defaultArea: "phl-9",          centroid: { lat: 39.95,  lng: -75.17  }, status: "live",        source: "PPD Crime Incidents · phl.carto.com (CARTO SQL)" },
   { slug: "washington-dc", label: "Washington",    state: "DC", stateLabel: "District of Columbia", defaultArea: "dc-cluster-8", centroid: { lat: 38.91, lng: -77.04 }, status: "live",        source: "DC MPD Crime Incidents (last 30 days) · opendata.dc.gov" },
   { slug: "denver",        label: "Denver",        state: "CO", stateLabel: "Colorado",       defaultArea: "den-five-points",centroid: { lat: 39.74,  lng: -104.99 }, status: "live",        source: "Denver Crime Offenses · Denver Open Data (ArcGIS)" },

@@ -1,9 +1,10 @@
 "use client";
 import { useApi } from "@/lib/api-client";
+import { useCity } from "@/lib/use-city";
 import { relativeTime } from "@/lib/sse";
 
 interface Slice { offense: string; category: "PERSONS" | "PROPERTY" | "SOCIETY"; count: number; lastOccurredAt: string }
-interface Mix { area: string; windowDays: number; totalIncidents: number; topOffenses: Slice[] }
+interface Mix { area: string; windowDays: number; asOf: string | null; totalIncidents: number; topOffenses: Slice[] }
 
 const COLOR: Record<Slice["category"], { bar: string; chip: string; iconBg: string }> = {
   PERSONS:  { bar: "linear-gradient(90deg, #3FA6CC, #1E78A6)",  chip: "bg-bay-200 text-bay-700",     iconBg: "bg-bay-100" },
@@ -11,19 +12,45 @@ const COLOR: Record<Slice["category"], { bar: string; chip: string; iconBg: stri
   SOCIETY:  { bar: "linear-gradient(90deg, #C2E0BD, #5B9E51)",  chip: "bg-sage-200 text-sage-700",   iconBg: "bg-sage-200" },
 };
 
+const SOURCE_LABEL: Record<string, string> = {
+  "san-diego":     "SDPD NIBRS",
+  "los-angeles":   "LAPD Crime Data",
+  "san-francisco": "SFPD Incident Reports",
+  "chicago":       "Chicago CPD",
+  "seattle":       "Seattle PD",
+  "new-york":      "NYPD Complaint Data",
+  "denver":        "Denver Open Data",
+  "detroit":       "Detroit RMS",
+  "washington-dc": "DC MPD",
+  "boston":        "Boston BPD",
+  "philadelphia":  "Philadelphia PPD",
+};
+
 export function CrimeMixCard({ areaSlug, jurisdictionSlug, title }: { areaSlug?: string; jurisdictionSlug?: string; title?: string }) {
+  const { city } = useCity();
   const path = areaSlug ? `/crime-data/mix?neighborhood=${areaSlug}` : jurisdictionSlug ? `/crime-data/mix?jurisdiction=${jurisdictionSlug}` : null;
   const { data, loading, error } = useApi<Mix>(path, [path]);
   const max = Math.max(1, ...(data?.topOffenses ?? []).map((o) => o.count));
+  const sourceLabel = SOURCE_LABEL[city.slug] ?? `${city.label} police data`;
+  const windowText = (() => {
+    if (!data || data.totalIncidents === 0) return "";
+    const days = data.windowDays;
+    if (days < 14)  return `last ${days} days`;
+    if (days < 60)  return `last ~${Math.round(days/7)} weeks`;
+    if (days < 365) return `last ~${Math.round(days/30)} months`;
+    return `past ${(days/365).toFixed(1)} years`;
+  })();
 
   return (
     <section className="surface p-5 bg-gradient-to-br from-white via-white to-bay-50">
-      <header className="flex items-baseline justify-between">
-        <h2 className="font-display text-lg text-slate2-900">{title ?? "Crime mix (last 30 days)"}</h2>
-        {data && <span className="text-xs text-slate2-500">{data.totalIncidents.toLocaleString()} incidents</span>}
+      <header className="flex items-baseline justify-between flex-wrap gap-1">
+        <h2 className="font-display text-lg text-slate2-900">{title ?? "Specific offenses"}</h2>
+        {data && data.totalIncidents > 0 && (
+          <span className="text-xs text-slate2-500 tabular-nums">{data.totalIncidents.toLocaleString()} incidents · {windowText}</span>
+        )}
       </header>
       <p className="mt-1 text-xs text-slate2-500">
-        Specific offense types reported by SDPD in the last {data?.windowDays ?? 30} days. Hover a bar for the most-recent occurrence.
+        Top reported offense types from {sourceLabel}{data?.asOf ? `. Most recent report ${relativeTime(data.asOf)}` : ""}. Hover a bar for the most-recent occurrence of that offense.
       </p>
       {loading && (
         <ul className="mt-4 space-y-2.5">
@@ -32,9 +59,9 @@ export function CrimeMixCard({ areaSlug, jurisdictionSlug, title }: { areaSlug?:
           ))}
         </ul>
       )}
-      {error && !loading && <p className="mt-3 text-sm text-dusk-700">Couldn&apos;t reach SDPD right now.</p>}
+      {error && !loading && <p className="mt-3 text-sm text-dusk-700">Could not reach the {city.label} police data feed right now.</p>}
       {!loading && !error && (data?.topOffenses ?? []).length === 0 && (
-        <p className="mt-3 text-sm text-slate2-500">No incidents in the last 30 days for this area.</p>
+        <p className="mt-3 text-sm text-slate2-500">No incidents from {sourceLabel} for this area in the recent cached window.</p>
       )}
       {!loading && (data?.topOffenses ?? []).length > 0 && (
         <ul className="mt-4 space-y-3">

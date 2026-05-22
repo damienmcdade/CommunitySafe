@@ -1,19 +1,25 @@
 import "server-only";
 import { getCrimeMix } from "../crime-data/mix";
 import { cityForArea } from "../crime-data/cities";
+import { generateAITipsForArea, type AITip } from "./ai-tips";
 
 // Curated, attributed safety guidance. Sources are official:
 //   * Each city's Police Department
 //   * FBI, U.S. Postal Inspection Service, Ready.gov
-//   * California Penal Code (state law)
-//   * California Office of the Attorney General
+//   * California Penal Code (state law) — only shown to CA cities
+//   * California Office of the Attorney General — only shown to CA cities
 //
 // Each tip can target specific NIBRS offenses, top-level categories, and/or
 // a list of cities. The matcher picks tips that fit the user's selected city
 // AND the area's actual top offenses. Tips that don't list cities apply
 // everywhere; tips that do list cities only show in those cities.
+//
+// The bulk of the prevention section is generated per-neighborhood by AI
+// (see ai-tips.ts) so users see guidance tailored to the actual top reported
+// offenses in their area, not a generic boilerplate set. The CA-legal
+// section stays curated because it cites verbatim statute and case law.
 
-export type CitySlug = "san-diego" | "los-angeles" | "san-francisco";
+export type CitySlug = "san-diego" | "los-angeles" | "san-francisco" | "chicago" | "seattle" | "new-york" | "denver" | "detroit" | "washington-dc" | "boston" | "philadelphia";
 export type TipGroup = "prevention" | "self-defense" | "ca-legal";
 
 export interface SafetyTip {
@@ -33,6 +39,14 @@ const NON_EMERGENCY: Record<CitySlug, { line: string; label: string; url: string
   "san-diego":     { line: "619-531-2000", label: "SDPD non-emergency",  url: "https://www.sandiego.gov/police" },
   "los-angeles":   { line: "877-275-5273", label: "LAPD non-emergency",  url: "https://www.lapdonline.org/" },
   "san-francisco": { line: "415-553-0123", label: "SFPD non-emergency",  url: "https://www.sf.gov/departments/police-department" },
+  "chicago":       { line: "311",          label: "Chicago Police via 311", url: "https://www.chicago.gov/city/en/depts/cpd.html" },
+  "seattle":       { line: "206-625-5011", label: "SPD non-emergency",  url: "https://www.seattle.gov/police" },
+  "new-york":      { line: "311",          label: "NYPD via NYC 311",   url: "https://www.nyc.gov/site/nypd/index.page" },
+  "denver":        { line: "720-913-2000", label: "DPD non-emergency",  url: "https://www.denvergov.org/Government/Agencies-Departments-Offices/Agencies-Departments-Offices-Directory/Police-Department" },
+  "detroit":       { line: "313-267-4600", label: "DPD non-emergency",  url: "https://detroitmi.gov/departments/police-department" },
+  "washington-dc": { line: "311",          label: "MPD via DC 311",     url: "https://mpdc.dc.gov/" },
+  "boston":        { line: "617-343-4240", label: "BPD non-emergency",  url: "https://www.boston.gov/departments/police" },
+  "philadelphia":  { line: "311",          label: "PPD via Philly 311", url: "https://www.phila.gov/departments/philadelphia-police-department/" },
 };
 
 const PREVENTION_TIPS: SafetyTip[] = [
@@ -219,15 +233,17 @@ export interface SafetyTipsResponse {
   disclaimer: string;
 }
 
+const CA_CITIES = new Set<CitySlug>(["san-diego", "los-angeles", "san-francisco"]);
+
 /// Pick tips matched to the area's actual top offenses + dominant category.
-/// Always returns each section (prevention / self-defense / California legal)
-/// populated. The non-emergency contact returned is the one for the city the
-/// area belongs to so users always see their local police number, never a
-/// hardcoded SDPD line.
+/// Prevention is AI-generated per-neighborhood (10 tips, grounded in real
+/// reported offenses). Self-defense is curated. CA legal cites are only
+/// returned for California cities. The non-emergency contact returned is the
+/// one for the city the area belongs to.
 export async function getSafetyTipsForArea(area: string): Promise<SafetyTipsResponse> {
   const city = cityForArea(area);
   const citySlug = city.slug as CitySlug;
-  const mix = await getCrimeMix(area, 30, 20).catch(() => null);
+  const mix = await getCrimeMix(area).catch(() => null);
   const offenses = (mix?.topOffenses ?? []).map((o) => ({ text: o.offense.toLowerCase(), cat: o.category }));
   const dominantCategory = (() => {
     const c = { PERSONS: 0, PROPERTY: 0, SOCIETY: 0 };
@@ -258,18 +274,58 @@ export async function getSafetyTipsForArea(area: string): Promise<SafetyTipsResp
       .slice(0, max);
   }
 
+  // Per-neighborhood AI-generated prevention tips. The AI is grounded in the
+  // area's actual top offenses; if generation fails (no API key, parse error,
+  // empty mix) we fall back to the curated prevention set so users always see
+  // something.
+  const aiPrevention = await generateAITipsForArea(area);
+  const aiAsMatched: MatchedTip[] = aiPrevention
+    .filter((t) => t.group !== "self-defense")
+    .map((t, i) => ({
+      id: t.id,
+      title: t.title,
+      body: t.body,
+      source: t.source,
+      sourceUrl: t.sourceUrl,
+      group: "prevention",
+      relevance: 100 - i, // preserve AI's ordering
+    }));
+  const aiSelfDefense: MatchedTip[] = aiPrevention
+    .filter((t) => t.group === "self-defense")
+    .map((t, i) => ({
+      id: t.id,
+      title: t.title,
+      body: t.body,
+      source: t.source,
+      sourceUrl: t.sourceUrl,
+      group: "self-defense",
+      relevance: 100 - i,
+    }));
+
+  const prevention = aiAsMatched.length >= 6 ? aiAsMatched.slice(0, 10) : bucket("prevention", 8);
+  const selfDefense = aiSelfDefense.length > 0
+    ? [...aiSelfDefense, ...bucket("self-defense", 2)].slice(0, 4)
+    : bucket("self-defense", 4);
+  const caLegal = CA_CITIES.has(citySlug) ? bucket("ca-legal", 6) : [];
+
+  const sourceParts: string[] = [
+    "official agencies (city police departments, FBI, U.S. Postal Inspection Service, Ready.gov)",
+  ];
+  if (CA_CITIES.has(citySlug)) sourceParts.push("California statute (Penal Code) and the California Attorney General");
+  if (aiPrevention.length > 0) sourceParts.push("AI-tailored prevention guidance grounded in this area's most-reported offenses");
+
   return {
     area,
     city: { slug: city.slug, label: city.label },
     nonEmergency: NON_EMERGENCY[citySlug] ?? NON_EMERGENCY["san-diego"],
     basedOn: { dominantCategory, topOffense: mix?.topOffenses[0]?.offense },
-    prevention: bucket("prevention", 5),
-    selfDefense: bucket("self-defense", 4),
-    caLegal: bucket("ca-legal", 6),
+    prevention,
+    selfDefense,
+    caLegal,
     disclaimer:
-      "Information sourced from official agencies (city police departments, the FBI, the U.S. Postal Inspection Service, " +
-      "Ready.gov) and California statute (California Penal Code, California Attorney General). The application provides " +
-      "general best practices and is not legal advice. Laws change; verify with the current statute or a licensed attorney " +
-      "before relying on this material in any specific situation.",
+      `Information sourced from ${sourceParts.join("; ")}. ` +
+      "The application provides general best practices and is not legal advice. Laws change; verify with the current statute or a licensed attorney before relying on this material in any specific situation.",
   };
 }
+
+export { type AITip };
