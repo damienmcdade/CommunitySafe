@@ -4,6 +4,7 @@ import type { KnownArea } from "./neighborhoods";
 import { sdpdNibrsAdapter, getDiscoveredAreas as getDiscoveredAreasSD } from "./adapters/sdpd-nibrs";
 import { lapdAdapter, getDiscoveredAreasLA } from "./adapters/lapd-socrata";
 import { sfAdapter, getDiscoveredAreasSF } from "./adapters/sf-socrata";
+import { chicagoAdapter, getDiscoveredAreasChicago } from "./adapters/chicago-socrata";
 
 // City registry.
 //
@@ -45,6 +46,13 @@ export const CITIES: CityEntry[] = [
     adapter: sfAdapter,
     discover: getDiscoveredAreasSF,
   },
+  {
+    slug: "chicago",
+    label: "Chicago",
+    bbox: { south: 41.64, west: -87.94, north: 42.02, east: -87.52 },
+    adapter: chicagoAdapter,
+    discover: getDiscoveredAreasChicago,
+  },
 ];
 
 export function cityFromLatLng(point: { lat: number; lng: number }): CityEntry | null {
@@ -57,10 +65,11 @@ export function cityFromLatLng(point: { lat: number; lng: number }): CityEntry |
 }
 
 /// Route an area slug to its city. Slugs are prefixed by adapter
-/// (la-*, sf-*); bare slugs default to San Diego.
+/// (la-*, sf-*, chi-*); bare slugs default to San Diego.
 export function cityForArea(slug: string): CityEntry {
-  if (slug.startsWith("la-") || slug === "los-angeles")   return CITIES[1];
-  if (slug.startsWith("sf-") || slug === "san-francisco") return CITIES[2];
+  if (slug.startsWith("la-")  || slug === "los-angeles")   return CITIES[1];
+  if (slug.startsWith("sf-")  || slug === "san-francisco") return CITIES[2];
+  if (slug.startsWith("chi-") || slug === "chicago")       return CITIES[3];
   return CITIES[0];
 }
 

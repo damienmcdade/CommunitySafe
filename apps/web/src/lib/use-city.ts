@@ -27,9 +27,22 @@ export interface CityInfo {
 // surface roadmap cities without breaking anything when picked. They render
 // greyed-out and the wheel refuses to land on them.
 export const CITIES: CityInfo[] = [
-  { slug: "san-diego",     label: "San Diego",     state: "CA", stateLabel: "California", defaultArea: "san-diego",     centroid: { lat: 32.78, lng: -117.18 }, status: "live",         source: "SDPD NIBRS Crime Offenses · data.sandiego.gov" },
-  { slug: "los-angeles",   label: "Los Angeles",   state: "CA", stateLabel: "California", defaultArea: "la-hollywood",  centroid: { lat: 34.05, lng: -118.32 }, status: "live",         source: "LAPD Crime Data 2020-Present · data.lacity.org" },
-  { slug: "san-francisco", label: "San Francisco", state: "CA", stateLabel: "California", defaultArea: "sf-mission",    centroid: { lat: 37.76, lng: -122.44 }, status: "live",         source: "SFPD Incident Reports · data.sfgov.org" },
+  // California — all live
+  { slug: "san-diego",     label: "San Diego",     state: "CA", stateLabel: "California", defaultArea: "san-diego",     centroid: { lat: 32.78,  lng: -117.18 }, status: "live", source: "SDPD NIBRS Crime Offenses · data.sandiego.gov" },
+  { slug: "los-angeles",   label: "Los Angeles",   state: "CA", stateLabel: "California", defaultArea: "la-hollywood",  centroid: { lat: 34.05,  lng: -118.32 }, status: "live", source: "LAPD Crime Data 2020-Present · data.lacity.org" },
+  { slug: "san-francisco", label: "San Francisco", state: "CA", stateLabel: "California", defaultArea: "sf-mission",    centroid: { lat: 37.76,  lng: -122.44 }, status: "live", source: "SFPD Incident Reports · data.sfgov.org" },
+  // Illinois — Chicago is the 4th live city.
+  { slug: "chicago",       label: "Chicago",       state: "IL", stateLabel: "Illinois",   defaultArea: "chi-loop",      centroid: { lat: 41.88,  lng: -87.63  }, status: "live", source: "Chicago Crimes 2001-Present · data.cityofchicago.org" },
+  // Coming-soon roadmap. These entries surface the destination cities in the
+  // state/city wheel (greyed-out) so users see where TravelSafe is heading.
+  // When each adapter lands they flip to status: "live".
+  { slug: "new-york",      label: "New York City", state: "NY", stateLabel: "New York",       defaultArea: "ny-manhattan",   centroid: { lat: 40.71,  lng: -74.01  }, status: "coming-soon", source: "NYPD Complaint Data · data.cityofnewyork.us" },
+  { slug: "seattle",       label: "Seattle",       state: "WA", stateLabel: "Washington",     defaultArea: "sea-downtown",   centroid: { lat: 47.61,  lng: -122.33 }, status: "coming-soon", source: "Seattle Police crime data · data.seattle.gov" },
+  { slug: "boston",        label: "Boston",        state: "MA", stateLabel: "Massachusetts",  defaultArea: "bos-downtown",   centroid: { lat: 42.36,  lng: -71.06  }, status: "coming-soon", source: "BPD Crime Incident Reports · data.boston.gov" },
+  { slug: "philadelphia",  label: "Philadelphia",  state: "PA", stateLabel: "Pennsylvania",   defaultArea: "phl-center",     centroid: { lat: 39.95,  lng: -75.17  }, status: "coming-soon", source: "PPD Crime Incidents · phl.gov / CARTO" },
+  { slug: "washington-dc", label: "Washington",    state: "DC", stateLabel: "District of Columbia", defaultArea: "dc-downtown", centroid: { lat: 38.91, lng: -77.04 }, status: "coming-soon", source: "MPD Crime Incidents · opendata.dc.gov" },
+  { slug: "denver",        label: "Denver",        state: "CO", stateLabel: "Colorado",       defaultArea: "den-downtown",   centroid: { lat: 39.74,  lng: -104.99 }, status: "coming-soon", source: "Denver Crime Offenses · data.denvergov.org" },
+  { slug: "detroit",       label: "Detroit",       state: "MI", stateLabel: "Michigan",       defaultArea: "det-downtown",   centroid: { lat: 42.33,  lng: -83.05  }, status: "coming-soon", source: "DPD RMS Crime Incidents · data.detroitmi.gov" },
 ];
 
 /// All US states with at least one TravelSafe city, sorted alphabetically.

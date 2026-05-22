@@ -15,10 +15,12 @@ const NATIONAL_SOURCE_URL = "https://crime-data-explorer.fr.cloud.gov/pages/expl
 // US Census Bureau Vintage 2023 Population Estimates (released April 2024) —
 // the most recent official population estimates available for these cities.
 // Source: https://www.census.gov/programs-surveys/popest.html
+// US Census Bureau Vintage 2023 Population Estimates (released April 2024).
 const CITY_POPULATION: Record<string, number> = {
   "san-diego":     1_381_611,
   "los-angeles":   3_820_914,
   "san-francisco":   808_988,
+  "chicago":       2_664_452,
 };
 
 interface PerArea { incidentCount: number; byCategory: { PERSONS: number; PROPERTY: number; SOCIETY: number } }
