@@ -18,10 +18,14 @@ const RESOURCE_ID = "b973d8cb-eeb2-4e7e-99da-c92938efc9c0";
 // limit/offset URL params with much better tail latency, and supports sort
 // directly via &sort= so we still get the freshest rows first.
 const SEARCH_BASE = "https://data.boston.gov/api/3/action/datastore_search";
-// Even 2,000 rows fails silently from Vercel. Dropping further to 500
-// rows (~200 KB). If THIS fails too, the failure mode is network-level
-// (IP filtering or unusually strict TLS handshake), not response size.
-const ROW_LIMIT = 500;
+// Boston's CKAN endpoint returns 0 records from Vercel's serverless
+// runtime for any limit at 500 or above, but the limit=2 sanity probe
+// returns 200 OK consistently. Strategy: pull in 10 paginated pages of
+// 100 rows each = 1,000 fresh rows. If even small responses fail from
+// Vercel, the failure is network-level (ASN block) and Boston should
+// stay coming-soon.
+const PAGE_SIZE = 100;
+const PAGES = 10;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
 
@@ -88,28 +92,29 @@ const PROVENANCE: DataProvenance = {
     "BPD's 12 districts — not live, not street-level. TravelSafe does not track individuals.",
 };
 
-async function fetchBoston(): Promise<Incident[]> {
-  // Build the URL by hand: URL.searchParams encodes spaces as "+", which CKAN
-  // accepts locally but the response shape differs (empty result) when the
-  // adapter runs from a different origin. Using %20 explicitly is safer.
-  // We don't pre-filter by YEAR — CKAN stores YEAR as text and the equality
-  // filter tries to coerce it to integer, returning a Validation Error. The
-  // sort+limit alone gives us the most recent ROW_LIMIT rows, which covers
-  // roughly the last month of citywide reports for Boston.
+async function fetchPage(offset: number): Promise<BostonRow[]> {
   const sort = encodeURIComponent("OCCURRED_ON_DATE desc");
-  const u = `${SEARCH_BASE}?resource_id=${RESOURCE_ID}&limit=${ROW_LIMIT}&sort=${sort}`;
+  const u = `${SEARCH_BASE}?resource_id=${RESOURCE_ID}&limit=${PAGE_SIZE}&offset=${offset}&sort=${sort}`;
   const res = await fetch(u, {
     headers: {
       Accept: "application/json",
       "User-Agent": "Mozilla/5.0 TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)",
     },
   });
-  if (!res.ok) throw new Error(`Boston CKAN ${res.status}`);
+  if (!res.ok) throw new Error(`Boston CKAN ${res.status} offset=${offset}`);
   const body = await res.json() as { success?: boolean; error?: unknown; result?: { records?: BostonRow[] } };
-  if (body.success === false) {
-    throw new Error(`Boston CKAN error: ${JSON.stringify(body.error)}`);
-  }
-  const rows = body.result?.records ?? [];
+  if (body.success === false) throw new Error(`Boston CKAN error: ${JSON.stringify(body.error)}`);
+  return body.result?.records ?? [];
+}
+
+async function fetchBoston(): Promise<Incident[]> {
+  // Paginate in 100-row chunks. Large single-shot responses (≥500 rows) get
+  // dropped on the Vercel→data.boston.gov hop for reasons we couldn't pin
+  // down — small responses go through cleanly.
+  const pages = await Promise.all(
+    Array.from({ length: PAGES }, (_, i) => fetchPage(i * PAGE_SIZE).catch(() => [] as BostonRow[])),
+  );
+  const rows = pages.flat();
   return rows.map((r, i) => {
     const lat = Number(r.Lat);
     const lon = Number(r.Long);
