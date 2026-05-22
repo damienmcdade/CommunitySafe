@@ -1,7 +1,9 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { MapContainer, TileLayer, Circle, Tooltip, useMap } from "react-leaflet";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { MapContainer, TileLayer, GeoJSON, Tooltip, CircleMarker, useMap } from "react-leaflet";
+import type { Layer, LeafletMouseEvent, PathOptions } from "leaflet";
+import L from "leaflet";
+import type { Feature, FeatureCollection, Geometry } from "geojson";
 import "leaflet/dist/leaflet.css";
 import { useApi } from "@/lib/api-client";
 import { useCity } from "@/lib/use-city";
@@ -16,199 +18,276 @@ interface AreaBreakdown {
   dominantCategory: "PERSONS" | "PROPERTY" | "SOCIETY" | null;
 }
 interface TopOffense { offense: string; count: number }
-interface Citywide {
-  city: string;
-  totalIncidents: number;
-  appliedOffense: string | null;
-  topOffenses: TopOffense[];
-  perArea: AreaBreakdown[];
+interface Citywide { city: string; totalIncidents: number; appliedOffense: string | null; topOffenses: TopOffense[]; perArea: AreaBreakdown[] }
+interface RecentIncident { id: string; nibrsCategory: "PERSONS" | "PROPERTY" | "SOCIETY"; ibrOffenseDescription: string; occurredAt: string; lat?: number; lng?: number; blockLabel?: string }
+interface RecentResp { area: string; reports: RecentIncident[] }
+
+// Three calm category colors. No alarmist red — coral is the warmest tone we use.
+const CATEGORY_COLOR = {
+  PERSONS:  { rgb: [230, 100,  60], label: "Violent (persons)", hex: "#E6643C" },
+  PROPERTY: { rgb: [224, 150,  42], label: "Property",          hex: "#E0962A" },
+  SOCIETY:  { rgb: [ 30, 120, 166], label: "Society / other",   hex: "#1E78A6" },
+} as const;
+const NO_DATA_RGB = [200, 200, 200] as const;
+type Cat = keyof typeof CATEGORY_COLOR;
+
+function normName(s: string): string {
+  return s.toLowerCase().replace(/[\/_]/g, " ").replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
 }
 
-// Calm 5-band intensity ramp (sage → sand → amber → coral). No red as default.
-const BANDS = [
-  { min: 0,    max: 4,    label: "Very low",  zone: "1–4",       fill: "#5B9E51", stroke: "#2F6D26" },
-  { min: 5,   max: 19,   label: "Low",       zone: "5–19",      fill: "#B5C77C", stroke: "#6A7E3A" },
-  { min: 20,   max: 79,  label: "Moderate",  zone: "20–79",     fill: "#E0962A", stroke: "#7E5C18" },
-  { min: 80,  max: 199,  label: "Elevated",  zone: "80–199",    fill: "#E6643C", stroke: "#8E3819" },
-  { min: 200,  max: Infinity, label: "High", zone: "200+",      fill: "#8E3819", stroke: "#4F1D0E" },
-];
-function bandFor(count: number) {
-  return BANDS.find((b) => count >= b.min && count <= b.max) ?? BANDS[0];
-}
-function zoneRadiusMeters(count: number): number {
-  if (count <= 0) return 700;
-  return Math.min(4500, 1000 + Math.sqrt(count) * 160);
+/// Blend the three category colors weighted by the share of each category in
+/// the neighborhood's total. Output saturation scales with how many incidents
+/// the area saw vs the city-wide max — so a sleepy area is pale, a busy area
+/// is vivid, regardless of which category dominates.
+function fuseColor(breakdown: AreaBreakdown | null, maxCount: number): { fill: string; opacity: number; stroke: string } {
+  if (!breakdown || breakdown.incidentCount === 0) {
+    return { fill: `rgb(${NO_DATA_RGB.join(",")})`, opacity: 0.10, stroke: "#94a3b8" };
+  }
+  const total = breakdown.byCategory.PERSONS + breakdown.byCategory.PROPERTY + breakdown.byCategory.SOCIETY || 1;
+  const w: Record<Cat, number> = {
+    PERSONS:  breakdown.byCategory.PERSONS  / total,
+    PROPERTY: breakdown.byCategory.PROPERTY / total,
+    SOCIETY:  breakdown.byCategory.SOCIETY  / total,
+  };
+  const r = Math.round(w.PERSONS * CATEGORY_COLOR.PERSONS.rgb[0]  + w.PROPERTY * CATEGORY_COLOR.PROPERTY.rgb[0]  + w.SOCIETY * CATEGORY_COLOR.SOCIETY.rgb[0]);
+  const g = Math.round(w.PERSONS * CATEGORY_COLOR.PERSONS.rgb[1]  + w.PROPERTY * CATEGORY_COLOR.PROPERTY.rgb[1]  + w.SOCIETY * CATEGORY_COLOR.SOCIETY.rgb[1]);
+  const b = Math.round(w.PERSONS * CATEGORY_COLOR.PERSONS.rgb[2]  + w.PROPERTY * CATEGORY_COLOR.PROPERTY.rgb[2]  + w.SOCIETY * CATEGORY_COLOR.SOCIETY.rgb[2]);
+  // Floor at 0.25 so even small counts read as colored; ceiling at 0.78 so
+  // hover/selection can still pop above the base layer.
+  const opacity = 0.25 + Math.min(1, breakdown.incidentCount / Math.max(1, maxCount)) * 0.53;
+  return { fill: `rgb(${r},${g},${b})`, opacity, stroke: `rgb(${Math.max(0, r - 40)},${Math.max(0, g - 40)},${Math.max(0, b - 40)})` };
 }
 
-interface Combined { area: KnownArea; stats: AreaBreakdown | null }
+function describeMix(b: AreaBreakdown | null): string {
+  if (!b || b.incidentCount === 0) return "no recent incidents";
+  const parts: string[] = [];
+  for (const k of ["PERSONS", "PROPERTY", "SOCIETY"] as Cat[]) {
+    const n = b.byCategory[k];
+    if (n > 0) parts.push(`${CATEGORY_COLOR[k].label.toLowerCase()} ${n}`);
+  }
+  return parts.join(" · ");
+}
 
 export default function CrimeMap() {
   const { city } = useCity();
-  const [offense, setOffense] = useState<string>("");
-  // Reset offense filter when the city changes — its offense list won't apply
-  // to the new city.
-  useEffect(() => { setOffense(""); }, [city.slug]);
 
-  const { data: areas, loading: areasLoading } = useApi<KnownArea[]>("/geo/areas");
-  const path = `/crime-data/citywide?city=${city.slug}${offense ? `&offense=${encodeURIComponent(offense)}` : ""}`;
-  const { data: citywide, loading: cityLoading, error } = useApi<Citywide>(path, [path]);
-  const [hovered, setHovered] = useState<string | null>(null);
+  // Static polygon file is one of three small GeoJSONs in /public/geo/.
+  const [polygons, setPolygons] = useState<FeatureCollection | null>(null);
+  const [polyError, setPolyError] = useState<string | null>(null);
+  useEffect(() => {
+    setPolygons(null); setPolyError(null);
+    fetch(`/geo/${city.slug}.geojson`)
+      .then((r) => r.ok ? r.json() : Promise.reject(new Error(`${r.status}`)))
+      .then((d: FeatureCollection) => setPolygons(d))
+      .catch((e) => setPolyError(`Could not load ${city.label} neighborhood boundaries (${(e as Error).message}).`));
+  }, [city.slug, city.label]);
 
-  const combined: Combined[] = useMemo(() => {
-    if (!areas) return [];
-    const cityAreas = areas.filter((a) => a.jurisdiction.toLowerCase() === city.label.toLowerCase());
-    const byArea = new Map((citywide?.perArea ?? []).map((p) => [p.slug, p]));
-    return cityAreas.map((a) => ({ area: a, stats: byArea.get(a.slug) ?? null }));
-  }, [areas, citywide, city.label]);
-  const maxCount = useMemo(() => Math.max(1, ...combined.map((c) => c.stats?.incidentCount ?? 0)), [combined]);
+  const { data: areas } = useApi<KnownArea[]>("/geo/areas");
+  const path = `/crime-data/citywide?city=${city.slug}`;
+  const { data: citywide, loading: cityLoading, error: cityErr } = useApi<Citywide>(path, [path]);
 
-  const offenseOptions = citywide?.topOffenses ?? [];
+  // Match polygon name → our area slug via fuzzy normalized comparison.
+  const polygonStats = useMemo(() => {
+    if (!polygons) return new Map<string, AreaBreakdown | null>();
+    const cityAreas = (areas ?? []).filter((a) => a.jurisdiction.toLowerCase() === city.label.toLowerCase());
+    const byNormLabel = new Map(cityAreas.map((a) => [normName(a.label), a.slug]));
+    const statsBySlug = new Map((citywide?.perArea ?? []).map((p) => [p.slug, p]));
+    const out = new Map<string, AreaBreakdown | null>();
+    for (const feat of polygons.features) {
+      const polyName = (feat.properties as { name?: string } | null)?.name ?? "";
+      const norm = normName(polyName);
+      // exact, then substring fallback
+      let slug = byNormLabel.get(norm);
+      if (!slug) {
+        for (const [labelNorm, s] of byNormLabel) {
+          if (labelNorm === norm) continue;
+          if (labelNorm.includes(norm) || norm.includes(labelNorm)) { slug = s; break; }
+        }
+      }
+      out.set(polyName, slug ? (statsBySlug.get(slug) ?? null) : null);
+    }
+    return out;
+  }, [polygons, areas, citywide, city.label]);
+
+  const maxCount = useMemo(() => Math.max(1, ...Array.from(polygonStats.values()).map((s) => s?.incidentCount ?? 0)), [polygonStats]);
+
+  // ---- Selection (autocomplete + zoom + drill-down) ------------------------
+  const [query, setQuery] = useState("");
+  const [selectedName, setSelectedName] = useState<string | null>(null);
+  const polygonNames = useMemo(
+    () => (polygons?.features ?? []).map((f) => (f.properties as { name?: string } | null)?.name ?? "").filter(Boolean).sort(),
+    [polygons],
+  );
+  const suggestions = useMemo(() => {
+    if (!query) return [] as string[];
+    const q = normName(query);
+    return polygonNames.filter((n) => normName(n).includes(q)).slice(0, 8);
+  }, [polygonNames, query]);
+
+  useEffect(() => { setSelectedName(null); setQuery(""); }, [city.slug]);
+
+  // Recent incidents for the selected neighborhood — used to render per-offense
+  // dots inside the polygon, and to power the drill-down legend.
+  const selectedSlug = useMemo(() => {
+    if (!selectedName) return null;
+    const stats = polygonStats.get(selectedName);
+    return stats?.slug ?? null;
+  }, [selectedName, polygonStats]);
+  const { data: recent } = useApi<RecentResp>(
+    selectedSlug ? `/crime-data/recent?neighborhood=${encodeURIComponent(selectedSlug)}&limit=100` : null,
+    [selectedSlug],
+  );
+  const selectedStats = selectedName ? polygonStats.get(selectedName) ?? null : null;
+
+  function stylePolygon(feat: Feature<Geometry> | undefined): PathOptions {
+    if (!feat) return {};
+    const name = (feat.properties as { name?: string } | null)?.name ?? "";
+    const stats = polygonStats.get(name) ?? null;
+    const { fill, opacity, stroke } = fuseColor(stats, maxCount);
+    const isSel = name === selectedName;
+    return {
+      fillColor: fill,
+      fillOpacity: isSel ? Math.min(1, opacity + 0.18) : opacity,
+      color: isSel ? "#0E4F73" : stroke,
+      weight: isSel ? 2.5 : 0.9,
+    };
+  }
+
+  function onEachFeature(feat: Feature<Geometry>, layer: Layer) {
+    const name = (feat.properties as { name?: string } | null)?.name ?? "";
+    const stats = polygonStats.get(name) ?? null;
+    layer.bindTooltip(
+      `<div style="font-family:inherit"><div style="font-weight:600;color:#1C232C">${name}</div>` +
+      `<div style="font-size:0.75rem;color:#4b5563">${describeMix(stats)}</div></div>`,
+      { sticky: true },
+    );
+    layer.on({
+      click: () => setSelectedName(name),
+      mouseover: (e: LeafletMouseEvent) => { (e.target as L.Path).setStyle({ weight: 2 }); },
+      mouseout:  (e: LeafletMouseEvent) => { (e.target as L.Path).setStyle({ weight: name === selectedName ? 2.5 : 0.9 }); },
+    });
+  }
 
   return (
     <div className="space-y-4">
-      <OffenseSelector
-        offenses={offenseOptions}
-        value={offense}
-        onChange={setOffense}
-        loading={cityLoading}
+      <NeighborhoodSearch
+        value={query}
+        onChange={setQuery}
+        suggestions={suggestions}
+        onSelect={(name) => { setSelectedName(name); setQuery(name); }}
+        onClear={() => { setSelectedName(null); setQuery(""); }}
+        selectedName={selectedName}
+        cityLabel={city.label}
       />
 
       <div className="surface overflow-hidden relative ring-1 ring-bay-200">
-        {(areasLoading || cityLoading) && (
+        {(cityLoading || (polygons == null && !polyError)) && (
           <div className="absolute top-3 right-3 z-[400] surface-muted px-3 py-1.5 text-xs text-slate2-500 animate-pulse">
             Loading {city.label} data…
           </div>
         )}
-        <MapContainer
-          center={[city.centroid.lat, city.centroid.lng]}
-          zoom={12}
-          scrollWheelZoom
-          className="h-[62vh] min-h-[460px] max-h-[720px] w-full"
-        >
+        {polyError && (
+          <div className="absolute top-3 left-3 right-3 z-[400] surface-muted px-3 py-1.5 text-xs text-coral-700">
+            {polyError}
+          </div>
+        )}
+        <MapContainer center={[city.centroid.lat, city.centroid.lng]} zoom={11} scrollWheelZoom className="h-[62vh] min-h-[460px] max-h-[720px] w-full">
           <TileLayer
             url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
           />
-          {combined.map(({ area, stats }) => {
-            const count = stats?.incidentCount ?? 0;
-            const band = bandFor(count);
-            const radius = zoneRadiusMeters(count);
-            const isHovered = hovered === area.slug;
+          {polygons && (
+            <GeoJSON
+              key={`${city.slug}-${maxCount}-${selectedName ?? ""}`}
+              data={polygons}
+              style={stylePolygon as L.StyleFunction}
+              onEachFeature={onEachFeature}
+            />
+          )}
+          {/* Per-incident drill-down dots only show inside the selected neighborhood. */}
+          {selectedName && (recent?.reports ?? []).map((r) => {
+            if (typeof r.lat !== "number" || typeof r.lng !== "number") return null;
+            const c = CATEGORY_COLOR[r.nibrsCategory];
             return (
-              <Circle
-                key={area.slug}
-                center={[area.centroid.lat, area.centroid.lng]}
-                radius={radius}
-                pathOptions={{
-                  color: band.stroke,
-                  fillColor: band.fill,
-                  fillOpacity: isHovered ? 0.55 : 0.32,
-                  weight: isHovered ? 2 : 1.25,
-                }}
-                eventHandlers={{
-                  mouseover: () => setHovered(area.slug),
-                  mouseout: () => setHovered(null),
-                }}
+              <CircleMarker
+                key={r.id}
+                center={[r.lat, r.lng]}
+                radius={3.5}
+                pathOptions={{ color: c.hex, fillColor: c.hex, fillOpacity: 0.85, weight: 0.5 }}
               >
-                <Tooltip direction="top" opacity={1} sticky>
-                  <div className="font-sans text-xs">
-                    <div className="font-semibold text-slate2-900 text-sm">{area.label}</div>
-                    <div className="mt-0.5 text-slate2-700">
-                      <span className="font-medium" style={{ color: band.stroke }}>{band.label}</span> · {count.toLocaleString()} {offense ? `\"${offense}\" incidents` : "incidents"}
-                    </div>
-                    {!offense && stats && (
-                      <ul className="mt-1.5 space-y-0.5 text-slate2-500">
-                        <li>Persons: <span className="text-slate2-900 font-medium">{stats.byCategory.PERSONS}</span></li>
-                        <li>Property: <span className="text-slate2-900 font-medium">{stats.byCategory.PROPERTY}</span></li>
-                        <li>Society / other: <span className="text-slate2-900 font-medium">{stats.byCategory.SOCIETY}</span></li>
-                      </ul>
-                    )}
+                <Tooltip>
+                  <div className="text-xs">
+                    <div className="font-medium text-slate2-900">{r.ibrOffenseDescription}</div>
+                    <div className="text-slate2-500">{c.label} · {new Date(r.occurredAt).toLocaleDateString()}</div>
                   </div>
                 </Tooltip>
-              </Circle>
+              </CircleMarker>
             );
           })}
-          <FitToCity bbox={(() => {
-            if (combined.length === 0) return null;
-            const lats = combined.map((c) => c.area.centroid.lat);
-            const lngs = combined.map((c) => c.area.centroid.lng);
-            return [[Math.min(...lats) - 0.03, Math.min(...lngs) - 0.03], [Math.max(...lats) + 0.03, Math.max(...lngs) + 0.03]] as [[number, number], [number, number]];
-          })()} cityCenter={[city.centroid.lat, city.centroid.lng]} />
+          <ZoomController polygons={polygons} selectedName={selectedName} fallbackCenter={[city.centroid.lat, city.centroid.lng]} />
         </MapContainer>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Legend offense={offense} />
-        <section className="surface p-5 bg-gradient-to-br from-white to-bay-50">
-          <header className="flex items-baseline justify-between">
-            <h2 className="font-display text-lg text-slate2-900">
-              {offense ? `Areas ranked by "${offense}"` : "Areas ranked by recent incidents"}
-            </h2>
-            <span className="text-xs text-slate2-500">{(citywide?.totalIncidents ?? 0).toLocaleString()} matching</span>
-          </header>
-          {error && <p className="mt-3 text-sm text-dusk-700">Could not reach the {city.label} police data feed. Please try again in a moment.</p>}
-          <ol className="mt-3 divide-y divide-sand-200">
-            {combined.length === 0 && <li className="py-3 text-sm text-slate2-500">Loading…</li>}
-            {combined
-              .slice()
-              .sort((a, b) => (b.stats?.incidentCount ?? 0) - (a.stats?.incidentCount ?? 0))
-              .map(({ area, stats }) => {
-                const count = stats?.incidentCount ?? 0;
-                const band = bandFor(count);
-                const fillPct = (count / maxCount) * 100;
-                return (
-                  <li
-                    key={area.slug}
-                    className={`py-3 px-2 -mx-2 rounded-lg transition-colors ${hovered === area.slug ? "bg-bay-100" : ""}`}
-                    onMouseEnter={() => setHovered(area.slug)}
-                    onMouseLeave={() => setHovered(null)}
-                  >
-                    <div className="flex items-baseline justify-between gap-3">
-                      <Link href={`/neighborhood`} className="text-slate2-900 hover:text-bay-700 transition-colors font-medium">{area.label}</Link>
-                      <span className="text-xs text-slate2-500 tabular-nums">{count.toLocaleString()}</span>
-                    </div>
-                    <div className="mt-1.5 h-2 rounded-full bg-sand-100 overflow-hidden">
-                      <div className="h-full transition-all duration-700 ease-spring" style={{ width: `${fillPct}%`, background: `linear-gradient(90deg, ${band.fill}, ${band.stroke})` }} />
-                    </div>
-                    <div className="mt-1 text-xs flex items-center gap-1.5" style={{ color: band.stroke }}>
-                      <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: band.fill }} />
-                      {band.label}
-                    </div>
-                  </li>
-                );
-              })}
-          </ol>
-        </section>
+        {/* City-level legend always visible — explains the blended fill. */}
+        <CityLegend />
+        {/* When a neighborhood is selected, the per-neighborhood card replaces the
+            generic "ranked list" with the drill-down legend and recent offenses. */}
+        {selectedStats && selectedName ? (
+          <NeighborhoodPanel name={selectedName} stats={selectedStats} recent={recent?.reports ?? []} />
+        ) : (
+          <CityRanking
+            polygons={polygons}
+            polygonStats={polygonStats}
+            maxCount={maxCount}
+            totalIncidents={citywide?.totalIncidents ?? 0}
+            cityLabel={city.label}
+            onSelect={setSelectedName}
+            error={!!cityErr}
+          />
+        )}
       </div>
     </div>
   );
 }
 
-function OffenseSelector({ offenses, value, onChange, loading }: { offenses: TopOffense[]; value: string; onChange: (v: string) => void; loading: boolean }) {
+function NeighborhoodSearch({ value, onChange, suggestions, onSelect, onClear, selectedName, cityLabel }: {
+  value: string; onChange: (v: string) => void;
+  suggestions: string[]; onSelect: (name: string) => void;
+  onClear: () => void; selectedName: string | null; cityLabel: string;
+}) {
+  const [focused, setFocused] = useState(false);
+  const blurTimer = useRef<number | null>(null);
   return (
     <section className="surface p-4">
       <div className="flex items-baseline justify-between flex-wrap gap-2">
         <div>
-          <h2 className="font-display text-base text-slate2-900">Filter the map by a specific offense</h2>
-          <p className="text-xs text-slate2-500 mt-0.5">Choose any specific offense to color the zones by how often that offense was reported. Pick &quot;All offenses&quot; to see total volume.</p>
+          <h2 className="font-display text-base text-slate2-900">Look up a {cityLabel} neighborhood</h2>
+          <p className="text-xs text-slate2-500 mt-0.5">Start typing — pick a name to zoom into that neighborhood and see its individual offenses.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-slate2-500">Offense</label>
-          <select
+        <div className="relative w-full sm:w-80">
+          <input
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            className="input min-w-[18rem] py-1.5 text-sm"
-            disabled={loading && offenses.length === 0}
-          >
-            <option value="">All offenses (total volume)</option>
-            {offenses.map((o) => (
-              <option key={o.offense} value={o.offense}>
-                {o.offense} ({o.count.toLocaleString()})
-              </option>
-            ))}
-          </select>
-          {value && (
-            <button onClick={() => onChange("")} className="btn-ghost text-xs">Clear</button>
+            onFocus={() => { if (blurTimer.current) window.clearTimeout(blurTimer.current); setFocused(true); }}
+            onBlur={() => { blurTimer.current = window.setTimeout(() => setFocused(false), 120); }}
+            placeholder="e.g. Mission, Hollywood, Hillcrest"
+            className="input text-sm pr-16"
+            autoComplete="off"
+          />
+          {(value || selectedName) && (
+            <button onClick={onClear} className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate2-500 hover:text-bay-700">Clear</button>
+          )}
+          {focused && suggestions.length > 0 && (
+            <ul className="absolute z-30 mt-1 w-full surface bg-white max-h-72 overflow-auto shadow-card-lift">
+              {suggestions.map((name) => (
+                <li key={name}>
+                  <button onMouseDown={(e) => { e.preventDefault(); onSelect(name); }} className="w-full text-left px-3 py-2 text-sm hover:bg-bay-50">
+                    {name}
+                  </button>
+                </li>
+              ))}
+            </ul>
           )}
         </div>
       </div>
@@ -216,39 +295,168 @@ function OffenseSelector({ offenses, value, onChange, loading }: { offenses: Top
   );
 }
 
-function FitToCity({ bbox, cityCenter }: { bbox: [[number, number], [number, number]] | null; cityCenter: [number, number] }) {
+function ZoomController({ polygons, selectedName, fallbackCenter }: { polygons: FeatureCollection | null; selectedName: string | null; fallbackCenter: [number, number] }) {
   const map = useMap();
   useEffect(() => {
-    if (bbox) map.fitBounds(bbox, { padding: [20, 20] });
-    else map.setView(cityCenter, 12);
-  }, [bbox, cityCenter, map]);
+    if (!polygons) return;
+    if (selectedName) {
+      const feat = polygons.features.find((f) => (f.properties as { name?: string } | null)?.name === selectedName);
+      if (feat) {
+        const layer = L.geoJSON(feat as Feature);
+        map.fitBounds(layer.getBounds(), { padding: [30, 30], maxZoom: 15 });
+        return;
+      }
+    }
+    // No selection — fit the whole city polygon bbox.
+    const layer = L.geoJSON(polygons as FeatureCollection);
+    const bounds = layer.getBounds();
+    if (bounds.isValid()) map.fitBounds(bounds, { padding: [10, 10] });
+    else map.setView(fallbackCenter, 11);
+  }, [polygons, selectedName, fallbackCenter, map]);
   return null;
 }
 
-function Legend({ offense }: { offense: string }) {
+function CityLegend() {
   return (
-    <section className="surface p-5 text-sm bg-gradient-to-br from-white to-coral-200/30">
-      <h2 className="font-display text-lg text-slate2-900">Reading the map</h2>
+    <section className="surface p-5 text-sm bg-gradient-to-br from-white to-bay-50">
+      <h2 className="font-display text-lg text-slate2-900">Reading the colors</h2>
       <p className="mt-2 text-xs text-slate2-500">
-        {offense
-          ? `Each colored zone shows how often "${offense}" was reported in that neighborhood during the recent cached window. The map auto-refreshes every 10 minutes.`
-          : "Each colored zone covers one neighborhood. Color shows how many incidents were reported there during the recent cached window. The map auto-refreshes every 10 minutes."}
+        Each neighborhood is filled with a single color that blends together the recent crime mix. Saturation rises with the number of incidents — paler areas have fewer reports, vivid areas have more.
       </p>
-      <div className="mt-4">
-        <div className="text-xs font-medium text-slate2-700 mb-2">Color band = incident count</div>
-        <ul className="space-y-1.5 text-xs">
-          {BANDS.map((b) => (
-            <li key={b.label} className="flex items-center gap-2">
-              <span className="inline-block w-4 h-4 rounded-sm border" style={{ background: b.fill, borderColor: b.stroke, opacity: 0.7 }} />
-              <span className="text-slate2-900 font-medium w-20">{b.label}</span>
-              <span className="text-slate2-500">{b.zone} incidents</span>
-            </li>
-          ))}
-        </ul>
+      <ul className="mt-4 space-y-1.5 text-sm">
+        <LegendRow color={CATEGORY_COLOR.PERSONS.hex}  label="Violent (persons)" detail="Assault, robbery, etc." />
+        <LegendRow color={CATEGORY_COLOR.PROPERTY.hex} label="Property"          detail="Theft, burglary, vandalism, vehicle theft" />
+        <LegendRow color={CATEGORY_COLOR.SOCIETY.hex}  label="Society / other"   detail="Drug offenses, weapons, public order" />
+      </ul>
+      <p className="mt-4 text-xs text-slate2-500">Mixed colors mean a mixed crime profile. A neighborhood with mostly property crime but some violent crime appears as a warmer orange, not pure amber.</p>
+      <div className="mt-3 flex items-center gap-2 text-xs text-slate2-500">
+        <span className="inline-flex items-center gap-1.5"><span className="inline-block w-4 h-2 rounded-sm" style={{ background: "#cbd5e1" }} />no data</span>
+        <span className="inline-flex items-center gap-1.5"><span className="inline-block w-4 h-2 rounded-sm" style={{ background: CATEGORY_COLOR.PROPERTY.hex, opacity: 0.3 }} />few</span>
+        <span className="inline-flex items-center gap-1.5"><span className="inline-block w-4 h-2 rounded-sm" style={{ background: CATEGORY_COLOR.PROPERTY.hex, opacity: 0.55 }} />some</span>
+        <span className="inline-flex items-center gap-1.5"><span className="inline-block w-4 h-2 rounded-sm" style={{ background: CATEGORY_COLOR.PROPERTY.hex, opacity: 0.78 }} />many</span>
       </div>
-      <p className="mt-4 text-xs text-slate2-500">
-        Higher counts often reflect higher reporting and population density, not only the actual rate of crime.
-      </p>
+    </section>
+  );
+}
+
+function LegendRow({ color, label, detail }: { color: string; label: string; detail: string }) {
+  return (
+    <li className="flex items-center gap-2">
+      <span className="inline-block w-4 h-4 rounded-sm" style={{ background: color }} />
+      <span className="text-slate2-900 font-medium w-40">{label}</span>
+      <span className="text-slate2-500 text-xs">{detail}</span>
+    </li>
+  );
+}
+
+function NeighborhoodPanel({ name, stats, recent }: { name: string; stats: AreaBreakdown; recent: RecentIncident[] }) {
+  // Top offenses inside this neighborhood, from the recent incident sample.
+  const offenseCounts = useMemo(() => {
+    const m = new Map<string, { count: number; cat: Cat }>();
+    for (const r of recent) {
+      const k = r.ibrOffenseDescription || "(unspecified)";
+      const cur = m.get(k) ?? { count: 0, cat: r.nibrsCategory as Cat };
+      cur.count += 1;
+      m.set(k, cur);
+    }
+    return Array.from(m.entries()).sort((a, b) => b[1].count - a[1].count).slice(0, 6);
+  }, [recent]);
+
+  const total = stats.byCategory.PERSONS + stats.byCategory.PROPERTY + stats.byCategory.SOCIETY || 1;
+  return (
+    <section className="surface p-5 bg-gradient-to-br from-white to-coral-200/25">
+      <header className="flex items-baseline justify-between">
+        <h2 className="font-display text-lg text-slate2-900">{name}</h2>
+        <span className="text-xs text-slate2-500 tabular-nums">{stats.incidentCount.toLocaleString()} incidents</span>
+      </header>
+      <p className="mt-1 text-xs text-slate2-500">Each dot on the map shows one recent incident, colored by the category below.</p>
+
+      <ul className="mt-4 space-y-2 text-sm">
+        {(["PERSONS", "PROPERTY", "SOCIETY"] as Cat[]).map((k) => {
+          const n = stats.byCategory[k];
+          const pct = (n / total) * 100;
+          return (
+            <li key={k}>
+              <div className="flex items-baseline justify-between">
+                <span className="inline-flex items-center gap-2 text-slate2-900">
+                  <span className="inline-block w-3 h-3 rounded-sm" style={{ background: CATEGORY_COLOR[k].hex }} />
+                  {CATEGORY_COLOR[k].label}
+                </span>
+                <span className="text-xs text-slate2-500 tabular-nums">{n.toLocaleString()} · {pct.toFixed(0)}%</span>
+              </div>
+              <div className="mt-1 h-1.5 rounded-full bg-sand-100 overflow-hidden">
+                <div className="h-full transition-all duration-700" style={{ width: `${pct}%`, background: CATEGORY_COLOR[k].hex }} />
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+
+      {offenseCounts.length > 0 && (
+        <div className="mt-5">
+          <h3 className="font-display text-sm text-slate2-900">Most-reported recent offenses</h3>
+          <ol className="mt-2 divide-y divide-sand-200">
+            {offenseCounts.map(([offense, { count, cat }]) => (
+              <li key={offense} className="py-2 flex items-baseline gap-3 text-sm">
+                <span className="inline-block w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: CATEGORY_COLOR[cat].hex }} />
+                <span className="text-slate2-900 truncate">{offense}</span>
+                <span className="ml-auto text-xs text-slate2-500 tabular-nums">{count}</span>
+              </li>
+            ))}
+          </ol>
+          <p className="mt-2 text-xs text-slate2-500">From the most recent {recent.length} reports the data source returned for this neighborhood.</p>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function CityRanking({ polygons, polygonStats, maxCount, totalIncidents, cityLabel, onSelect, error }: {
+  polygons: FeatureCollection | null;
+  polygonStats: Map<string, AreaBreakdown | null>;
+  maxCount: number;
+  totalIncidents: number;
+  cityLabel: string;
+  onSelect: (name: string) => void;
+  error: boolean;
+}) {
+  const ranked = useMemo(() => {
+    const rows: Array<{ name: string; stats: AreaBreakdown | null }> = [];
+    for (const feat of polygons?.features ?? []) {
+      const name = (feat.properties as { name?: string } | null)?.name ?? "";
+      if (!name) continue;
+      rows.push({ name, stats: polygonStats.get(name) ?? null });
+    }
+    return rows.sort((a, b) => (b.stats?.incidentCount ?? 0) - (a.stats?.incidentCount ?? 0));
+  }, [polygons, polygonStats]);
+
+  return (
+    <section className="surface p-5 bg-gradient-to-br from-white to-bay-50">
+      <header className="flex items-baseline justify-between">
+        <h2 className="font-display text-lg text-slate2-900">Neighborhoods by recent incidents</h2>
+        <span className="text-xs text-slate2-500">{totalIncidents.toLocaleString()} total · {cityLabel}</span>
+      </header>
+      {error && <p className="mt-3 text-sm text-dusk-700">Could not reach the police data feed. Please try again in a moment.</p>}
+      <ol className="mt-3 divide-y divide-sand-200 max-h-[420px] overflow-auto pr-1">
+        {ranked.slice(0, 25).map(({ name, stats }) => {
+          const count = stats?.incidentCount ?? 0;
+          const { fill, opacity } = fuseColor(stats, maxCount);
+          const pct = (count / maxCount) * 100;
+          return (
+            <li key={name} className="py-2.5">
+              <button onClick={() => onSelect(name)} className="w-full text-left group">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-slate2-900 group-hover:text-bay-700 font-medium">{name}</span>
+                  <span className="text-xs text-slate2-500 tabular-nums">{count.toLocaleString()}</span>
+                </div>
+                <div className="mt-1 h-1.5 rounded-full bg-sand-100 overflow-hidden">
+                  <div className="h-full transition-all duration-700" style={{ width: `${pct}%`, background: fill, opacity }} />
+                </div>
+              </button>
+            </li>
+          );
+        })}
+      </ol>
     </section>
   );
 }

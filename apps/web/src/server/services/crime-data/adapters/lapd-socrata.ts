@@ -19,7 +19,12 @@ import type { KnownArea } from "../neighborhoods";
 // add demographic fields to Incident.
 
 const BASE = "https://data.lacity.org/resource/2nrs-mtv8.json";
-const CACHE_TTL_MS = 10 * 60 * 1000;
+// 5-minute cache: half the client's 10-minute refresh window. With matched
+// 10/10 minute TTLs the client could land on a stale cache right before it
+// expired and see the same data twice in a row, which read as "the app isn't
+// updating". A 5-minute server TTL guarantees a fresh upstream pull every
+// 10-minute client refresh.
+const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
 
 interface SodaRow {
@@ -69,7 +74,10 @@ async function fetchLapd(): Promise<Incident[]> {
   const url = new URL(BASE);
   url.searchParams.set("$select", "dr_no,date_occ,area_name,crm_cd,crm_cd_desc,part_1_2,rpt_dist_no,lat,lon");
   url.searchParams.set("$order", "date_occ DESC");
-  url.searchParams.set("$limit", "3000");
+  // SODA accepts up to 50,000 in a single page. We pull a large slice so the
+  // per-neighborhood counts on the Crime Map are statistically meaningful, not
+  // a tiny ~3k sample that flattens busy and quiet areas into the same band.
+  url.searchParams.set("$limit", "50000");
   const res = await fetch(url, {
     headers: {
       Accept: "application/json",

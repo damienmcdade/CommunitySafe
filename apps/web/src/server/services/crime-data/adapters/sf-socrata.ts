@@ -8,7 +8,10 @@ import type { KnownArea } from "../neighborhoods";
 // Doc: https://dev.socrata.com/foundry/data.sfgov.org/wg3w-h783
 
 const BASE = "https://data.sfgov.org/resource/wg3w-h783.json";
-const CACHE_TTL_MS = 10 * 60 * 1000;
+// 5-minute cache: half the client's 10-minute refresh window so a 10-minute
+// client refresh always lands on a fresh upstream pull (matched TTLs were
+// causing repeated stale-looking responses).
+const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
 
 interface SodaRow {
@@ -56,7 +59,10 @@ async function fetchSF(): Promise<Incident[]> {
   const url = new URL(BASE);
   url.searchParams.set("$select", "incident_id,incident_datetime,analysis_neighborhood,police_district,incident_category,incident_subcategory,incident_description,latitude,longitude");
   url.searchParams.set("$order", "incident_datetime DESC");
-  url.searchParams.set("$limit", "3000");
+  // SODA supports up to 50,000 in a single page. Bumped from 3,000 so the
+  // per-neighborhood crime counts are statistically meaningful, not flattened
+  // by a tiny sample that made every busy area show the same number.
+  url.searchParams.set("$limit", "50000");
   const res = await fetch(url, {
     headers: { Accept: "application/json", "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
   });

@@ -85,7 +85,13 @@ export const crimeData = {
     const totalByCategory = new Map<string, Incident[]>();
     const offenseCounts = new Map<string, number>();
     for (const area of areas) {
-      const incidentsAll = await this.getIncidents(area.slug, { limit: 500 });
+      // No artificial per-area cap. Earlier we limited to 500 which made every
+      // busy neighborhood show the same flat 500 number — destroying the visual
+      // hierarchy on the Crime Map and undermining user trust in the numbers.
+      // The adapters all cache their full citywide pull (LA/SF: ~50k rows,
+      // SDPD: a year of NIBRS), so passing MAX_SAFE_INTEGER just removes the
+      // slice and uses the real count.
+      const incidentsAll = await this.getIncidents(area.slug, { limit: Number.MAX_SAFE_INTEGER });
       // When the caller filters by a specific offense, only count incidents
       // matching that offense for this area's color/intensity — but still
       // accumulate the full top-offenses list across the city so the UI's

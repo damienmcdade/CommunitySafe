@@ -11,33 +11,33 @@ import { useCity } from "@/lib/use-city";
 // 1920 where the source is high-res enough, 1280 otherwise.
 const PHOTOS: Record<string, string[]> = {
   "san-diego": [
-    // Downtown skyline (infobox panorama)
+    // Downtown skyline (Wikipedia infobox panorama)
     "https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/San_Diego_skyline_18_%28cropped%29.jpg/1920px-San_Diego_skyline_18_%28cropped%29.jpg",
-    // Coronado Bridge curving across the bay
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/San_Diego-Coronado_Bridge_by_Frank_Mckenna.jpg/1920px-San_Diego-Coronado_Bridge_by_Frank_Mckenna.jpg",
-    // Balboa Park — California Tower
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/59/Balboa_Park6_%28cropped3%29.jpg/1280px-Balboa_Park6_%28cropped3%29.jpg",
-    // Coronado + bay from Cabrillo National Monument
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Cabrillo_Monument_04.JPG/1920px-Cabrillo_Monument_04.JPG",
+    // Downtown San Diego — dense high-rise cluster
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Downtown_San_Diego_02.jpg/1920px-Downtown_San_Diego_02.jpg",
+    // Petco Park ballpark with downtown skyline directly behind
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/Petco_Park%2C_San_Diego.jpg/1920px-Petco_Park%2C_San_Diego.jpg",
+    // Gaslamp Quarter street view — historic urban district
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Gaslamp_Quarter_01.jpg/1920px-Gaslamp_Quarter_01.jpg",
   ],
   "los-angeles": [
-    // Downtown LA skyline with Mt. Baldy
+    // Dense DTLA foreground with mountains far behind
     "https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/Los_Angeles_with_Mount_Baldy.jpg/1920px-Los_Angeles_with_Mount_Baldy.jpg",
-    // Hollywood Sign
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Hollywood_Sign_%28Zuschnitt%29.jpg/1920px-Hollywood_Sign_%28Zuschnitt%29.jpg",
-    // Griffith Observatory
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Griffith_observatory_2006.jpg/1920px-Griffith_observatory_2006.jpg",
-    // Santa Monica Pier entrance at evening
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Santa_monica_pier_entrance_evening.jpg/1280px-Santa_monica_pier_entrance_evening.jpg",
+    // DTLA financial district skyscraper cluster
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/DTLA_%2850880465741%29.jpg/1920px-DTLA_%2850880465741%29.jpg",
+    // Los Angeles City Hall tower in the civic center
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Los_Angeles_City_Hall_2013.jpg/1920px-Los_Angeles_City_Hall_2013.jpg",
+    // Walt Disney Concert Hall on Grand Avenue
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Walt_Disney_Concert_Hall%2C_LA%2C_CA%2C_jjron_22.03.2012.jpg/1920px-Walt_Disney_Concert_Hall%2C_LA%2C_CA%2C_jjron_22.03.2012.jpg",
   ],
   "san-francisco": [
-    // Golden Gate Bridge
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/The_Golden_Gate_Bridge_2019.jpg/1920px-The_Golden_Gate_Bridge_2019.jpg",
-    // Downtown aerial including Salesforce / Transamerica towers
+    // Financial District skyline (lead image of the SF Financial District article)
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Financial_District%2C_San_Francisco.jpg/1920px-Financial_District%2C_San_Francisco.jpg",
+    // Downtown SF aerial — Salesforce / Transamerica towers
     "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/San_Francisco_Downtown_Aerial%2C_August_2025.jpg/1920px-San_Francisco_Downtown_Aerial%2C_August_2025.jpg",
-    // Painted Ladies at Alamo Square
+    // Painted Ladies row at Alamo Square with downtown behind
     "https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Painted_Ladies_San_Francisco_January_2013_panorama_2.jpg/1920px-Painted_Ladies_San_Francisco_January_2013_panorama_2.jpg",
-    // Lombard Street's crooked block
+    // Lombard Street's famous crooked block — dense urban scene
     "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Lombard_Street_2020.jpg/1280px-Lombard_Street_2020.jpg",
   ],
 };

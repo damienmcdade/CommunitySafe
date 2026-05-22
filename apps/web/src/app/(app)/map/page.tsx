@@ -27,7 +27,7 @@ export default function MapPage() {
           Where recent police reports are <span className="bg-title-stripe bg-clip-text text-transparent bg-[length:200%_100%] animate-gradient-x">concentrated in {city.label}</span>
         </h1>
         <p className="mt-2 text-slate2-700 max-w-2xl">
-          Each colored zone represents one {city.label} neighborhood. The color band shows how many incidents the local police department reported there during the most recent cached window. Hover over a zone for its category breakdown, or compare neighborhoods using the ranked list below the map.
+          Each {city.label} neighborhood is shaded by the mix of recent incidents reported there. Colors blend together when more than one category is present, so a neighborhood with mostly property crime but some violent crime reads as a warmer orange. Type a neighborhood name above the map to zoom in and see the individual offenses inside it.
         </p>
       </header>
       <CrimeMap />

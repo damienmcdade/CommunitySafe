@@ -5,7 +5,10 @@ import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../t
 import type { KnownArea } from "../neighborhoods";
 import { findArea } from "../neighborhoods";
 
-const CACHE_TTL_MS = 10 * 60 * 1000;
+// 5-minute cache: half the client's 10-minute refresh window so a 10-minute
+// client refresh always lands on a fresh upstream pull (matched TTLs were
+// causing repeated stale-looking responses).
+const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; year: number; rows: Incident[] } | null = null;
 
 function mapCrimeAgainst(value: string | undefined): CrimeCategory {

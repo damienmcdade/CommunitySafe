@@ -95,16 +95,25 @@ function similarity(a: string, b: string): number {
 /// than show two cards of the same story.
 function dedupeNews(items: NewsItem[]): NewsItem[] {
   const out: NewsItem[] = [];
-  const kept: string[] = [];
+  const kept: Array<{ title: string; link: string }> = [];
   for (const item of items) {
     const n = normalizeTitle(item.title);
+    // Cheap check first: same article URL (Google News appends tracking but
+    // the canonical link prefix often repeats for syndicated reprints).
+    const linkCore = item.link.split("?")[0];
     let dup = false;
     for (const k of kept) {
-      if (similarity(n, k) > 0.55) { dup = true; break; }
+      if (k.link === linkCore) { dup = true; break; }
+      // 0.35 catches wire-story reprints and same-event coverage from
+      // multiple outlets ("Police arrest suspect in DTLA shooting" vs
+      // "Suspect arrested after Downtown LA shooting"). The previous
+      // 0.55 threshold was too forgiving and users kept seeing pairs of
+      // identical-event articles.
+      if (similarity(n, k.title) > 0.35) { dup = true; break; }
     }
     if (!dup) {
       out.push(item);
-      kept.push(n);
+      kept.push({ title: n, link: linkCore });
     }
   }
   return out;
