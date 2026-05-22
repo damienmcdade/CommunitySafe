@@ -25,7 +25,8 @@ export type CitySlug =
   | "washington-dc" | "boston" | "philadelphia" | "cincinnati"
   | "new-orleans" | "baton-rouge" | "cambridge" | "dallas"
   | "charlotte" | "nashville" | "minneapolis" | "cleveland"
-  | "montgomery-county" | "las-vegas" | "boise" | "buffalo" | "tucson";
+  | "montgomery-county" | "las-vegas" | "boise" | "buffalo" | "tucson"
+  | "kansas-city";
 export type TipGroup = "prevention" | "self-defense" | "ca-legal";
 
 export interface SafetyTip {
@@ -74,6 +75,7 @@ export const NON_EMERGENCY: Record<CitySlug, { line: string; label: string; url:
   "boise":         { line: "208-377-6790", label: "BPD non-emergency",    url: "https://www.cityofboise.org/departments/police/" },
   "buffalo":       { line: "716-851-4444", label: "Buffalo PD non-emergency", url: "https://www.buffalony.gov/313/Police-Department" },
   "tucson":        { line: "520-791-4444", label: "TPD non-emergency",    url: "https://www.tucsonaz.gov/Departments/Police" },
+  "kansas-city":   { line: "816-234-5111", label: "KCPD non-emergency",   url: "https://www.kcpd.org/" },
 };
 
 // City-specific official resource links. These get joined into one or more
@@ -109,6 +111,7 @@ export const CITY_RESOURCES: Record<CitySlug, { name: string; url: string; progr
   "boise":         { name: "Boise Police Department", url: "https://www.cityofboise.org/departments/police/", programName: "BPD Crime Prevention", programUrl: "https://www.cityofboise.org/departments/police/services/crime-prevention/" },
   "buffalo":       { name: "Buffalo Police Department", url: "https://www.buffalony.gov/313/Police-Department", programName: "Buffalo PD Community Engagement", programUrl: "https://www.buffalony.gov/319/Community-Engagement" },
   "tucson":        { name: "Tucson Police Department", url: "https://www.tucsonaz.gov/Departments/Police", programName: "TPD Crime Prevention", programUrl: "https://www.tucsonaz.gov/Departments/Police/Crime-Prevention" },
+  "kansas-city":   { name: "Kansas City Missouri Police Department", url: "https://www.kcpd.org/", programName: "KCPD Community Outreach", programUrl: "https://www.kcpd.org/community/" },
 };
 
 const PREVENTION_TIPS: SafetyTip[] = [

@@ -270,6 +270,16 @@ const PHOTOS: Record<string, string[]> = {
     // Tucson at the foot of the Catalina Mountains
     "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Northwest_Metro_Tucson_from_the_Santa_Catalina_Mountains.jpg/1920px-Northwest_Metro_Tucson_from_the_Santa_Catalina_Mountains.jpg",
   ],
+  "kansas-city": [
+    // Downtown Kansas City
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/Kansas_City_-_Downtown_-_panoramio_%2815%29.jpg/1920px-Kansas_City_-_Downtown_-_panoramio_%2815%29.jpg",
+    // Country Club Plaza
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Country_Club_Plaza_2_Kansas_City_MO.jpg/1920px-Country_Club_Plaza_2_Kansas_City_MO.jpg",
+    // Union Station
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/Kansas_City%2C_MO_Union_Station_%283557621442%29.jpg/1920px-Kansas_City%2C_MO_Union_Station_%283557621442%29.jpg",
+    // J.C. Nichols Fountain
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/JC_Nichols_Fountain_by_Henri-L%C3%A9on_Gr%C3%A9ber_Kansas_City.jpg/1920px-JC_Nichols_Fountain_by_Henri-L%C3%A9on_Gr%C3%A9ber_Kansas_City.jpg",
+  ],
 };
 
 // 30-second rotation — keeps the backdrop visibly dynamic without distracting

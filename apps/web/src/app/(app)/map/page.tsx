@@ -38,6 +38,7 @@ const SOURCES: Record<string, string> = {
   "boise":         "Boise Police Calls for Service (City of Boise Open Data, ArcGIS). BPD's own Violent/Property/Society category labels are honored, aggregated to one of 35 official Boise neighborhood associations.",
   "buffalo":       "Buffalo Police Crime Incidents (Open Data Buffalo, Socrata). BPD's clean parent_incident_type taxonomy (Theft / Assault / Vehicle Theft / Breaking & Entering / Robbery / Sexual Offense / Homicide), aggregated to one of 36 official Buffalo neighborhoods.",
   "tucson":        "Tucson Police Incidents — Last 45 Days (City of Tucson Open Data, ArcGIS). Rolling 45-day window; administrative entries filtered at ingest; aggregated to one of ~140 Tucson neighborhood associations using TPD's NHA_NAME tag.",
+  "kansas-city":   "KCPD Crime Data 2026 (Open Data KC, Socrata). Demographic columns excluded at request time; geocoded to one of 145 named Kansas City neighborhoods since KCPD's `area` field has only 6 patrol divisions.",
 };
 
 export default function MapPage() {

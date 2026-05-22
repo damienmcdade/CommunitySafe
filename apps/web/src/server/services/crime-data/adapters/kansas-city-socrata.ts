@@ -1,0 +1,239 @@
+import "server-only";
+import { CrimeCategory } from "@prisma/client";
+import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../types";
+import type { KnownArea } from "../neighborhoods";
+import { kansasCityPolygons } from "../../../data/kansas-city-neighborhoods";
+
+// Kansas City MO — KCPD Crime Data 2026.
+// Socrata dataset f7wj-ckmw on data.kcmo.org. Refreshed routinely by KCPD.
+//
+// IMPORTANT: the upstream dataset carries demographic columns (`race`,
+// `sex`) on per-row victim/suspect records. The adapter EXPLICITLY enumerates
+// outFields so the demographic columns are never requested — they don't
+// reach our server.
+//
+// KCPD's own `area` field has only 6 patrol divisions (CPD/EPD/MPD/SPD/NPD/SCP)
+// which is too coarse for neighborhood-level guidance. We point-in-polygon
+// each row through 145 named Kansas City neighborhoods (blackmad/neighborhoods)
+// so the area surfaces as "Westport" or "Country Club Plaza" instead of "MPD".
+
+const BASE = "https://data.kcmo.org/resource/f7wj-ckmw.json";
+const ROW_LIMIT = 5_000;
+const CACHE_TTL_MS = 5 * 60 * 1000;
+let cache: { fetchedAt: number; rows: Incident[] } | null = null;
+
+interface KcRow {
+  report?: string;
+  report_date?: string;
+  from_date?: string;
+  offense?: string;
+  ibrs?: string;
+  beat?: string;
+  address?: string;
+  city?: string;
+  zipcode?: string;
+  rep_dist?: string;
+  area?: string;
+  dvflag?: boolean;
+  location?: { type: "Point"; coordinates: [number, number] };
+}
+
+const PERSONS_KEYS = [
+  "ASSAULT", "BATTERY", "HOMICIDE", "MURDER", "KIDNAP", "ABDUCT",
+  "RAPE", "SEX OFFENSE", "SEX CRIME", "MOLEST", "ABUSE",
+  "DOMESTIC", "HARASSMENT", "INTIMIDATION", "THREAT",
+];
+const PROPERTY_KEYS = [
+  "STEALING", "STOLEN", "BURGLARY", "THEFT", "LARCENY",
+  "PROPERTY DAMAGE", "VANDAL", "ARSON", "FORGERY", "FRAUD",
+  "EMBEZZLE", "ROBBERY", "VEHICULAR",
+];
+const SOCIETY_KEYS = [
+  "DRUG", "NARCOTIC", "POSSESSION", "WEAPON", "FIREARM",
+  "TRESPASS", "DISORDERLY", "DUI", "INTOX", "PROSTITUTION",
+  "WARRANT", "VIOLATION",
+];
+// Drop ambiguous/administrative entries at ingest.
+const SKIP_KEYS = [
+  "MISCELLANEOUS INVESTIGATION", "DEAD BODY", "FOUND -", "LOST -",
+  "RECOVER", "INFORMATION REPORT",
+];
+
+function classify(desc: string): CrimeCategory | null {
+  const t = desc.toUpperCase();
+  for (const k of SKIP_KEYS) if (t.includes(k)) return null;
+  if (PERSONS_KEYS.some((k) => t.includes(k))) return CrimeCategory.PERSONS;
+  if (PROPERTY_KEYS.some((k) => t.includes(k))) return CrimeCategory.PROPERTY;
+  if (SOCIETY_KEYS.some((k) => t.includes(k))) return CrimeCategory.SOCIETY;
+  return null;
+}
+
+// ---- Point-in-polygon ------------------------------------------------------
+
+interface PolyIndex { name: string; bbox: [number, number, number, number]; rings: number[][][] }
+const POLY_INDEX: PolyIndex[] = kansasCityPolygons.map((p) => {
+  const rings: number[][][] = p.geometry.type === "Polygon"
+    ? (p.geometry.coordinates as number[][][])
+    : (p.geometry.coordinates as number[][][][]).flat();
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const ring of rings) for (const [x, y] of ring) {
+    if (x < minX) minX = x; if (x > maxX) maxX = x;
+    if (y < minY) minY = y; if (y > maxY) maxY = y;
+  }
+  return { name: p.name, bbox: [minX, minY, maxX, maxY], rings };
+});
+
+function pointInRing(x: number, y: number, ring: number[][]): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+    const intersect = ((yi > y) !== (yj > y)) && (x < ((xj - xi) * (y - yi)) / (yj - yi || 1e-12) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function geocodeKansasCity(lng: number, lat: number): string | null {
+  for (const p of POLY_INDEX) {
+    const [minX, minY, maxX, maxY] = p.bbox;
+    if (lng < minX || lng > maxX || lat < minY || lat > maxY) continue;
+    let parity = 0;
+    for (const ring of p.rings) if (pointInRing(lng, lat, ring)) parity++;
+    if (parity % 2 === 1) return p.name;
+  }
+  return null;
+}
+
+const PROVENANCE: DataProvenance = {
+  source: "Kansas City MO Police Crime Data 2026 (Open Data KC, Socrata)",
+  datasetUrl: "https://data.kcmo.org/Public-Safety/KCPD-Crime-Data-2026/f7wj-ckmw",
+  recency: "Refreshed routinely by KCPD",
+  granularity: "neighborhood",
+  disclaimer:
+    "Incidents are reported by the Kansas City MO Police Department. " +
+    "TravelSafe explicitly excludes the victim/suspect demographic columns " +
+    "(race, sex) published by KCPD from every request — they never reach our " +
+    "server. Geocoded through 145 named Kansas City neighborhoods (blackmad/" +
+    "neighborhoods) since KCPD's `area` field has only 6 patrol divisions.",
+};
+
+function safeIso(raw: string | null | undefined): string {
+  if (!raw) return new Date(0).toISOString();
+  const d = new Date(raw);
+  return Number.isNaN(d.getTime()) ? new Date(0).toISOString() : d.toISOString();
+}
+
+async function fetchKansasCity(): Promise<Incident[]> {
+  // EXPLICIT $select — never request the `race`/`sex` demographic columns.
+  const select = "report,report_date,from_date,offense,ibrs,beat,address,city,zipcode,rep_dist,area,location";
+  const u = `${BASE}?$limit=${ROW_LIMIT}&$select=${select}&$order=report_date%20DESC&$where=location%20IS%20NOT%20NULL`;
+  const res = await fetch(u, {
+    headers: { Accept: "application/json", "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
+  });
+  if (!res.ok) throw new Error(`Kansas City Socrata ${res.status}`);
+  const rows = (await res.json()) as KcRow[];
+  // De-duplicate: KCPD emits one row per VIC/SUS per report. Group by report
+  // number so each incident gets ONE card instead of (victims + suspects).
+  const seen = new Set<string>();
+  const out: Incident[] = [];
+  for (const r of rows) {
+    const id = r.report ?? "";
+    if (id && seen.has(id)) continue;
+    if (id) seen.add(id);
+    const desc = r.offense?.trim() ?? "";
+    const cat = classify(desc);
+    if (cat == null) continue;
+    const coords = r.location?.coordinates;
+    const lng = coords ? Number(coords[0]) : NaN;
+    const lat = coords ? Number(coords[1]) : NaN;
+    let area = "Unknown";
+    if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+      area = geocodeKansasCity(lng, lat) ?? "Unknown";
+    }
+    if (area === "Unknown") continue;
+    out.push({
+      id: `kc-${id || out.length}`,
+      area,
+      occurredAt: safeIso(r.from_date ?? r.report_date),
+      nibrsCategory: cat,
+      ibrOffenseDescription: desc,
+      beat: r.beat ?? (r.area ? `${r.area} division` : null),
+      blockLabel: undefined,
+      lat: !isNaN(lat) && lat !== 0 ? lat : undefined,
+      lng: !isNaN(lng) && lng !== 0 ? lng : undefined,
+    });
+  }
+  return out;
+}
+
+export async function getRowsKansasCity(): Promise<Incident[]> {
+  const now = Date.now();
+  if (cache && cache.rows.length > 0 && now - cache.fetchedAt < CACHE_TTL_MS) return cache.rows;
+  try {
+    const rows = await fetchKansasCity();
+    if (rows.length > 0) cache = { fetchedAt: now, rows };
+    return rows;
+  } catch (err) {
+    console.warn("[kc] fetch failed:", (err as Error).message);
+    return cache?.rows ?? [];
+  }
+}
+
+export async function getDiscoveredAreasKansasCity(): Promise<KnownArea[]> {
+  const rows = await getRowsKansasCity();
+  const agg = new Map<string, { latSum: number; lngSum: number; count: number }>();
+  for (const r of rows) {
+    if (!r.area || r.area === "Unknown") continue;
+    if (r.lat == null || r.lng == null) continue;
+    const e = agg.get(r.area) ?? { latSum: 0, lngSum: 0, count: 0 };
+    e.latSum += r.lat; e.lngSum += r.lng; e.count += 1;
+    agg.set(r.area, e);
+  }
+  return Array.from(agg.entries())
+    .filter(([, e]) => e.count >= 3)
+    .map(([name, e]) => ({
+      slug: `kc-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`,
+      label: name,
+      jurisdiction: "Kansas City",
+      centroid: { lat: e.latSum / e.count, lng: e.lngSum / e.count },
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
+
+function labelForKansasCitySlug(slug: string, rows: Incident[]): string | null {
+  const s = slug.toLowerCase();
+  const want = s.startsWith("kc-") ? s.slice(3) : s;
+  for (const r of rows) {
+    const candidate = r.area.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    if (candidate === want) return r.area;
+  }
+  return null;
+}
+
+export const kansasCityAdapter: CrimeDataAdapter = {
+  name: "kansas-city-socrata",
+
+  async getAreaStats(area: string): Promise<AreaStats | null> {
+    const rows = await getRowsKansasCity();
+    const label = labelForKansasCitySlug(area, rows);
+    if (!label) return null;
+    const inArea = rows.filter((r) => r.area === label);
+    if (inArea.length === 0) return null;
+    const riskLevel: 1 | 2 | 3 | 4 | 5 = inArea.length > 300 ? 5 : inArea.length > 150 ? 4 : inArea.length > 70 ? 3 : inArea.length > 20 ? 2 : 1;
+    return { area: label, crimeRate: null, violentCrimeRate: null, propertyCrimeRate: null, riskLevel, provenance: PROVENANCE };
+  },
+
+  async getIncidents(area: string, opts?: { limit?: number; since?: Date }) {
+    const rows = await getRowsKansasCity();
+    const label = labelForKansasCitySlug(area, rows);
+    if (!label) return [];
+    let filtered = rows.filter((r) => r.area === label);
+    if (opts?.since) filtered = filtered.filter((r) => new Date(r.occurredAt) >= opts.since!);
+    filtered.sort((a, b) => +new Date(b.occurredAt) - +new Date(a.occurredAt));
+    return filtered.slice(0, opts?.limit ?? 50);
+  },
+
+  async getRecentReports(area: string, opts?: { limit?: number }) {
+    return this.getIncidents(area, { limit: opts?.limit ?? 20 });
+  },
+};
