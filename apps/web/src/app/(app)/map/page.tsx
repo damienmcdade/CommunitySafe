@@ -31,6 +31,7 @@ const SOURCES: Record<string, string> = {
   "dallas":        "Dallas Police Incidents (City of Dallas Open Data), geocoded to named neighborhood. Demographic columns are excluded at request time.",
   "charlotte":     "CMPD Incidents (City of Charlotte Open Data, ArcGIS MapServer), aggregated to CMPD patrol division.",
   "nashville":     "Metro Nashville PD Incidents (NashvilleOpenData, ArcGIS Feature Server), geocoded to MNPD precinct. Victim-demographic columns are excluded at request time.",
+  "minneapolis":   "Minneapolis Crime_Data (City of Minneapolis Open Data, ArcGIS Feature Server). NIBRS-classified per row by MPD, aggregated to one of 87 named neighborhoods.",
 };
 
 export default function MapPage() {

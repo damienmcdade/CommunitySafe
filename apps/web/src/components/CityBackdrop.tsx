@@ -200,6 +200,16 @@ const PHOTOS: Record<string, string[]> = {
     // The Parthenon — full-scale replica in Centennial Park
     "https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Parthenon.at.Nashville.Tenenssee.01.jpg/1920px-Parthenon.at.Nashville.Tenenssee.01.jpg",
   ],
+  "minneapolis": [
+    // Skyline looking south
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Minneapolis_Skyline_looking_south.jpg/1920px-Minneapolis_Skyline_looking_south.jpg",
+    // Stone Arch Bridge over the Mississippi
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/Stone_Arch_Bridge_as_viewed_from_downriver_2019-08-08_%28cropped%29.jpg/1920px-Stone_Arch_Bridge_as_viewed_from_downriver_2019-08-08_%28cropped%29.jpg",
+    // Minnehaha Falls
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Minnehaha_Falls%2C_Minneapolis.jpg/1920px-Minnehaha_Falls%2C_Minneapolis.jpg",
+    // Mill City Museum — historic mill ruins
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/Minneapolis-Mill_City_Museum-20070514_%28cropped%29.jpg/1920px-Minneapolis-Mill_City_Museum-20070514_%28cropped%29.jpg",
+  ],
 };
 
 // 30-second rotation — keeps the backdrop visibly dynamic without distracting
