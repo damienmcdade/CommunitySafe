@@ -45,7 +45,7 @@ export function CrimeMixCard({ areaSlug, jurisdictionSlug, title }: { areaSlug?:
   })();
 
   return (
-    <section className="surface p-5 bg-gradient-to-br from-white via-white to-bay-50">
+    <section className="surface p-5 bg-gradient-to-br from-white via-white to-bay-50 min-h-[220px] flex flex-col">
       <header className="flex items-baseline justify-between flex-wrap gap-1">
         <h2 className="font-display text-lg text-slate2-900">{title ?? "Specific offenses"}</h2>
         {data && data.totalIncidents > 0 && (

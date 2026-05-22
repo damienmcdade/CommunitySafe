@@ -26,7 +26,7 @@ export function AreaInsightsPanel({ areaQueryString }: { areaQueryString: string
   const { data, loading, error } = useApi<Insights>(`/crime-data/insights?${areaQueryString}`, [areaQueryString]);
 
   return (
-    <section className="surface p-6">
+    <section className="surface p-6 min-h-[220px] flex flex-col">
       <header className="flex items-center justify-between">
         <h2 className="font-display text-lg text-slate2-900">{data?.area ?? "Loading area…"}</h2>
         <span className="text-xs text-slate2-500">

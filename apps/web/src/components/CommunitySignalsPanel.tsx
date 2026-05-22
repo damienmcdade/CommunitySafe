@@ -24,7 +24,7 @@ export function CommunitySignalsPanel({ areaSlug }: { areaSlug: string }) {
   );
 
   return (
-    <section className="surface p-5">
+    <section className="surface p-5 min-h-[180px] flex flex-col">
       <header className="flex items-baseline justify-between flex-wrap gap-1">
         <h2 className="font-display text-lg text-slate2-900">Community signals</h2>
         {data?.source && <span className="text-[10px] uppercase tracking-wider text-slate2-500">{data.source}</span>}

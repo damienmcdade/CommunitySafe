@@ -12,9 +12,12 @@ export function CategoryBreakdown({ counts, title = "Category mix", subtitle }: 
   const total = counts.PERSONS + counts.PROPERTY + counts.SOCIETY;
   if (total === 0) {
     return (
-      <section className="surface p-5">
+      <section className="surface p-5 min-h-[180px] flex flex-col">
         <h3 className="font-display text-lg text-slate2-900">{title}</h3>
-        <p className="mt-2 text-sm text-slate2-500">No incidents in the recent window for this view.</p>
+        {subtitle && <p className="mt-1 text-xs text-slate2-500">{subtitle}</p>}
+        <div className="flex-1 flex items-center justify-center text-center">
+          <p className="text-sm text-slate2-500 max-w-xs">No incidents in the recent cached window for this view. This is typical for many neighborhoods in any given week.</p>
+        </div>
       </section>
     );
   }

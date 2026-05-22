@@ -75,9 +75,11 @@ export function RecentIncidentsCards({
         <p className="text-sm text-dusk-700">Could not reach the {city.label} police data feed right now. Try again in a moment.</p>
       )}
       {!loading && !error && reports.length === 0 && (
-        <p className="surface-muted p-4 text-sm text-slate2-500">
-          No recent reports in this area from the {city.label} police feed. That is typical for many neighborhoods in any given week.
-        </p>
+        <div className="surface-muted p-6 min-h-[140px] flex items-center justify-center text-center">
+          <p className="text-sm text-slate2-500 max-w-md">
+            No recent reports in this area from the {city.label} police feed. That is typical for many neighborhoods in any given week — the feed only includes recently published incident reports.
+          </p>
+        </div>
       )}
       {!loading && reports.length > 0 && (
         <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">

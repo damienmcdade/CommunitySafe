@@ -28,7 +28,7 @@ export function OfficialAlertsPanel() {
   const alerts = data?.alerts ?? [];
 
   return (
-    <section className="surface p-6">
+    <section className="surface p-6 min-h-[180px]">
       <header className="flex items-center justify-between">
         <h2 className="font-display text-lg text-slate2-900">From official sources</h2>
         <span className="text-xs text-slate2-500">{(data?.sources ?? ["—"]).join(", ")}</span>

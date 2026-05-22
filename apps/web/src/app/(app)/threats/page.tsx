@@ -10,6 +10,7 @@ import { LocationSearch } from "@/components/LocationSearch";
 import { LiveActivityBadge } from "@/components/LiveActivityBadge";
 import { CategoryBreakdown } from "@/components/CategoryBreakdown";
 import { NewsPanel } from "@/components/NewsPanel";
+import { OfficialAlertsPanel } from "@/components/OfficialAlertsPanel";
 import { CrimeMixCard } from "@/components/CrimeMixCard";
 import { CityBanner } from "@/components/CitySelector";
 import { AreaBriefPanel } from "@/components/AreaBriefPanel";
@@ -190,6 +191,7 @@ export default function ThreatsPage() {
         </div>
         <aside className="space-y-4">
           <NewsPanel areaSlug={area?.slug ?? city.slug} />
+          <OfficialAlertsPanel />
         </aside>
       </div>
     </main>

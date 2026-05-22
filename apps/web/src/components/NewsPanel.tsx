@@ -71,7 +71,7 @@ export function NewsPanel({ areaSlug }: { areaSlug?: string }) {
   }
 
   return (
-    <section className="surface p-5">
+    <section className="surface p-5 min-h-[240px] flex flex-col">
       <header className="flex items-baseline justify-between flex-wrap gap-1">
         <h3 className="font-display text-lg text-slate2-900">What&apos;s being reported</h3>
         <button
