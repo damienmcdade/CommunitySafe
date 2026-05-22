@@ -31,8 +31,20 @@ const CATEGORY_COLOR = {
 const NO_DATA_RGB = [200, 200, 200] as const;
 type Cat = keyof typeof CATEGORY_COLOR;
 
+// Known spelling variants between the official polygon files and what the
+// police department prints in their NIBRS column. Both sides get normalized
+// through this table before fuzzy-matching kicks in. Each entry is two
+// names that should be treated as identical.
+const NAME_ALIASES: Array<[string, string]> = [
+  // San Diego — polygon vs SDPD column spellings.
+  ["fairmount", "fairmont"],
+  ["tierra santa", "tierrasanta"],
+  ["kearney mesa", "kearny mesa"],
+  ["ofarrell", "o farrell"],
+];
+
 function normName(s: string): string {
-  return s.toLowerCase()
+  let out = s.toLowerCase()
     .replace(/[\/_]/g, " ")
     .replace(/[^a-z0-9 ]/g, "")
     // Collapse common city-name abbreviations so polygon "West Los Angeles"
@@ -43,6 +55,10 @@ function normName(s: string): string {
     .replace(/\bsan diego\b/g, "sd")
     .replace(/\s+/g, " ")
     .trim();
+  for (const [a, b] of NAME_ALIASES) {
+    if (out.includes(a)) out = out.replaceAll(a, b);
+  }
+  return out;
 }
 
 /// Blend the three category colors weighted by the share of each category in

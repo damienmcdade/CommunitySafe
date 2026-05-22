@@ -89,7 +89,12 @@ export async function getDiscoveredAreas(): Promise<KnownArea[]> {
   const agg = new Map<string, { latSum: number; lngSum: number; count: number }>();
   for (const r of rows) {
     const name = r.area?.trim();
-    if (!name || name === "Unknown") continue;
+    // SDPD's CSV includes pseudo-neighborhood labels like "Unknown",
+    // "Unknown - Northeastern", "Unknown - Southern" that are catch-all
+    // buckets for incidents the source couldn't geocode. They are not real
+    // places and should never appear in the UI's neighborhood list, the
+    // autocomplete, or the polygon coverage audit.
+    if (!name || /^unknown\b/i.test(name)) continue;
     if (r.lat == null || r.lng == null) continue;
     const e = agg.get(name) ?? { latSum: 0, lngSum: 0, count: 0 };
     e.latSum += r.lat; e.lngSum += r.lng; e.count += 1;
