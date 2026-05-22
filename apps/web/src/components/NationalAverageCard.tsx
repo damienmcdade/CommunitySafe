@@ -2,18 +2,23 @@
 import { useApi } from "@/lib/api-client";
 import { useCity } from "@/lib/use-city";
 
-// FBI Crime in the Nation 2022 — national estimated rates per 100,000 people.
+// FBI Crime in the Nation 2023 — most recently published national estimated
+// rates per 100,000 people (released by the FBI in late 2024 alongside the
+// 2023 Crime in the Nation report). NIBRS has three groups but the FBI's
+// published national rates cover only Violent (≈ Persons) and Property crime,
+// so we hide Society.
 // Source: https://crime-data-explorer.fr.cloud.gov/pages/explorer/crime/crime-trend
-// NIBRS has three groups but the FBI's published national rates cover only
-// Violent (≈ Persons) and Property crime, so we hide Society.
-const NATIONAL_PER_100K = { PERSONS: 380, PROPERTY: 1954 };
-const NATIONAL_YEAR = 2022;
+const NATIONAL_PER_100K = { PERSONS: 364, PROPERTY: 1896 };
+const NATIONAL_YEAR = 2023;
 const NATIONAL_SOURCE_URL = "https://crime-data-explorer.fr.cloud.gov/pages/explorer/crime/crime-trend";
 
+// US Census Bureau Vintage 2023 Population Estimates (released April 2024) —
+// the most recent official population estimates available for these cities.
+// Source: https://www.census.gov/programs-surveys/popest.html
 const CITY_POPULATION: Record<string, number> = {
-  "san-diego":     1_388_320,
-  "los-angeles":   3_898_747,
-  "san-francisco":   808_437,
+  "san-diego":     1_381_611,
+  "los-angeles":   3_820_914,
+  "san-francisco":   808_988,
 };
 
 interface PerArea { incidentCount: number; byCategory: { PERSONS: number; PROPERTY: number; SOCIETY: number } }
