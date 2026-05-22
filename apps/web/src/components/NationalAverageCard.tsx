@@ -32,6 +32,7 @@ const CITY_POPULATION: Record<string, number> = {
   "cincinnati":      311_097,
   "new-orleans":     364_136,
   "baton-rouge":     217_665,
+  "cambridge":       118_488,
 };
 
 interface PerArea { incidentCount: number; byCategory: { PERSONS: number; PROPERTY: number; SOCIETY: number } }

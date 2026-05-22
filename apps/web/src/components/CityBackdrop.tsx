@@ -160,6 +160,16 @@ const PHOTOS: Record<string, string[]> = {
     // Riverfront from the I-10 bridge
     "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Baton_Rouge_riverfront_from_I-10_bridge_5_November_2016_-_1.jpg/1920px-Baton_Rouge_riverfront_from_I-10_bridge_5_November_2016_-_1.jpg",
   ],
+  "cambridge": [
+    // Cambridge skyline across the Charles River
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Cambridge_skyline_November_2016_panorama.jpg/1920px-Cambridge_skyline_November_2016_panorama.jpg",
+    // Harvard Yard in autumn
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Harvard_Yard_in_autumn%2C_Boston%2C_Massachusetts%2C_2015.jpg/1920px-Harvard_Yard_in_autumn%2C_Boston%2C_Massachusetts%2C_2015.jpg",
+    // Charles River from the Cambridge side
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Charles_River_Cambridge_USA.jpg/1920px-Charles_River_Cambridge_USA.jpg",
+    // MIT Main Campus aerial — Killian Court & the Great Dome
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/MIT_Main_Campus_Aerial.jpg/1920px-MIT_Main_Campus_Aerial.jpg",
+  ],
 };
 
 // 30-second rotation — keeps the backdrop visibly dynamic without distracting

@@ -27,6 +27,7 @@ const SOURCES: Record<string, string> = {
   "cincinnati":    "Cincinnati Police Department Crime Incidents (City of Cincinnati Open Data), aggregated to CPD neighborhood.",
   "new-orleans":   "NOPD Calls for Service 2026 (City of New Orleans Open Data), geocoded to named neighborhood. Includes non-crime dispatches.",
   "baton-rouge":   "Baton Rouge Police Crime Incidents (City of Baton Rouge Open Data). NIBRS-classified per row by BRPD.",
+  "cambridge":     "Cambridge Police Crime Reports (City of Cambridge Open Data), aggregated to CDD neighborhood.",
 };
 
 export default function MapPage() {
