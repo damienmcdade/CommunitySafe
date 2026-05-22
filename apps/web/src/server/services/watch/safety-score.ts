@@ -52,6 +52,7 @@ const CITY_POPULATION: Record<string, number> = {
   "tucson":          544_417,
   "kansas-city":     510_704,
   "saint-paul":      303_820,
+  "pittsburgh":      303_255,
 };
 
 export interface SafetyScoreRow {
@@ -129,8 +130,17 @@ export async function getCitywideSafetyScore(citySlug: string): Promise<SafetySc
   // effectively one upstream pull regardless of city size.
   let persons = 0, property = 0;
   let earliest = Infinity, latest = 0;
-  for (const a of areas) {
-    const incidents = await crimeData.getIncidents(a.slug, { limit: 5000 }).catch(() => []);
+  // Parallelize the per-area fetches. The adapter caches its underlying
+  // upstream pull, so for a city with N neighborhoods we still only hit
+  // the police feed ONCE on cold cache regardless of how many areas the
+  // loop iterates — but the per-area dispatch into the adapter still has
+  // a few ms of overhead each. Promise.all collapses N×O(ms) into one
+  // round-trip, which matters for cities like Detroit (199 areas) and
+  // Oakland (134 areas).
+  const perArea = await Promise.all(
+    areas.map((a) => crimeData.getIncidents(a.slug, { limit: 5000 }).catch(() => [])),
+  );
+  for (const incidents of perArea) {
     for (const i of incidents) {
       const k = i.nibrsCategory as "PERSONS" | "PROPERTY" | "SOCIETY";
       if (k === "PERSONS") persons += 1;

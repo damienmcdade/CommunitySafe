@@ -34,18 +34,24 @@ const CAT_DOT: Record<NonNullable<TrendBullet["category"]>, string> = {
 
 export default function TrendFeedPage() {
   const { city } = useCity();
-  // null === citywide view (the default). The wheel below is an optional
-  // drill-down; picking a row sets `area` and switches the query.
-  const [area, setArea] = useState<Area | null>(null);
+  // City-pinned area selection: the state snapshot records which city the
+  // selection belongs to. When the user switches city in the header, the
+  // snapshot mismatch means `area` reads as null SYNCHRONOUSLY in the same
+  // render — no flicker through a stale neighborhood URL.
+  const [areaState, setAreaState] = useState<{ city: string; area: Area | null }>({ city: city.slug, area: null });
+  const area = areaState.city === city.slug ? areaState.area : null;
+  const setArea = (a: Area | null) => setAreaState({ city: city.slug, area: a });
 
   const path = area
     ? `/safezone/trend?area=${encodeURIComponent(area.slug)}&label=${encodeURIComponent(area.label)}`
     : `/safezone/trend?city=${encodeURIComponent(city.slug)}`;
   const { data: trend, loading, error } = useApi<TrendResp>(path, [path]);
 
-  // Reset to citywide when the user changes city in the header so a stale
-  // neighborhood slug from the prior city doesn't 404 the new request.
-  useEffect(() => { setArea(null); }, [city.slug]);
+  // Reconcile the state container's city to the active one so subsequent
+  // setArea writes land in the right snapshot.
+  useEffect(() => {
+    if (areaState.city !== city.slug) setAreaState({ city: city.slug, area: null });
+  }, [city.slug, areaState.city]);
 
   const trendBullets = trend?.bullets.filter((b) => b.kind === "trend") ?? [];
   const dispatchBullets = trend?.bullets.filter((b) => b.kind === "dispatch") ?? [];

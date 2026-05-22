@@ -46,7 +46,10 @@ export function BlockScoreWidget({ score, loading, contextLabel }: BlockScoreWid
   }
 
   const style = BAND_STYLE[score.band];
-  const dash = (score.score / 100) * CIRCUMFERENCE;
+  // Floor the dash length so a score of literal 0 (degenerate API
+  // response) still renders a faint arc rather than vanishing entirely.
+  // 1.5px of stroke is enough to be visible on every viewport.
+  const dash = Math.max(1.5, (score.score / 100) * CIRCUMFERENCE);
 
   return (
     <section className="surface p-6 bg-gradient-to-br from-white to-sand-50">

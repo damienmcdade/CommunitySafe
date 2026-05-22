@@ -15,7 +15,13 @@ import type { KnownArea } from "../neighborhoods";
 //      named neighborhoods plus `XCOORD` (lng) / `YCOORD` (lat).
 //   3. No demographic columns are published on this dataset.
 
-const SQL_BASE = "https://data.wprdc.org/api/3/action/datastore_search_sql";
+// We use the CKAN `datastore_search` action instead of `datastore_search_sql`.
+// Both can read the same resource, but the SQL endpoint was returning empty
+// payloads to our Vercel functions in production while working fine from
+// other clients — likely a per-action rate-limit / IP-block on WPRDC's side.
+// `datastore_search` accepts `sort` + `fields` as plain query params and
+// has proven reliable.
+const SEARCH_BASE = "https://data.wprdc.org/api/3/action/datastore_search";
 const RESOURCE_ID = "bd41992a-987a-4cca-8798-fbe1cd946b07";
 const ROW_LIMIT = 5_000;
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -70,24 +76,31 @@ function safeIso(date: string | undefined, time: string | undefined): string {
 }
 
 async function fetchPittsburgh(): Promise<Incident[]> {
-  // CKAN SQL endpoint — request only what we use (no demographic columns
-  // exist on this dataset, but $select-style narrowing keeps the wire
-  // payload small).
-  const sql = `SELECT "Report_Number", "ReportedDate", "ReportedTime", ` +
-              `"NIBRS_Coded_Offense", "NIBRS_Offense_Type", "NIBRS_Crime_Against", ` +
-              `"Violation", "XCOORD", "YCOORD", "Zone", "Tract", "Neighborhood", ` +
-              `"Block_Address" ` +
-              `FROM "${RESOURCE_ID}" ` +
-              `WHERE "Neighborhood" IS NOT NULL ` +
-              `ORDER BY "ReportedDate" DESC, "ReportedTime" DESC ` +
-              `LIMIT ${ROW_LIMIT}`;
-  const url = `${SQL_BASE}?sql=${encodeURIComponent(sql)}`;
+  // Plain `datastore_search`: resource_id + sort + limit + fields. The
+  // `fields` param narrows the wire payload to the columns we use (no
+  // demographic columns exist on this dataset, but enumerating fields
+  // keeps the request shape stable and the response under ~1MB). We
+  // can't filter "Neighborhood IS NOT NULL" via this endpoint, so we
+  // drop empty-neighborhood rows client-side after fetch.
+  const fields = [
+    "Report_Number", "ReportedDate", "ReportedTime",
+    "NIBRS_Coded_Offense", "NIBRS_Offense_Type", "NIBRS_Crime_Against",
+    "Violation", "XCOORD", "YCOORD", "Zone", "Tract", "Neighborhood",
+    "Block_Address",
+  ].join(",");
+  const params = new URLSearchParams({
+    resource_id: RESOURCE_ID,
+    limit: String(ROW_LIMIT),
+    sort: "ReportedDate desc, ReportedTime desc",
+    fields,
+  });
+  const url = `${SEARCH_BASE}?${params.toString()}`;
   const res = await fetch(url, {
     headers: { Accept: "application/json", "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
   });
   if (!res.ok) throw new Error(`Pittsburgh CKAN ${res.status}`);
   const body = await res.json() as { result?: { records?: PghRow[] } };
-  const rows = body.result?.records ?? [];
+  const rows = (body.result?.records ?? []).filter((r) => (r.Neighborhood ?? "").trim().length > 0);
   // PBP can emit multiple rows per Report_Number (one per offense). Dedup
   // so each incident contributes a single card — keep the first row, which
   // is the highest NIBRS hierarchy after the ORDER BY date desc.

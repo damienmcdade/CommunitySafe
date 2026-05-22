@@ -48,7 +48,14 @@ export default function SafetyScorePage() {
   // null === citywide view (the default). The neighborhood wheel below is
   // an optional drill-down — picking a row sets `area` to that neighborhood
   // and switches the query from ?city= to ?area=.
-  const [area, setArea] = useState<Area | null>(null);
+  //
+  // We track which city the current `area` selection belongs to. If the
+  // user switches city in the header, that snapshot stops matching and we
+  // SYNCHRONOUSLY treat the selection as null — no flicker waiting for a
+  // useEffect to fire after the new render.
+  const [areaState, setAreaState] = useState<{ city: string; area: Area | null }>({ city: city.slug, area: null });
+  const area = areaState.city === city.slug ? areaState.area : null;
+  const setArea = (a: Area | null) => setAreaState({ city: city.slug, area: a });
 
   const path = area
     ? `/safezone/safety-score?area=${encodeURIComponent(area.slug)}&label=${encodeURIComponent(area.label)}`
@@ -56,10 +63,11 @@ export default function SafetyScorePage() {
   const { data: score, loading, error } = useApi<ScoreResp>(path, [path]);
   const tone = useMemo(() => (score ? GRADE_TONE[score.grade] : null), [score]);
 
-  // Switching cities in the header drops any neighborhood selection so the
-  // user sees the new city's citywide score immediately instead of carrying
-  // over a stale neighborhood slug.
-  useEffect(() => { setArea(null); }, [city.slug]);
+  // Sync the state container's city slug so the next setArea writes to the
+  // correct snapshot. This runs alongside renders triggered by city change.
+  useEffect(() => {
+    if (areaState.city !== city.slug) setAreaState({ city: city.slug, area: null });
+  }, [city.slug, areaState.city]);
 
   return (
     <main className="space-y-6">

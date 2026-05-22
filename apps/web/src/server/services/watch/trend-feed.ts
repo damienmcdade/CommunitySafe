@@ -66,8 +66,16 @@ export async function getCitywideTrend(citySlug: string): Promise<TrendResponse>
     blockLabel?: string;
     area: string;
   }> = [];
-  for (const a of areas) {
-    const rows = await crimeData.getIncidents(a.slug, { limit: 5000 }).catch(() => []);
+  // Parallelize same as getCitywideSafetyScore — adapter cache means the
+  // upstream feed is hit once, but the per-area fan-out into our cache
+  // adds up for large cities.
+  const perArea = await Promise.all(
+    areas.map(async (a) => ({
+      label: a.label,
+      rows: await crimeData.getIncidents(a.slug, { limit: 5000 }).catch(() => []),
+    })),
+  );
+  for (const { label, rows } of perArea) {
     for (const r of rows) {
       if (new Date(r.occurredAt) >= cutoff) {
         inWindow.push({
@@ -75,7 +83,7 @@ export async function getCitywideTrend(citySlug: string): Promise<TrendResponse>
           nibrsCategory: r.nibrsCategory as "PERSONS" | "PROPERTY" | "SOCIETY",
           ibrOffenseDescription: r.ibrOffenseDescription,
           blockLabel: r.blockLabel,
-          area: a.label,
+          area: label,
         });
       }
     }

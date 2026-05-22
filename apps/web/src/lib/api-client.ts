@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // Same-origin: every API call hits the Next.js Route Handlers under /api/*
 // served by the same Vercel deployment as the web app. NEXT_PUBLIC_API_BASE_URL
@@ -160,8 +160,15 @@ export function useApi<T = unknown>(
   const [error, setError] = useState<Error | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Track the latest in-flight request so a slow stale response can't
+  // overwrite a fresh one when the user rapidly switches city / area.
+  // Each useEffect run bumps the version; only the matching version's
+  // resolved data is committed to state.
+  const versionRef = useRef(0);
+
   const reload = useCallback(async () => {
     if (!path) return;
+    const myVersion = ++versionRef.current;
     // Don't flip loading on if we have cached data — UI shows the cached
     // response while we revalidate quietly behind the scenes.
     const hasCached = swrMs > 0 && swrRead<T>(path, swrMs) != null;
@@ -169,12 +176,14 @@ export function useApi<T = unknown>(
     setError(null);
     try {
       const d = await api<T>(path);
+      if (myVersion !== versionRef.current) return; // stale — newer request superseded us
       setData(d);
       if (swrMs > 0) swrWrite<T>(path, d);
     } catch (e) {
+      if (myVersion !== versionRef.current) return; // stale errors also dropped
       setError(e as Error);
     } finally {
-      setLoading(false);
+      if (myVersion === versionRef.current) setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path, swrMs]);
@@ -188,6 +197,9 @@ export function useApi<T = unknown>(
       if (cached != null) setData(cached);
     }
     void reload();
+    // Bump version on unmount/dep-change so any still-pending fetch is
+    // ignored when it resolves.
+    return () => { versionRef.current++; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path, swrMs, ...deps]);
 

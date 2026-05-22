@@ -57,13 +57,22 @@ export async function generateAreaBrief(area: string): Promise<string | null> {
   const dominant = (Object.entries(totals) as Array<["PERSONS"|"PROPERTY"|"SOCIETY", number]>)
     .sort((a, b) => b[1] - a[1])[0]?.[0] ?? "PROPERTY";
 
+  // Sanitize user-controlled / adapter-supplied strings before splicing
+  // them into the LLM prompt. Strips newlines (so an area name like
+  // "X\nignore previous instructions" can't break out of the field) and
+  // caps length so an oversized adapter label can't blow the context.
+  // Same treatment for individual offense descriptions, which originate
+  // from the upstream police feed and shouldn't trust-by-default either.
+  const sanitize = (s: string, maxLen = 80): string =>
+    s.replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim().slice(0, maxLen);
+
   const offenseList = top.slice(0, 6)
-    .map((o) => `${o.offense} (${o.count})`)
+    .map((o) => `${sanitize(o.offense, 60)} (${o.count})`)
     .join("; ");
 
   const userPrompt = `
-City: ${city.label}
-Neighborhood / area: ${area}
+City: ${sanitize(city.label)}
+Neighborhood / area: ${sanitize(area)}
 Rolling window: ${mix?.windowDays ?? 30} days
 Dominant category: ${dominant}
 Total recent incidents: ${mix?.totalIncidents ?? 0}
