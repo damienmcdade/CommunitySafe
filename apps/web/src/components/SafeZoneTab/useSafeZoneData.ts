@@ -84,12 +84,16 @@ function deriveBlockScore(api: SafetyScoreApi | null): BlockScore | null {
   const avg = ratios.reduce((a, b) => a + b, 0) / ratios.length;
   const score = ratioToScore(avg);
   const band = bandFor(score);
+  // Use the actual averaged ratio to make the headline specific instead of
+  // generic — "1.8× the national average" reads as a fact, "tracks roughly"
+  // reads as filler.
+  const mult = avg > 0 && Number.isFinite(avg) ? avg : 1;
   const headline =
     band === "safe"
-      ? `${api.area.label} reports below the FBI national rate across tracked categories.`
+      ? `${api.area.label} reports below the FBI national rate (about ${mult.toFixed(2)}× national across tracked categories).`
       : band === "moderate"
-        ? `${api.area.label} tracks roughly the FBI national rate.`
-        : `${api.area.label} reports above the FBI national rate.`;
+        ? `${api.area.label} reports close to the FBI national rate (about ${mult.toFixed(2)}× national).`
+        : `${api.area.label} reports above the FBI national rate (about ${mult.toFixed(1)}× national).`;
   return {
     score,
     band,
