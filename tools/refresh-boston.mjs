@@ -21,7 +21,7 @@ import readline from "node:readline";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "..");
-const OUT_PATH = resolve(REPO_ROOT, "apps/web/data/boston-snapshot.json");
+const OUT_PATH = resolve(REPO_ROOT, "apps/web/src/server/data/boston-snapshot.json");
 const TMP_CSV = resolve(REPO_ROOT, ".cache/boston-full.csv");
 const ROWS_TO_KEEP = 5000;
 const CSV_URL = "https://data.boston.gov/dataset/6220d948-eae2-4e4b-8723-2dc8e67722a3/resource/b973d8cb-eeb2-4e7e-99da-c92938efc9c0/download/tmpcyl1hw5w.csv";

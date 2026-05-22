@@ -5,7 +5,7 @@ import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../t
 import type { KnownArea } from "../neighborhoods";
 // Bundled snapshot of the BPD CSV (most recent 5,000 rows). Refreshed via
 // `tools/refresh-boston.mjs` and committed to git. See "Why bundled?" below.
-import snapshot from "../../../../../data/boston-snapshot.json";
+import snapshot from "../../../data/boston-snapshot.json";
 
 // City of Boston — Crime Incident Reports (BPD).
 //
