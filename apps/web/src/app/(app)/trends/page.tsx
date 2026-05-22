@@ -125,7 +125,18 @@ export default function TrendFeedPage() {
           <section className="surface p-5">
             <header className="flex items-baseline justify-between flex-wrap gap-2">
               <h2 className="font-display text-lg text-slate2-900">Recent dispatches in {trend.area.label}</h2>
-              <span className="text-xs text-slate2-500">{trend.totalIncidents.toLocaleString()} in last 30 days</span>
+              <div className="flex items-center gap-3 text-xs text-slate2-500">
+                <span>{trend.totalIncidents.toLocaleString()} in last 30 days</span>
+                {dispatchBullets.length > 0 && (
+                  <button
+                    onClick={() => downloadDispatchCsv(trend, dispatchBullets)}
+                    className="text-bay-700 hover:underline"
+                    aria-label="Download dispatches as CSV"
+                  >
+                    Download CSV
+                  </button>
+                )}
+              </div>
             </header>
 
             {dispatchBullets.length === 0 ? (
@@ -157,6 +168,40 @@ export default function TrendFeedPage() {
       )}
     </main>
   );
+}
+
+/// Escape one CSV cell — wrap in quotes when it contains a comma, quote,
+/// or newline; double-quote any internal quotes. RFC 4180 style.
+function csvEscape(v: string): string {
+  if (v.includes(",") || v.includes("\"") || v.includes("\n") || v.includes("\r")) {
+    return `"${v.replace(/"/g, '""')}"`;
+  }
+  return v;
+}
+
+/// Build and trigger a browser download of the current dispatch bullets
+/// as a CSV file. The bullets carry timestamp, category, and the
+/// human-readable text — the latter already includes the offense
+/// description and block label.
+function downloadDispatchCsv(trend: TrendResp, dispatches: TrendBullet[]) {
+  if (typeof window === "undefined") return;
+  const header = ["timestamp", "category", "description"];
+  const rows = dispatches.map((b) => [
+    new Date(b.at).toISOString(),
+    b.category ?? "",
+    b.text,
+  ]);
+  const lines = [header, ...rows].map((row) => row.map(csvEscape).join(",")).join("\r\n");
+  const blob = new Blob(["﻿" + lines], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const slug = trend.area.slug.replace(/[^a-z0-9-]+/gi, "-");
+  a.download = `travelsafe-${slug}-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 const PERIOD_META: Record<NonNullable<TrendResp["timeOfDay"]>["dominantPeriod"], { label: string; sublabel: string; tone: string }> = {
