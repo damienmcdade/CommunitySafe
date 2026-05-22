@@ -5,7 +5,10 @@ import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../t
 import type { KnownArea } from "../neighborhoods";
 // Bundled snapshot of the BPD CSV (most recent 5,000 rows). Refreshed via
 // `tools/refresh-boston.mjs` and committed to git. See "Why bundled?" below.
-import snapshot from "../../../data/boston-snapshot.json";
+// Shipped as a TS module rather than a JSON import — Next's file-tracing
+// has repeatedly missed JSON files in this path, but TS modules are always
+// in the bundle.
+import { bostonSnapshot as snapshot } from "../../../data/boston-snapshot";
 
 // City of Boston — Crime Incident Reports (BPD).
 //
@@ -108,17 +111,8 @@ const PROVENANCE: DataProvenance = {
     "range; refresh by running `node tools/refresh-boston.mjs` and committing the result.",
 };
 
-interface SnapshotRow {
-  INCIDENT_NUMBER: string;
-  OFFENSE_DESCRIPTION: string;
-  DISTRICT: string;
-  OCCURRED_ON_DATE: string;
-  Lat: string | null;
-  Long: string | null;
-}
-
 function rowsFromSnapshot(): Incident[] {
-  return (snapshot.rows as SnapshotRow[]).map((r, i) => {
+  return snapshot.rows.map((r, i) => {
     const lat = r.Lat ? Number(r.Lat) : NaN;
     const lon = r.Long ? Number(r.Long) : NaN;
     return {
