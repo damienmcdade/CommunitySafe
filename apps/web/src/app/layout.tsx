@@ -13,10 +13,18 @@ export const metadata: Metadata = {
     template: "%s · TravelSafe",
   },
   description:
-    "Neighborhood-level safety awareness across 29 US cities. Drawn from " +
+    "Neighborhood-level safety awareness across 30 US cities. Drawn from " +
     "official police data sources and the FBI Crime in the Nation 2024 " +
     "national average. Not surveillance; not a substitute for emergency services.",
   manifest: "/manifest.json",
+  // Apple-specific PWA hints so iOS gives the install a proper standalone
+  // chrome (no Safari URL bar) and the right title under the home-screen
+  // icon. Without these iOS falls back to a generic web-clip experience.
+  appleWebApp: {
+    capable: true,
+    title: "TravelSafe",
+    statusBarStyle: "default",
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

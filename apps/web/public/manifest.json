@@ -1,10 +1,28 @@
 {
   "name": "TravelSafe",
   "short_name": "TravelSafe",
+  "description": "Neighborhood-level safety awareness across 30 US cities. Drawn from official police open-data feeds and the FBI Crime in the Nation 2024 national average. Not surveillance; not a substitute for emergency services.",
+  "lang": "en-US",
+  "dir": "ltr",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#FAF7F2",
-  "theme_color": "#3A4654",
-  "description": "San Diego neighborhood safety awareness — area-level only.",
-  "icons": []
+  "theme_color": "#0E4F73",
+  "categories": ["lifestyle", "navigation", "news", "utilities"],
+  "icons": [
+    {
+      "src": "/icon",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-icon",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
 }
