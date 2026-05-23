@@ -253,7 +253,7 @@ export async function getCitywideSafetyScore(citySlug: string): Promise<SafetySc
   // populates the same cache the rest of the app reads, so the loop is
   // effectively one upstream pull regardless of city size.
   let persons = 0, property = 0;
-  let earliest = Infinity, latest = 0;
+  let latest = 0;
   // Parallelize the per-area fetches. The adapter caches its underlying
   // upstream pull, so for a city with N neighborhoods we still only hit
   // the police feed ONCE on cold cache regardless of how many areas the
@@ -264,42 +264,62 @@ export async function getCitywideSafetyScore(citySlug: string): Promise<SafetySc
   const perArea = await Promise.all(
     areas.map((a) => crimeData.getIncidents(a.slug, { limit: 5000 }).catch(() => [])),
   );
-  // Cap rate window to the last 365 days from the newest incident in the
-  // dataset. Several adapters (Charlotte, MPLS, KC, DC, Cincinnati) return
-  // rows spanning many years — annualizing total counts across decades
-  // dilutes the rate to ~1/N of the real annual rate (Charlotte was
-  // reporting 0.01× national with windowDays=19752 = 54 years of data).
+
+  // ─── STABILITY FIX ──────────────────────────────────────────────────
+  // Previously the rate window was [datasetLatest - 365d, datasetLatest]
+  // and windowDays was derived from the min/max of in-window rows.
+  // Both endpoints were data-derived; tiny shifts in adapter caches
+  // (a single newer row coming in, a row at the cutoff dropping out)
+  // produced dramatic per-refresh rate swings. For adapters with
+  // sparse caches like NYC ($limit=50000 covers only ~3 days of data),
+  // a one-day shift in the newest row drove the 365/windowDays
+  // annualization factor from ~120× to ~180× — a 50% rate swing
+  // on identical user actions. Users (correctly) read this as
+  // unreliable data.
   //
-  // Step 1: find newest valid date across all areas to anchor the cap.
-  let datasetLatest = 0;
+  // The fix: anchor BOTH bounds to wall-clock, derive windowDays from
+  // the adapter's characteristic data span (oldest row), capped at
+  // 365. Clock anchors don't drift between refreshes; the adapter's
+  // oldest row drifts by hours per refresh, not multiples.
+  const MS_PER_DAY = 24 * 60 * 60 * 1000;
+  const RATE_WINDOW_DAYS = 365;
+  const nowMs = Date.now();
+  const windowStartMs = nowMs - RATE_WINDOW_DAYS * MS_PER_DAY;
+
+  // Step 1: find the oldest valid row across the FULL adapter response
+  // (not just in-window). This is the characteristic data span the
+  // adapter pagination yields. Used purely to drive windowDays — does
+  // NOT affect which rows we count.
+  let dataEarliestMs = nowMs;
   for (const incidents of perArea) {
     for (const i of incidents) {
       const t = +new Date(i.occurredAt);
-      // Cap datasetLatest at the present moment — a bogus future-dated
-      // row would otherwise pin the rate window 365 days into the
-      // future, dropping every real incident from the count.
-      if (Number.isFinite(t) && t > 0 && t <= Date.now() && t > datasetLatest) datasetLatest = t;
+      if (!Number.isFinite(t) || t <= 0 || t > nowMs) continue;
+      if (t < dataEarliestMs) dataEarliestMs = t;
     }
   }
-  const MS_PER_DAY = 24 * 60 * 60 * 1000;
-  const RATE_WINDOW_DAYS = 365;
-  const cutoff = datasetLatest > 0 ? datasetLatest - RATE_WINDOW_DAYS * MS_PER_DAY : 0;
 
-  // Step 2: count incidents and track date span ONLY within the cap.
+  // Step 2: count incidents strictly in [windowStartMs, nowMs].
   for (const incidents of perArea) {
     for (const i of incidents) {
       const t = +new Date(i.occurredAt);
       if (!Number.isFinite(t) || t <= 0) continue;
-      if (t < cutoff) continue; // outside the rate-compute window
+      if (t < windowStartMs || t > nowMs) continue;
       const k = i.nibrsCategory as "PERSONS" | "PROPERTY" | "SOCIETY";
       if (k === "PERSONS") persons += 1;
       else if (k === "PROPERTY") property += 1;
-      if (t < earliest) earliest = t;
       if (t > latest) latest = t;
     }
   }
-  const windowDays = (latest > 0 && earliest < Infinity)
-    ? Math.max(1, Math.round((latest - earliest) / MS_PER_DAY))
+
+  // Step 3: windowDays = the LESSER of 365 (the cap) and the adapter's
+  // actual coverage (now - oldest row). For NYC/Chicago/sparse caches
+  // this gives the honest annualization. For Charlotte / MPLS / KC
+  // with multi-year caches this clamps to 365 (which means annualization
+  // is the identity — count IS the annual rate). Stable across refreshes
+  // because dataEarliestMs barely moves between cache cycles.
+  const windowDays = dataEarliestMs < nowMs
+    ? Math.min(RATE_WINDOW_DAYS, Math.max(1, Math.round((nowMs - dataEarliestMs) / MS_PER_DAY)))
     : 0;
   // Full city population — no per-area division. The Vintage 2024 Census
   // total is the canonical denominator the FBI itself uses to publish
@@ -409,32 +429,39 @@ export async function getSafetyScore(areaSlug: string, areaLabel: string): Promi
   // counts. Without this, adapters that publish multi-year datasets
   // (Charlotte at 54 years, MPLS at 22 years) annualize over the full
   // span and produce ~1/N of the real annual rate.
+  // ─── STABILITY FIX (per-area variant) ─────────────────────────────
+  // Same approach as getCitywideSafetyScore — anchor the rate window
+  // to wall-clock instead of the per-call observed min/max. See
+  // citywide function's comment for full rationale; the per-area
+  // variant amplifies the issue because per-area counts are smaller
+  // and noisier, so windowDays swings cascade into bigger rate swings.
   const PER_AREA_MS_PER_DAY = 24 * 60 * 60 * 1000;
   const PER_AREA_RATE_WINDOW_DAYS = 365;
-  let datasetLatest = 0;
+  const nowMsArea = Date.now();
+  const windowStartMsArea = nowMsArea - PER_AREA_RATE_WINDOW_DAYS * PER_AREA_MS_PER_DAY;
+
+  // Oldest row across the FULL response — drives windowDays only.
+  let dataEarliestMsArea = nowMsArea;
   for (const arr of incidentsPerArea) {
     for (const i of arr) {
       const t = +new Date(i.occurredAt);
-      // Cap datasetLatest at the present moment — a bogus future-dated
-      // row would otherwise pin the rate window 365 days into the
-      // future, dropping every real incident from the count.
-      if (Number.isFinite(t) && t > 0 && t <= Date.now() && t > datasetLatest) datasetLatest = t;
+      if (!Number.isFinite(t) || t <= 0 || t > nowMsArea) continue;
+      if (t < dataEarliestMsArea) dataEarliestMsArea = t;
     }
   }
-  const perAreaCutoff = datasetLatest > 0 ? datasetLatest - PER_AREA_RATE_WINDOW_DAYS * PER_AREA_MS_PER_DAY : 0;
 
-  // Citywide totals across every tracked neighborhood, within the cap.
+  // Citywide totals across every tracked neighborhood, within the
+  // CLOCK-anchored window.
   let cityPersons = 0, cityProperty = 0;
-  let earliest = Infinity, latest = 0;
+  let latest = 0;
   for (const arr of incidentsPerArea) {
     for (const i of arr) {
       const t = +new Date(i.occurredAt);
       if (!Number.isFinite(t) || t <= 0) continue;
-      if (t < perAreaCutoff) continue;
+      if (t < windowStartMsArea || t > nowMsArea) continue;
       const k = i.nibrsCategory as "PERSONS" | "PROPERTY" | "SOCIETY";
       if (k === "PERSONS") cityPersons += 1;
       else if (k === "PROPERTY") cityProperty += 1;
-      if (t < earliest) earliest = t;
       if (t > latest) latest = t;
     }
   }
@@ -471,21 +498,23 @@ export async function getSafetyScore(areaSlug: string, areaLabel: string): Promi
     );
   }
 
-  // Per-area count uses the same 365-day cap so it's apples-to-apples
-  // with the citywide totals computed above. The areaIncidents list may
-  // include older rows from a multi-year adapter dataset.
+  // Per-area count uses the SAME clock-anchored window so it's
+  // apples-to-apples with the citywide totals computed above.
   let persons = 0, property = 0;
   for (const i of areaIncidents) {
     const t = +new Date(i.occurredAt);
     if (!Number.isFinite(t) || t <= 0) continue;
-    if (t < perAreaCutoff) continue;
+    if (t < windowStartMsArea || t > nowMsArea) continue;
     const k = i.nibrsCategory as "PERSONS" | "PROPERTY" | "SOCIETY";
     if (k === "PERSONS") persons += 1;
     else if (k === "PROPERTY") property += 1;
   }
 
-  const windowDays = (latest > 0 && earliest < Infinity)
-    ? Math.max(1, Math.round((latest - earliest) / (24 * 60 * 60 * 1000)))
+  // windowDays from clock + adapter's oldest row (same stable formula
+  // as the citywide variant). The per-area count above shares this
+  // window via the per-area incident loop.
+  const windowDays = dataEarliestMsArea < nowMsArea
+    ? Math.min(PER_AREA_RATE_WINDOW_DAYS, Math.max(1, Math.round((nowMsArea - dataEarliestMsArea) / PER_AREA_MS_PER_DAY)))
     : 0;
 
   // Citywide annualized rate per 100k — uses the actual US Census Vintage
