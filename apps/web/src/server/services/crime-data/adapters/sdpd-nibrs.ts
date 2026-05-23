@@ -25,6 +25,25 @@ function mapCrimeAgainst(value: string | undefined): CrimeCategory {
   return CrimeCategory.SOCIETY;
 }
 
+// Display-label remap. SDPD publishes neighborhood names like
+// "Core-Columbia" that don't match what residents call the area. We
+// keep the upstream slug (so historical URLs and the polygon GeoJSON
+// continue to resolve) but show the friendlier label everywhere the
+// user reads it. The reverse map lets incident-matching tolerate
+// either the display name or the upstream name.
+const AREA_LABEL_REMAP: Record<string, string> = {
+  "Core-Columbia": "Downtown",
+};
+const AREA_LABEL_REVERSE: Record<string, string> = Object.fromEntries(
+  Object.entries(AREA_LABEL_REMAP).map(([upstream, display]) => [display, upstream]),
+);
+function displayLabel(upstreamName: string): string {
+  return AREA_LABEL_REMAP[upstreamName] ?? upstreamName;
+}
+function upstreamName(label: string): string {
+  return AREA_LABEL_REVERSE[label] ?? label;
+}
+
 const PROVENANCE: DataProvenance = {
   source: "SDPD NIBRS Crime Offenses (City of San Diego Open Data)",
   datasetUrl: "https://data.sandiego.gov/datasets/police-nibrs/",
@@ -150,12 +169,19 @@ async function computeDiscovered(): Promise<KnownArea[]> {
   }
   return Array.from(agg.entries())
     .filter(([, e]) => e.count >= 3) // drop near-empty noise
-    .map(([name, e]) => ({
-      slug: slugify(name),
-      label: name,
-      jurisdiction: "San Diego",
-      centroid: { lat: e.latSum / e.count, lng: e.lngSum / e.count },
-    }))
+    .map(([name, e]) => {
+      const label = displayLabel(name);
+      return {
+        // Keep the slug derived from the DISPLAY label so URLs and
+        // polygon-area lookups (which use the slug) line up with what
+        // the user sees. The reverse map handles incident matching
+        // against the upstream name.
+        slug: slugify(label),
+        label,
+        jurisdiction: "San Diego",
+        centroid: { lat: e.latSum / e.count, lng: e.lngSum / e.count },
+      };
+    })
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
@@ -169,18 +195,23 @@ export const sdpdNibrsAdapter: CrimeDataAdapter = {
   async getAreaStats(area: string): Promise<AreaStats | null> {
     const rows = await getRows();
     const known = findArea(area);
-    const label = known?.label ?? area;
-    const inArea = rows.filter((r) => r.area.toLowerCase() === label.toLowerCase());
+    const displayed = known?.label ?? area;
+    // Match against the UPSTREAM name so the remapped "Downtown"
+    // display label still finds incidents tagged "Core-Columbia" in
+    // the SDPD CSV.
+    const matchAgainst = upstreamName(displayed).toLowerCase();
+    const inArea = rows.filter((r) => r.area.toLowerCase() === matchAgainst);
     if (inArea.length === 0) return null;
     const riskLevel: 1 | 2 | 3 | 4 | 5 = inArea.length > 2000 ? 5 : inArea.length > 1200 ? 4 : inArea.length > 600 ? 3 : inArea.length > 200 ? 2 : 1;
-    return { area: label, crimeRate: null, violentCrimeRate: null, propertyCrimeRate: null, riskLevel, provenance: PROVENANCE };
+    return { area: displayed, crimeRate: null, violentCrimeRate: null, propertyCrimeRate: null, riskLevel, provenance: PROVENANCE };
   },
 
   async getIncidents(area: string, opts?: { limit?: number; since?: Date }) {
     const rows = await getRows();
     const known = findArea(area);
-    const label = known?.label ?? area;
-    let filtered = rows.filter((r) => r.area.toLowerCase() === label.toLowerCase());
+    const displayed = known?.label ?? area;
+    const matchAgainst = upstreamName(displayed).toLowerCase();
+    let filtered = rows.filter((r) => r.area.toLowerCase() === matchAgainst);
     if (opts?.since) filtered = filtered.filter((r) => new Date(r.occurredAt) >= opts.since!);
     filtered.sort((a, b) => +new Date(b.occurredAt) - +new Date(a.occurredAt));
     return filtered.slice(0, opts?.limit ?? 50);
