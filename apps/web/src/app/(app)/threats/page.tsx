@@ -443,7 +443,13 @@ function SafeZoneTabSection({
         <BlockScoreWidget
           score={data.blockScore}
           loading={data.loading}
-          unavailable={!data.loading && !data.blockScore && data.error != null}
+          // Unavailable when the score couldn't be computed for ANY
+          // reason — fetch failure OR the underlying area returning
+          // zero incidents in the cached window. The latter case used
+          // to render as score 100 ("safe"), which falsely told users
+          // a no-data area was the safest possible reading. The hook
+          // now returns null in that case so this branch fires.
+          unavailable={!data.loading && !data.blockScore}
           contextLabel={displayLabel}
         />
       </div>

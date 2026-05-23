@@ -48,9 +48,11 @@ export function BlockScoreWidget({ score, loading, unavailable, contextLabel }: 
         <p className="text-xs uppercase tracking-wider text-slate2-500">Safety Index unavailable</p>
         <h3 className="mt-1 font-display text-base text-slate2-900">{contextLabel}</h3>
         <p className="mt-2 text-sm text-slate2-700 max-w-md">
-          No data is available for this neighborhood right now — the police data
-          adapter may still be loading, or this neighborhood isn&apos;t yet
-          tracked. Pick a different neighborhood or refresh in a moment.
+          No recent police reports are published for this area in the cached window.
+          This is common for quieter neighborhoods, and may also indicate the city&apos;s
+          data adapter is warming up or hasn&apos;t pulled this area yet. The score
+          will appear once new reports publish — try another neighborhood or refresh
+          in a moment.
         </p>
       </section>
     );
@@ -123,9 +125,10 @@ export function BlockScoreWidget({ score, loading, unavailable, contextLabel }: 
           <h3 className="mt-2 font-display text-lg text-slate2-900">{contextLabel}</h3>
           <p className="mt-1 text-sm text-slate2-700 leading-snug">{score.headline}</p>
           <p className="mt-2 text-xs text-slate2-500 leading-snug">
-            Higher means fewer police reports per resident than the FBI national average.
-            100 = no recent reports; 50 = roughly matches the national rate;
-            below 50 = more reports per resident than the national average.
+            Higher means fewer police reports per resident than the comparison baseline.
+            100 = far below the baseline; 50 = roughly matches it; below 50 = above the
+            baseline. Areas with no recent reports in the cached window show as
+            &ldquo;data unavailable&rdquo; rather than a score.
           </p>
           <a
             href={score.benchmark.url}
@@ -188,11 +191,13 @@ function HowItsCalculated({ benchmark }: { benchmark: BlockScore["benchmark"] })
             scaled by US Census Vintage 2023 city population.
           </li>
           <li>
-            <strong className="text-slate2-900">Compare to the national average.</strong>{" "}
+            <strong className="text-slate2-900">Compare to the baseline.</strong>{" "}
             We average the gap across both categories and map it onto a 0&ndash;100
-            scale. <strong>100</strong> means no recent reports; <strong>50</strong>{" "}
-            roughly matches the national rate; below 50 means above national. Higher
-            is always safer in the data, lower is always more activity.
+            scale. <strong>100</strong> means far below the baseline; <strong>50</strong>{" "}
+            roughly matches it; below 50 means above the baseline. Higher is always
+            safer in the data, lower is always more activity. Neighborhoods with no
+            recent reports in the cached window show as &ldquo;data unavailable&rdquo;
+            instead of a score, so a quiet adapter can&apos;t masquerade as a perfect 100.
           </li>
         </ol>
         <p className="text-[11px] text-slate2-500 pt-1">

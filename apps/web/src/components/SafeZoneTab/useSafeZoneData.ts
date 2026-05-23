@@ -83,24 +83,21 @@ function bandFor(score: number): BlockScoreBand {
 function deriveBlockScore(api: SafetyScoreApi | null): BlockScore | null {
   if (!api || api.rows.length === 0) return null;
 
-  // INCIDENT-PREVENTION HEADLINE (2026-05-22 follow-up): legitimately
-  // zero-incident neighborhoods land at score 100, which used to share a
-  // headline with "well below national average". That conflated "no
-  // reports" with "very low rate" — a meaningful distinction for a
-  // quiet suburb (real zero) vs an active area (low rate). When all
-  // row counts are 0, surface an explicit "no recent reports" message
-  // instead of the multiplier headline ("0.00× national" is not useful
-  // copy for an empty window).
+  // INCIDENT-PREVENTION ZERO-COUNT GUARD (2026-05-23): a zero-incident
+  // window must NOT score 100. The previous behavior returned score:100
+  // with a "no recent reports" headline, but the WIDGET renders 100 as
+  // a safe-band ring with "Fewer reports than national rate" labeling
+  // and a 100-out-of-100 numeric, so users who landed on a no-data
+  // neighborhood saw an emphatic "safe" verdict for what was actually
+  // a data gap. The all-neighborhoods-show-100 production bug came
+  // from this: every adapter-quiet area read as a perfect 100.
+  //
+  // Return null instead — the widget's `unavailable` branch then
+  // renders an explicit "data unavailable" panel. Same approach the
+  // SafetyScoreResponse.grade field now takes via "N/A" at the
+  // letter-grade layer.
   const totalCount = api.rows.reduce((s, r) => s + (r.count || 0), 0);
-  if (totalCount === 0) {
-    return {
-      score: 100,
-      band: "safe",
-      headline: `No recent reports in the cached window for ${api.area.label}. This is common for quieter neighborhoods — the score will refresh whenever new reports publish.`,
-      benchmark: { label: api.source.label, url: api.source.url, year: api.source.publishedYear },
-      asOf: api.asOf,
-    };
-  }
+  if (totalCount === 0) return null;
 
   // P0 SCORING FIX (2026-05-23): the BlockScore previously averaged
   // local/NATIONAL ratios. For most urban neighborhoods the national
