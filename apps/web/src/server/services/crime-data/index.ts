@@ -153,6 +153,85 @@ export const crimeData = {
     };
   },
 
+  /// Citywide variant of getAreaStats. Aggregates incident totals across
+  /// every neighborhood of a city and emits the same AreaStats shape so
+  /// the UI renders with one branch. Replaces the previous "pass the
+  /// city slug as a neighborhood" anti-pattern that returned null when
+  /// the slug wasn't a real area.
+  async getCitywideAreaStats(citySlug: string = "san-diego"): Promise<AreaStats | null> {
+    const { cityBySlug } = await import("./cities");
+    const city = cityBySlug(citySlug);
+    if (!city) return null;
+    const areas = await city.discover().catch(() => []);
+    if (areas.length === 0) {
+      // Fall back to a representative sample so the UI gets *something*
+      // (provenance + recency labels), rather than 500-ing out the
+      // citywide view. The provenance defaults are honest about scope.
+      return {
+        area: `${city.label} (citywide)`,
+        crimeRate: null,
+        violentCrimeRate: null,
+        propertyCrimeRate: null,
+        riskLevel: 1,
+        provenance: {
+          source: `${city.label} public crime data`,
+          datasetUrl: "about:blank",
+          recency: "see adapter",
+          granularity: "jurisdiction",
+          disclaimer: `Aggregated for ${city.label}. Not live, not street-level.`,
+        },
+      };
+    }
+    // Sample provenance from the first area — the adapter shares its
+    // upstream pull across every area of the city, so any single area's
+    // provenance is representative of the citywide pull.
+    const sample = await this.getAreaStats(areas[0].slug);
+    // Sum incidents across all areas, then bucket by category to compute
+    // citywide violent / property rates. We don't use getCitywide here
+    // because that response shape doesn't match AreaStats; we want a
+    // single AreaStats payload so consumers of /api/crime-data/area-stats
+    // can switch between per-area and citywide without branching.
+    const perAreaCounts = await Promise.all(
+      areas.map(async (a) => {
+        const incs = await this.getIncidents(a.slug, { limit: 1000 }).catch(() => []);
+        let persons = 0, property = 0;
+        for (const i of incs) {
+          if (i.nibrsCategory === "PERSONS") persons += 1;
+          else if (i.nibrsCategory === "PROPERTY") property += 1;
+        }
+        return { total: incs.length, persons, property };
+      }),
+    );
+    const totals = perAreaCounts.reduce(
+      (acc, c) => ({ total: acc.total + c.total, persons: acc.persons + c.persons, property: acc.property + c.property }),
+      { total: 0, persons: 0, property: 0 },
+    );
+    const riskLevel = (
+      totals.total > 5000 ? 5 :
+      totals.total > 1500 ? 4 :
+      totals.total > 400  ? 3 :
+      totals.total > 50   ? 2 : 1
+    ) as 1 | 2 | 3 | 4 | 5;
+    return {
+      area: `${city.label} (citywide)`,
+      // Per-1,000 rates are intentionally not computed here — they would
+      // need a population denominator AND a defined time window, both of
+      // which getAreaStats deliberately doesn't carry. The Safety Index
+      // endpoint owns the rate math; this surface owns the totals.
+      crimeRate: null,
+      violentCrimeRate: null,
+      propertyCrimeRate: null,
+      riskLevel,
+      provenance: sample?.provenance ?? {
+        source: `${city.label} public crime data`,
+        datasetUrl: "about:blank",
+        recency: "see adapter",
+        granularity: "jurisdiction",
+        disclaimer: `Aggregated for ${city.label}. Not live, not street-level.`,
+      },
+    };
+  },
+
   /// Derive area-level risk alert cards for the Threat Detection tab from
   /// recent incidents. Returns one alert per NIBRS category present, with a
   /// risk level based on incident count in the window.

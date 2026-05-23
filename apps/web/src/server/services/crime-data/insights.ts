@@ -1,8 +1,12 @@
 import { crimeData } from ".";
+import { cityBySlug } from "./cities";
 import type { Incident } from "./types";
 
 const WEEKS = 12;
 const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
+// Per-area cap for citywide aggregation; same rationale as mix.ts —
+// keeps memory bounded for cities with 100+ neighborhoods.
+const CITYWIDE_PER_AREA_LIMIT = 1000;
 
 export interface CategoryTrend {
   category: "PERSONS" | "PROPERTY" | "SOCIETY";
@@ -57,10 +61,7 @@ function buildBrief(area: string, trends: CategoryTrend[]): string {
   return parts.join(" ");
 }
 
-/// Compute weekly sparkline trends and a plain-language brief for an area.
-/// Falls back gracefully if the underlying incident feed returns nothing.
-export async function getAreaInsights(area: string): Promise<AreaInsights> {
-  const incidents = await crimeData.getIncidents(area, { limit: 5000 });
+function trendsFromIncidents(incidents: Incident[]): CategoryTrend[] {
   const buckets = bucketByWeek(incidents);
   const trends: CategoryTrend[] = [];
   for (const [category, weekly] of buckets) {
@@ -75,11 +76,45 @@ export async function getAreaInsights(area: string): Promise<AreaInsights> {
     });
   }
   trends.sort((a, b) => b.weekly.reduce((s, n) => s + n, 0) - a.weekly.reduce((s, n) => s + n, 0));
+  return trends;
+}
+
+/// Compute weekly sparkline trends and a plain-language brief for an area.
+/// Falls back gracefully if the underlying incident feed returns nothing.
+export async function getAreaInsights(area: string): Promise<AreaInsights> {
+  const incidents = await crimeData.getIncidents(area, { limit: 5000 });
+  const trends = trendsFromIncidents(incidents);
   return {
     area,
     windowWeeks: WEEKS,
     totalIncidents: incidents.length,
     trends,
     brief: buildBrief(area, trends),
+  };
+}
+
+/// Citywide variant of getAreaInsights. Aggregates the 12-week trend
+/// sparklines across every neighborhood of a city. Replaces the previous
+/// "pass jurisdiction=<citySlug>" path which fetched zero incidents
+/// because the city slug isn't an area slug — that path made the
+/// citywide trend graph silently empty.
+export async function getCitywideInsights(citySlug: string): Promise<AreaInsights> {
+  const city = cityBySlug(citySlug);
+  if (!city) {
+    return { area: citySlug, windowWeeks: WEEKS, totalIncidents: 0, trends: [], brief: buildBrief(citySlug, []) };
+  }
+  const areas = await city.discover().catch(() => []);
+  const perArea = await Promise.all(
+    areas.map((a) => crimeData.getIncidents(a.slug, { limit: CITYWIDE_PER_AREA_LIMIT }).catch(() => [])),
+  );
+  const incidents = perArea.flat();
+  const trends = trendsFromIncidents(incidents);
+  const label = `${city.label} (citywide)`;
+  return {
+    area: label,
+    windowWeeks: WEEKS,
+    totalIncidents: incidents.length,
+    trends,
+    brief: buildBrief(label, trends),
   };
 }

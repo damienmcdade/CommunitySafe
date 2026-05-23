@@ -31,7 +31,14 @@ const SOURCE_LABEL: Record<string, string> = {
 
 export function CrimeMixCard({ areaSlug, jurisdictionSlug, title }: { areaSlug?: string; jurisdictionSlug?: string; title?: string }) {
   const { city } = useCity();
-  const path = areaSlug ? `/crime-data/mix?neighborhood=${areaSlug}` : jurisdictionSlug ? `/crime-data/mix?jurisdiction=${jurisdictionSlug}` : null;
+  // Citywide hits the new ?city= mode on /crime-data/mix. Previously the
+  // citywide fallback passed `jurisdiction=<citySlug>` which the route
+  // treated as an area slug → zero incidents → empty mix card.
+  const path = areaSlug
+    ? `/crime-data/mix?neighborhood=${areaSlug}`
+    : jurisdictionSlug
+      ? `/crime-data/mix?city=${jurisdictionSlug}`
+      : null;
   const { data, loading, error } = useApi<Mix>(path, [path]);
   const max = Math.max(1, ...(data?.topOffenses ?? []).map((o) => o.count));
   const sourceLabel = SOURCE_LABEL[city.slug] ?? `${city.label} police data`;

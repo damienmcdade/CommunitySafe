@@ -1,16 +1,17 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useApi } from "@/lib/api-client";
 import { useCity } from "@/lib/use-city";
-import { WheelPicker, type WheelItem } from "./WheelPicker";
 
 interface Area { slug: string; label: string; jurisdiction: string }
 
-/// Rotating-wheel neighborhood picker used by every SafeZone subtab.
-/// Filters /api/geo/areas down to the currently-selected city, persists
-/// the user's last pick per city to localStorage, and emits the committed
-/// pick to the parent via `onCommit`. The wheel only shows neighborhoods
-/// TravelSafe actually tracks for the selected city.
+/// Compact type-to-search neighborhood picker used by every SafeZone
+/// subtab. Replaces the prior iOS-style wheel — a small search bar takes
+/// far less vertical space, autofills from the same `/api/geo/areas`
+/// list, and is easier to use for cities with 100+ neighborhoods (the
+/// wheel made discovery painful past ~30 rows). Compare flows use the
+/// same component, which keeps the primary and compare UIs visually
+/// consistent.
 export function SafeZoneAreaPicker({
   storageKey,
   onCommit,
@@ -32,88 +33,112 @@ export function SafeZoneAreaPicker({
   /// Set to false on pages where citywide is the legitimate default state —
   /// the user has to explicitly tap "Show this neighborhood" to drill in.
   autoCommit?: boolean;
-  /// Externally-driven selection (e.g. from useArea). When set, the wheel
-  /// jumps to that slug and marks it as committed so the picker visually
-  /// reflects a global neighborhood pick from another tab.
+  /// Externally-driven selection (e.g. from useArea). When set, the input
+  /// shows that label and the picker treats it as the committed value.
   selectedSlug?: string | null;
 }) {
   const { city } = useCity();
   const fullKey = `travelsafe.${storageKey}.${city.slug}`;
-  const [pendingSlug, setPendingSlug] = useState<string | null>(null);
-  const [committedSlug, setCommittedSlug] = useState<string | null>(null);
 
   // /api/geo/areas?city=<slug> returns the WRAPPED shape
-  // `{ areas, stale?, staleMessage? }` (the bare-array form is only used
-  // by the legacy no-city call). Reading it as Area[] here previously
-  // crashed every SafeZone subtab via `areas.filter is not a function`
-  // — the AppError boundary fired with "Something went wrong".
+  // `{ areas, stale?, staleMessage? }`. Reading it as Area[] previously
+  // crashed every SafeZone subtab via `areas.filter is not a function`.
   interface GeoAreasResp { areas: Area[]; stale?: boolean; staleMessage?: string }
   const areasPath = `/geo/areas?city=${city.slug}`;
   const { data: areasResp, loading: areasLoading, error: areasErr } = useApi<GeoAreasResp>(areasPath, [areasPath]);
   const cityAreas = useMemo(() => {
     const areas = areasResp?.areas ?? [];
     return areas
-      // Tolerate adapters that omit `jurisdiction` so a single bad row
-      // doesn't crash render.
       .filter((a) => (a?.jurisdiction ?? "").toLowerCase() === city.label.toLowerCase())
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [areasResp, city.label]);
 
+  // `pending` is the user's in-progress pick (typed match, not yet
+  // committed). `committed` is what we've already emitted to onCommit.
+  const [pending, setPending] = useState<Area | null>(null);
+  const [committed, setCommitted] = useState<Area | null>(null);
+  const [q, setQ] = useState("");
+
+  // Reset on city switch so a neighborhood from one city doesn't leak
+  // into another's combobox.
   useEffect(() => {
-    setCommittedSlug(null);
-    setPendingSlug(null);
+    setPending(null);
+    setCommitted(null);
+    setQ("");
     if (typeof window === "undefined") return;
     try {
       const stored = window.localStorage.getItem(fullKey);
-      if (stored) setPendingSlug(stored);
+      if (stored && cityAreas.length > 0) {
+        const match = cityAreas.find((a) => a.slug === stored);
+        if (match) {
+          setPending(match);
+          setQ(match.label);
+        }
+      }
     } catch { /* ignore */ }
+    // We DON'T depend on cityAreas here because that would re-clear the
+    // combobox every time the area list refetches. We let the next effect
+    // hydrate from storage once areas are ready.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [city.slug, fullKey]);
 
+  // Hydrate from localStorage once areas finish loading (covers the
+  // common case where areas resolve AFTER the reset effect above ran).
   useEffect(() => {
-    if (pendingSlug || cityAreas.length === 0) return;
-    setPendingSlug(cityAreas[0].slug);
-  }, [pendingSlug, cityAreas]);
+    if (pending || cityAreas.length === 0) return;
+    if (typeof window === "undefined") return;
+    try {
+      const stored = window.localStorage.getItem(fullKey);
+      if (!stored) return;
+      const match = cityAreas.find((a) => a.slug === stored);
+      if (match) {
+        setPending(match);
+        setQ(match.label);
+      }
+    } catch { /* ignore */ }
+  }, [cityAreas, fullKey, pending]);
 
   // Honor an externally-driven selection (e.g. user picked an area in
-  // another tab via useArea). Jump the wheel to that slug AND mark it as
-  // committed so the page renders for that area without a re-tap.
+  // another tab via useArea). Mirror it as the committed value without
+  // re-firing onCommit (the parent already knows).
   useEffect(() => {
     if (!selectedSlug) return;
-    if (selectedSlug === committedSlug && selectedSlug === pendingSlug) return;
+    if (committed?.slug === selectedSlug && pending?.slug === selectedSlug) return;
     if (cityAreas.length === 0) return;
-    if (!cityAreas.find((a) => a.slug === selectedSlug)) return;
-    setPendingSlug(selectedSlug);
-    setCommittedSlug(selectedSlug);
-  }, [selectedSlug, cityAreas, committedSlug, pendingSlug]);
+    const match = cityAreas.find((a) => a.slug === selectedSlug);
+    if (!match) return;
+    setPending(match);
+    setCommitted(match);
+    setQ(match.label);
+  }, [selectedSlug, cityAreas, committed, pending]);
 
-  function commit() {
-    if (!pendingSlug) return;
-    const area = cityAreas.find((a) => a.slug === pendingSlug) ?? null;
-    setCommittedSlug(pendingSlug);
-    if (typeof window !== "undefined") {
-      try { window.localStorage.setItem(fullKey, pendingSlug); } catch { /* ignore */ }
-    }
-    onCommit(area);
-  }
-
-  // Auto-commit the first time areas load so subtabs render something
-  // immediately without forcing the user to push a button. Pages that
-  // have a meaningful citywide default opt out via autoCommit={false}.
+  // Auto-commit the first available area when the picker is configured
+  // for it. Used on pages where citywide is NOT the default state.
   useEffect(() => {
     if (!autoCommit) return;
-    if (committedSlug || !pendingSlug || cityAreas.length === 0) return;
-    const exists = cityAreas.find((a) => a.slug === pendingSlug);
-    if (exists) {
-      setCommittedSlug(pendingSlug);
-      onCommit(exists);
+    if (committed) return;
+    if (pending) {
+      setCommitted(pending);
+      onCommit(pending);
+      return;
     }
+    if (cityAreas.length === 0) return;
+    const first = cityAreas[0];
+    setPending(first);
+    setCommitted(first);
+    setQ(first.label);
+    onCommit(first);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cityAreas.length, pendingSlug, committedSlug, autoCommit]);
+  }, [autoCommit, cityAreas, pending, committed]);
 
-  const wheelItems: WheelItem[] = useMemo(
-    () => cityAreas.map((a) => ({ value: a.slug, label: a.label, detail: city.label })),
-    [cityAreas, city.label],
-  );
+  function commit() {
+    if (!pending) return;
+    setCommitted(pending);
+    if (typeof window !== "undefined") {
+      try { window.localStorage.setItem(fullKey, pending.slug); } catch { /* ignore */ }
+    }
+    onCommit(pending);
+  }
 
   return (
     <section className="surface p-4 sm:p-5">
@@ -124,22 +149,15 @@ export function SafeZoneAreaPicker({
             {subtitle ?? `${cityAreas.length} supported neighborhood${cityAreas.length === 1 ? "" : "s"} for ${city.label}.`}
           </p>
         </div>
-        <button
-          onClick={commit}
-          disabled={!pendingSlug || pendingSlug === committedSlug}
-          className="btn-primary text-xs px-3 py-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          {committedSlug === pendingSlug && committedSlug ? "Showing" : commitLabel}
-        </button>
       </div>
 
       <div className="mt-3">
-        {areasLoading ? (
-          <div className="surface-muted p-6 text-center text-sm text-slate2-500 animate-pulse">
+        {areasLoading && cityAreas.length === 0 ? (
+          <div className="surface-muted p-4 text-center text-sm text-slate2-500 animate-pulse">
             Loading {city.label} neighborhoods…
           </div>
         ) : cityAreas.length === 0 ? (
-          <div className="surface-muted p-6 text-center text-sm text-slate2-700">
+          <div className="surface-muted p-4 text-center text-sm text-slate2-700">
             {areasErr ? (
               <>
                 <p className="font-medium text-slate2-900">Could not reach the {city.label} police feed just now.</p>
@@ -150,18 +168,147 @@ export function SafeZoneAreaPicker({
             )}
           </div>
         ) : (
-          <WheelPicker
-            items={wheelItems}
-            value={pendingSlug ?? wheelItems[0]?.value ?? ""}
-            onChange={setPendingSlug}
-            ariaLabel={`Neighborhoods in ${city.label}`}
-            height={196}
-            rowHeight={36}
-            searchable
-            searchPlaceholder={`Search ${city.label} neighborhoods`}
+          <AreaCombobox
+            options={cityAreas}
+            value={pending}
+            onPick={setPending}
+            query={q}
+            onQueryChange={setQ}
+            cityLabel={city.label}
+            commitLabel={commitLabel}
+            committedSlug={committed?.slug ?? null}
+            onCommit={commit}
           />
         )}
       </div>
     </section>
+  );
+}
+
+/// Tight autofill combobox. Filters the supplied option list by substring
+/// as the user types, surfaces up to 30 matches when typing (so the
+/// scrollable dropdown is actually useful for big cities), 8 when the
+/// input is empty (preview without overwhelming). Arrow keys move focus
+/// through the list; Enter commits the focused match.
+function AreaCombobox({
+  options, value, onPick, query, onQueryChange,
+  cityLabel, commitLabel, committedSlug, onCommit,
+}: {
+  options: Area[];
+  value: Area | null;
+  onPick: (a: Area | null) => void;
+  query: string;
+  onQueryChange: (q: string) => void;
+  cityLabel: string;
+  commitLabel: string;
+  committedSlug: string | null;
+  onCommit: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [focusIdx, setFocusIdx] = useState(0);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+
+  // Outside-click closer.
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    if (open) document.addEventListener("click", onClick);
+    return () => document.removeEventListener("click", onClick);
+  }, [open]);
+
+  const matches = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return options.slice(0, 8);
+    return options.filter((a) => a.label.toLowerCase().includes(needle));
+  }, [query, options]);
+
+  function pick(a: Area) {
+    onPick(a);
+    onQueryChange(a.label);
+    setOpen(false);
+  }
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setOpen(true);
+      setFocusIdx((i) => Math.min(matches.length - 1, i + 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setFocusIdx((i) => Math.max(0, i - 1));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const p = matches[focusIdx];
+      if (p) pick(p);
+    } else if (e.key === "Escape") {
+      setOpen(false);
+    }
+  }
+
+  const commitDisabled = !value || value.slug === committedSlug;
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-end gap-2">
+      <div ref={wrapRef} className="relative flex-1 min-w-0">
+        <label className="block text-sm">
+          <span className="sr-only">Search {cityLabel} neighborhoods</span>
+          <input
+            value={query}
+            onChange={(e) => {
+              onQueryChange(e.target.value);
+              setOpen(true);
+              setFocusIdx(0);
+              // Typing invalidates the previously-picked area; the parent
+              // should not commit until the user re-picks.
+              if (value && e.target.value !== value.label) onPick(null);
+            }}
+            onFocus={() => setOpen(true)}
+            onKeyDown={onKeyDown}
+            placeholder={`Search ${options.length} ${cityLabel} neighborhoods…`}
+            className="input text-sm"
+            autoComplete="off"
+            aria-autocomplete="list"
+            aria-expanded={open}
+            aria-label={`Search ${cityLabel} neighborhoods`}
+          />
+        </label>
+        {open && matches.length > 0 && (
+          <ul
+            className="absolute z-30 left-0 right-0 mt-1 surface shadow-card-lift max-h-72 overflow-auto p-1"
+            role="listbox"
+          >
+            {matches.map((m, i) => (
+              <li key={m.slug}>
+                <button
+                  type="button"
+                  onMouseEnter={() => setFocusIdx(i)}
+                  onMouseDown={(e) => { e.preventDefault(); pick(m); }}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                    i === focusIdx ? "bg-bay-100 text-slate2-900" : "hover:bg-sand-100 text-slate2-900"
+                  }`}
+                  role="option"
+                  aria-selected={i === focusIdx}
+                >
+                  {m.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {open && matches.length === 0 && (
+          <div className="absolute z-30 left-0 right-0 mt-1 surface shadow-card-lift p-3 text-xs text-slate2-500">
+            No matching neighborhood in {cityLabel}.
+          </div>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={onCommit}
+        disabled={commitDisabled}
+        className="btn-primary text-xs px-3 py-2 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+      >
+        {value && value.slug === committedSlug ? "Showing" : commitLabel}
+      </button>
+    </div>
   );
 }

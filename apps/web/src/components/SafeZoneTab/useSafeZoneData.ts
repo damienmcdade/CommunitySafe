@@ -186,9 +186,13 @@ export function useSafeZoneData(selection: SafeZoneSelection): SafeZoneDataState
   const trendPath = areaForApi
     ? `/safezone/trend?${areaForApi}`
     : `/safezone/trend?${cityForApi}`;
+  // Citywide: hit the new ?city= mode on /crime-data/insights. Previously
+  // we passed `jurisdiction=<citySlug>` which the route treated as an
+  // area slug and returned zero incidents → the trend graph went silently
+  // empty. Same class of bug as the Safety Index all-100 regression.
   const insightsQ = selection.area
     ? `neighborhood=${encodeURIComponent(selection.area.slug)}`
-    : `jurisdiction=${encodeURIComponent(selection.city.slug)}`;
+    : `city=${encodeURIComponent(selection.city.slug)}`;
   const insightsPath = `/crime-data/insights?${insightsQ}`;
 
   const { data: scoreApi, loading: scoreLoading, error: scoreErr } = useApi<SafetyScoreApi>(scorePath, [scorePath]);
