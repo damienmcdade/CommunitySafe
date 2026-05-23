@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useDocumentTitle } from "@/lib/use-document-title";
 
 interface CityStatus {
   slug: string;
@@ -32,6 +33,7 @@ const HEALTH_TONE: Record<CityStatus["health"], { dot: string; label: string; ri
 /// a glance which cities have warm caches and how fresh the underlying
 /// data is.
 export default function CoveragePage() {
+  useDocumentTitle("Coverage & system status");
   const [data, setData] = useState<CoverageResp | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());

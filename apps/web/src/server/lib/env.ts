@@ -12,7 +12,15 @@ const Env = z.object({
   // when they're missing. Routes that need them throw a clear error if unset.
   DATABASE_URL: z.string().optional(),
   JWT_SECRET: z.string().optional(),
-  JWT_EXPIRES_IN: z.string().default("7d"),
+  // Session lifetime. Was 7d originally; shortened to 24h on the
+  // audit's recommendation because: (a) tokens live in localStorage
+  // and a leak via XSS or shared device would otherwise stay valid
+  // for a full week, (b) we have no server-side revocation table yet
+  // — a shorter window IS the revocation strategy until a tokenVersion
+  // column lands. Anonymous sessions re-bootstrap silently on expiry
+  // via useAnonymousAuth so the only user-visible effect is registered
+  // users having to re-login once a day.
+  JWT_EXPIRES_IN: z.string().default("24h"),
   BCRYPT_ROUNDS: z.coerce.number().default(12),
 
   // Crime-data adapters

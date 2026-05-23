@@ -99,8 +99,19 @@ export function AIAssistant() {
     }
   }
 
-  async function send() {
-    const trimmed = input.trim();
+  // Three example questions the assistant is well-equipped to answer.
+  // Surfaced as clickable chips on first open so users don't have to
+  // invent a phrasing from a blank input. The chips disappear after
+  // the first user message — the conversation itself is then enough
+  // context for the user to know what's possible.
+  const QUICK_PROMPTS = [
+    "What's the safest neighborhood in San Diego?",
+    "How does Chicago compare to the national average?",
+    "Which cities does TravelSafe support?",
+  ];
+
+  async function send(promptOverride?: string) {
+    const trimmed = (promptOverride ?? input).trim();
     if (!trimmed || busy) return;
     setInput("");
     setError(null);
@@ -217,8 +228,25 @@ export function AIAssistant() {
                 </div>
               </div>
             ))}
+            {/* Quick-prompt chips. Render only on a fresh conversation
+                (the INTRO message is the lone item) so they don't
+                clutter the chat once the user is engaged. */}
+            {messages.length === 1 && !busy && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {QUICK_PROMPTS.map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => send(p)}
+                    className="text-[11px] leading-snug px-2.5 py-1.5 rounded-full border border-bay-300 text-bay-700 hover:bg-bay-50 transition-colors text-left"
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            )}
             {error && (
-              <div className="surface-muted p-3 text-xs text-coral-700">
+              <div role="alert" className="surface-muted p-3 text-xs text-coral-700">
                 Could not reach the assistant: {error}
               </div>
             )}
@@ -237,7 +265,7 @@ export function AIAssistant() {
                 className="input flex-1 text-sm py-2 resize-none disabled:opacity-50"
               />
               <button
-                onClick={send}
+                onClick={() => send()}
                 disabled={busy || !input.trim()}
                 className="btn-primary text-xs px-3 py-2 disabled:opacity-40 disabled:cursor-not-allowed"
               >

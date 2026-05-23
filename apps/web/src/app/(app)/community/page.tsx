@@ -339,8 +339,17 @@ function PostComposer({ areaSlug, onPosted }: { areaSlug: string; onPosted: () =
           </select>
         </div>
         <div>
-          <label className="text-sm text-slate2-700">What happened (behavior)</label>
-          <textarea required value={what} onChange={(e) => setWhat(e.target.value)} className="mt-1 input" rows={3} placeholder="e.g. multiple cars had their windows smashed overnight" />
+          <div className="flex items-baseline justify-between">
+            <label className="text-sm text-slate2-700">What happened (behavior)</label>
+            {/* Inline character counter — turns amber/coral as the user
+                approaches the 800-char cap the server enforces. Without
+                this users could compose a wall of text the moderator
+                would then reject. */}
+            <span className={`text-[11px] tabular-nums ${what.length > 800 ? "text-coral-700 font-medium" : what.length > 700 ? "text-amber2-700" : "text-slate2-500"}`}>
+              {what.length} / 800
+            </span>
+          </div>
+          <textarea required value={what} onChange={(e) => setWhat(e.target.value)} maxLength={800} className="mt-1 input" rows={3} placeholder="e.g. multiple cars had their windows smashed overnight" />
         </div>
         <div>
           <label className="text-sm text-slate2-700">Where (landmark, not address)</label>
