@@ -2,9 +2,11 @@
 import { useEffect, useState } from "react";
 
 interface Props {
-  /// ISO timestamp of the most recent successful upstream pull. Most APIs
-  /// return this as `asOf`; provenance objects use `recency`. Pass null
-  /// when the underlying data is loading or unavailable.
+  /// ISO timestamp of the **newest published incident** the underlying
+  /// adapter has cached. NOT the adapter sync time — a fresh sync against
+  /// a stale upstream still yields an old `asOf`. The badge caption
+  /// reflects this distinction by saying "newest report" rather than
+  /// "synced", so the label honestly describes the timestamp we display.
   asOf: string | null | undefined;
   /// Optional source label for the tooltip — e.g. "SDPD NIBRS".
   sourceLabel?: string;
@@ -12,15 +14,19 @@ interface Props {
   /// `md` for hero banners.
   size?: "sm" | "md";
   /// When false, the green check is suppressed (still shows the relative
-  /// timestamp). Use for surfaces where the verified-state would be
+  /// timestamp). Use for surfaces where the synced-state would be
   /// repetitive after a hero badge already established it.
   showCheck?: boolean;
 }
 
-/// "Data Verified" trust badge with a relative-time "Synced ..." caption.
-/// Renders a green check + relative timestamp like "Verified · synced
-/// 4 min ago". Hovering or focusing the badge surfaces the exact ISO
-/// timestamp + source label as a native tooltip.
+/// Data-freshness trust badge with a relative-time "newest report …"
+/// caption. Renders a green check + relative timestamp like
+/// "Synced · newest report 4 min ago". The check signals "we have current
+/// data" (not "this data has been independently verified"); the caption
+/// quotes the recency of the newest published incident in the cache, which
+/// is the most honest single proxy for data freshness available to the UI.
+/// Hovering or focusing the badge surfaces the exact ISO timestamp +
+/// source label as a native tooltip.
 ///
 /// Updates the displayed relative time every 30s without a fetch — the
 /// timestamp itself is static; only the "X ago" presentation drifts.
@@ -38,8 +44,8 @@ export function DataFreshnessBadge({ asOf, sourceLabel, size = "sm", showCheck =
   const rel = relativeAgo(now - t.getTime());
   const exact = t.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
   const title = sourceLabel
-    ? `Last update from ${sourceLabel}: ${exact}`
-    : `Last upstream update: ${exact}`;
+    ? `Newest report from ${sourceLabel}: ${exact}`
+    : `Newest report in the cache: ${exact}`;
 
   const padding = size === "md" ? "px-2.5 py-1" : "px-2 py-0.5";
   const text = size === "md" ? "text-xs" : "text-[11px]";
@@ -61,8 +67,8 @@ export function DataFreshnessBadge({ asOf, sourceLabel, size = "sm", showCheck =
         </svg>
       )}
       <span>
-        <span className="font-medium">Verified</span>
-        <span className="text-sage-700/80"> · synced {rel}</span>
+        <span className="font-medium">Synced</span>
+        <span className="text-sage-700/80"> · newest report {rel}</span>
       </span>
     </span>
   );

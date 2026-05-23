@@ -42,14 +42,22 @@ export function SafeZoneAreaPicker({
   const [pendingSlug, setPendingSlug] = useState<string | null>(null);
   const [committedSlug, setCommittedSlug] = useState<string | null>(null);
 
+  // /api/geo/areas?city=<slug> returns the WRAPPED shape
+  // `{ areas, stale?, staleMessage? }` (the bare-array form is only used
+  // by the legacy no-city call). Reading it as Area[] here previously
+  // crashed every SafeZone subtab via `areas.filter is not a function`
+  // — the AppError boundary fired with "Something went wrong".
+  interface GeoAreasResp { areas: Area[]; stale?: boolean; staleMessage?: string }
   const areasPath = `/geo/areas?city=${city.slug}`;
-  const { data: areas, loading: areasLoading, error: areasErr } = useApi<Area[]>(areasPath, [areasPath]);
+  const { data: areasResp, loading: areasLoading, error: areasErr } = useApi<GeoAreasResp>(areasPath, [areasPath]);
   const cityAreas = useMemo(() => {
-    if (!areas) return [];
+    const areas = areasResp?.areas ?? [];
     return areas
-      .filter((a) => a.jurisdiction.toLowerCase() === city.label.toLowerCase())
+      // Tolerate adapters that omit `jurisdiction` so a single bad row
+      // doesn't crash render.
+      .filter((a) => (a?.jurisdiction ?? "").toLowerCase() === city.label.toLowerCase())
       .sort((a, b) => a.label.localeCompare(b.label));
-  }, [areas, city.label]);
+  }, [areasResp, city.label]);
 
   useEffect(() => {
     setCommittedSlug(null);
