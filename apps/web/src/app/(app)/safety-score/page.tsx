@@ -14,6 +14,8 @@ interface ScoreRow {
   category: "PERSONS" | "PROPERTY";
   count: number;
   localPer100k: number;
+  cityPer100k: number;
+  cityDeltaPct: number;
   nationalPer100k: number;
   deltaPct: number;
 }
@@ -208,7 +210,7 @@ function ScoreReport({ score, accent, categoryFilter }: { score: ScoreResp; acce
           </div>
         </div>
         <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate2-500 tabular-nums">
-          <span>~{score.populationEstimate.toLocaleString()} residents (estimated, US Census Vintage 2023)</span>
+          <span>~{score.populationEstimate.toLocaleString()} residents (estimated, US Census Vintage 2024)</span>
           {score.windowDays > 0 && <span>·  window: ~{score.windowDays} days</span>}
           {score.asOf && <span>·  newest report: {new Date(score.asOf).toLocaleDateString()}</span>}
         </div>
@@ -235,29 +237,50 @@ function ScoreReport({ score, accent, categoryFilter }: { score: ScoreResp; acce
 
       <ul className={`grid grid-cols-1 ${filteredRows.length > 1 ? "md:grid-cols-2" : ""} gap-3`}>
         {filteredRows.map((r) => {
-          const above = r.deltaPct > 5;
-          const below = r.deltaPct < -5;
-          const max = Math.max(r.localPer100k, r.nationalPer100k) * 1.15 || 1;
+          // Primary comparison is now vs CITY rate. Citywide rows have
+          // cityDeltaPct=0 by definition (the area IS the city); fall
+          // back to deltaPct (vs national) in that case so the chip
+          // still says something meaningful.
+          const isCitywide = score.area.slug === score.city.slug;
+          const primaryDelta = isCitywide ? r.deltaPct : r.cityDeltaPct;
+          const primaryAnchor = isCitywide ? "national" : `${score.city.label} citywide`;
+          const above = primaryDelta > 5;
+          const below = primaryDelta < -5;
+          const max = Math.max(r.localPer100k, isCitywide ? r.nationalPer100k : r.cityPer100k, r.nationalPer100k) * 1.15 || 1;
           return (
             <li key={r.category}>
               <article className="surface p-5 h-full">
                 <header className="flex items-baseline justify-between gap-2">
                   <h3 className="font-display text-base text-slate2-900">{CAT_LABEL[r.category]}</h3>
                   <span className={`text-xs font-medium ${above ? "text-coral-700" : below ? "text-sage-700" : "text-slate2-500"}`}>
-                    {r.deltaPct > 0 ? "+" : ""}{r.deltaPct}% vs national
+                    {primaryDelta > 0 ? "+" : ""}{primaryDelta}% vs {primaryAnchor}
                   </span>
                 </header>
-                <svg viewBox="0 0 200 56" className="mt-3 w-full h-14" role="img" aria-label={`${CAT_LABEL[r.category]}: ${r.localPer100k} per 100k locally, ${r.nationalPer100k} per 100k national`}>
-                  <text x="0" y="11" style={{ fontSize: 6 }} fill="#475569">{score.area.label}</text>
-                  <rect x="0" y="14" width="200" height="8" rx="2" fill="#e9eef3" />
-                  <rect x="0" y="14" width={(r.localPer100k / max) * 200} height="8" rx="2" fill={above ? "#DC2626" : below ? "#7BA86E" : "#2563EB"} />
-                  <text x="200" y="11" textAnchor="end" style={{ fontSize: 6 }} fill="#475569">{r.localPer100k.toLocaleString()} / 100k</text>
-                  <text x="0" y="38" style={{ fontSize: 6 }} fill="#475569">National (FBI {score.source.publishedYear})</text>
-                  <rect x="0" y="41" width="200" height="8" rx="2" fill="#e9eef3" />
-                  <rect x="0" y="41" width={(r.nationalPer100k / max) * 200} height="8" rx="2" fill="#94a3b8" />
-                  <text x="200" y="38" textAnchor="end" style={{ fontSize: 6 }} fill="#475569">{r.nationalPer100k.toLocaleString()} / 100k</text>
+                <svg viewBox="0 0 200 70" className="mt-3 w-full h-16" role="img" aria-label={`${CAT_LABEL[r.category]}: ${r.localPer100k} per 100k locally, ${r.cityPer100k} per 100k ${score.city.label} citywide, ${r.nationalPer100k} per 100k national`}>
+                  {/* This area */}
+                  <text x="0" y="9" style={{ fontSize: 6 }} fill="#475569">{score.area.label}</text>
+                  <rect x="0" y="12" width="200" height="7" rx="2" fill="#e9eef3" />
+                  <rect x="0" y="12" width={(r.localPer100k / max) * 200} height="7" rx="2" fill={above ? "#DC2626" : below ? "#7BA86E" : "#2563EB"} />
+                  <text x="200" y="9" textAnchor="end" style={{ fontSize: 6 }} fill="#475569">{r.localPer100k.toLocaleString()} / 100k</text>
+                  {/* City baseline — only shown for per-area rows */}
+                  {!isCitywide && (
+                    <>
+                      <text x="0" y="32" style={{ fontSize: 6 }} fill="#475569">{score.city.label} citywide</text>
+                      <rect x="0" y="35" width="200" height="7" rx="2" fill="#e9eef3" />
+                      <rect x="0" y="35" width={(r.cityPer100k / max) * 200} height="7" rx="2" fill="#0E4F73" />
+                      <text x="200" y="32" textAnchor="end" style={{ fontSize: 6 }} fill="#475569">{r.cityPer100k.toLocaleString()} / 100k</text>
+                    </>
+                  )}
+                  {/* National reference */}
+                  <text x="0" y={isCitywide ? 32 : 55} style={{ fontSize: 6 }} fill="#475569">National (FBI {score.source.publishedYear})</text>
+                  <rect x="0" y={isCitywide ? 35 : 58} width="200" height="7" rx="2" fill="#e9eef3" />
+                  <rect x="0" y={isCitywide ? 35 : 58} width={(r.nationalPer100k / max) * 200} height="7" rx="2" fill="#94a3b8" />
+                  <text x="200" y={isCitywide ? 32 : 55} textAnchor="end" style={{ fontSize: 6 }} fill="#475569">{r.nationalPer100k.toLocaleString()} / 100k</text>
                 </svg>
-                <p className="mt-3 text-xs text-slate2-500 tabular-nums">{r.count.toLocaleString()} reported in the cached window.</p>
+                <p className="mt-3 text-xs text-slate2-500 tabular-nums">
+                  {r.count.toLocaleString()} reported in the cached window
+                  {!isCitywide && <span> · {r.deltaPct > 0 ? "+" : ""}{r.deltaPct}% vs national</span>}.
+                </p>
               </article>
             </li>
           );

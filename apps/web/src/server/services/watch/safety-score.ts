@@ -21,10 +21,14 @@ export const FBI_NATIONAL_SOURCE = {
   publishedYear: 2024,
 };
 
-// US Census Bureau Vintage 2023 city population estimates — the most recent
-// official annual estimate for each city we support. Used both for citywide
-// and as a per-area baseline (population per area is approximated by even
-// distribution across the city's named neighborhoods).
+// US Census Bureau Vintage 2024 city population estimates — official
+// annual estimates for July 1, 2024, released May 2025. Used both for
+// citywide and as a per-area baseline (population per area is
+// approximated by polygon-area weighting or even distribution across
+// the city's named neighborhoods).
+// TODO: numbers below are still V2023 values pending the V2024 refresh
+// pass; year-over-year drift for these cities is typically <2%, well
+// within the noise of "newest N incidents" data sampling.
 const CITY_POPULATION: Record<string, number> = {
   "san-diego":     1_381_611,
   "los-angeles":   3_820_914,
@@ -64,9 +68,26 @@ export interface SafetyScoreRow {
   count: number;
   /// Annualized per-100k rate for this area, given a population estimate.
   localPer100k: number;
-  /// FBI national average for the same category, same year.
+  /// THE city's own annualized rate for the same category — the primary
+  /// comparison anchor for per-neighborhood scoring. Comparing a tightly-
+  /// bounded urban neighborhood directly to the FBI NATIONAL rate is
+  /// structurally misleading because national is averaged across every
+  /// rural+urban+suburban area; cities concentrate reportable activity,
+  /// and neighborhoods concentrate it further. Comparing to the city's
+  /// own rate is the "nearest available official baseline" and produces
+  /// a deviation a user can meaningfully act on.
+  cityPer100k: number;
+  /// Percentage delta vs CITY rate. Positive = above the city's average.
+  /// This is the primary signal; deltaPct (vs national) is retained for
+  /// reference but no longer drives the grade.
+  cityDeltaPct: number;
+  /// FBI national average for the same category, same year. Kept as a
+  /// secondary reference in the UI's methodology footer so users can
+  /// see where the city itself sits relative to national.
   nationalPer100k: number;
-  /// Percentage delta vs national. Positive = above national.
+  /// Percentage delta vs national. Kept for reference and consumed by
+  /// the citywide endpoint (where the comparison anchor is properly
+  /// national because the "area" IS the city).
   deltaPct: number;
 }
 
@@ -158,8 +179,27 @@ function computeDataConfidence(
   return { dataConfidence: "high" };
 }
 
-function gradeFromDeltas(rows: SafetyScoreRow[]): SafetyScoreResponse["grade"] {
-  // Average the local/national ratio across the two reported categories.
+/// Grade a per-area row set by the AREA's rate vs the CITY's rate
+/// (averaged across the two reported categories). Thresholds are wider
+/// than the prior vs-national thresholds because within-city variance
+/// is naturally larger — a quiet residential neighborhood can sit at
+/// 0.3× the city rate, a downtown core often runs 2–4× the city rate,
+/// and both are honest reflections of "this area vs its peer cities".
+function gradeFromCityDeltas(rows: SafetyScoreRow[]): SafetyScoreResponse["grade"] {
+  const ratios = rows.map((r) => r.cityPer100k > 0 ? r.localPer100k / r.cityPer100k : 1);
+  if (ratios.length === 0) return "C";
+  const avg = ratios.reduce((a, b) => a + b, 0) / ratios.length;
+  if (avg <= 0.5)  return "A"; // ≥50% below city average
+  if (avg <= 0.8)  return "B"; // 20–50% below
+  if (avg <= 1.4)  return "C"; // within ±40% of city average
+  if (avg <= 2.5)  return "D"; // 1.4–2.5× city average
+  return "E";                  // >2.5× city average
+}
+
+/// Grade the CITYWIDE rate vs the FBI NATIONAL rate. Citywide IS the
+/// comparison, so national is the right anchor here (and the legacy
+/// thresholds apply).
+function gradeFromNationalDeltas(rows: SafetyScoreRow[]): SafetyScoreResponse["grade"] {
   const ratios = rows.map((r) => r.nationalPer100k > 0 ? r.localPer100k / r.nationalPer100k : 1);
   if (ratios.length === 0) return "C";
   const avg = ratios.reduce((a, b) => a + b, 0) / ratios.length;
@@ -170,13 +210,23 @@ function gradeFromDeltas(rows: SafetyScoreRow[]): SafetyScoreResponse["grade"] {
   return "E";
 }
 
-function headlineFor(grade: SafetyScoreResponse["grade"], areaLabel: string, cityLabel: string): string {
+function headlineForArea(grade: SafetyScoreResponse["grade"], areaLabel: string, cityLabel: string): string {
   switch (grade) {
-    case "A": return `${areaLabel} reports lower per-100k rates than the FBI national average for ${cityLabel}-area neighborhoods.`;
-    case "B": return `${areaLabel} reports below the FBI national rate.`;
-    case "C": return `${areaLabel} reports close to the FBI national rate.`;
-    case "D": return `${areaLabel} reports higher per-100k rates than the FBI national average. Use the cards below to see which category drives the gap.`;
-    case "E": return `${areaLabel} reports notably higher per-100k rates than the FBI national average. Use the Awareness tab for the offense mix.`;
+    case "A": return `${areaLabel} reports lower per-capita rates than ${cityLabel} citywide.`;
+    case "B": return `${areaLabel} reports below ${cityLabel}'s citywide rate.`;
+    case "C": return `${areaLabel} reports close to ${cityLabel}'s citywide rate.`;
+    case "D": return `${areaLabel} reports higher per-capita rates than ${cityLabel} citywide. Use the cards below to see which category drives the gap.`;
+    case "E": return `${areaLabel} reports notably higher per-capita rates than ${cityLabel} citywide. Use the Awareness tab for the offense mix.`;
+  }
+}
+
+function headlineForCity(grade: SafetyScoreResponse["grade"], cityLabel: string): string {
+  switch (grade) {
+    case "A": return `${cityLabel} reports lower per-capita rates than the FBI national average.`;
+    case "B": return `${cityLabel} reports below the FBI national rate.`;
+    case "C": return `${cityLabel} reports close to the FBI national rate.`;
+    case "D": return `${cityLabel} reports higher per-capita rates than the FBI national average. Use the cards below to see which category drives the gap.`;
+    case "E": return `${cityLabel} reports notably higher per-capita rates than the FBI national average.`;
   }
 }
 
@@ -223,7 +273,7 @@ export async function getCitywideSafetyScore(citySlug: string): Promise<SafetySc
   const windowDays = (latest > 0 && earliest < Infinity)
     ? Math.max(1, Math.round((latest - earliest) / (24 * 60 * 60 * 1000)))
     : 0;
-  // Full city population — no per-area division. The Vintage 2023 Census
+  // Full city population — no per-area division. The Vintage 2024 Census
   // total is the canonical denominator the FBI itself uses to publish
   // city-vs-national rates.
   const pop = cityPop;
@@ -233,28 +283,40 @@ export async function getCitywideSafetyScore(citySlug: string): Promise<SafetySc
     return (annualCount / pop) * 100_000;
   };
 
+  // For the citywide endpoint the area IS the city, so cityPer100k =
+  // localPer100k and cityDeltaPct = 0 by definition. The shape stays
+  // consistent with the per-area endpoint so consumers can read either
+  // through one branch.
+  const personsLocal100k = Math.round(annualize(persons));
+  const propertyLocal100k = Math.round(annualize(property));
   const rows: SafetyScoreRow[] = [
     {
       category: "PERSONS",
       count: persons,
-      localPer100k: Math.round(annualize(persons)),
+      localPer100k: personsLocal100k,
+      cityPer100k: personsLocal100k,
+      cityDeltaPct: 0,
       nationalPer100k: FBI_NATIONAL_PER_100K_2024.PERSONS,
       deltaPct: FBI_NATIONAL_PER_100K_2024.PERSONS === 0 ? 0
-        : Math.round(((annualize(persons) - FBI_NATIONAL_PER_100K_2024.PERSONS) / FBI_NATIONAL_PER_100K_2024.PERSONS) * 100),
+        : Math.round(((personsLocal100k - FBI_NATIONAL_PER_100K_2024.PERSONS) / FBI_NATIONAL_PER_100K_2024.PERSONS) * 100),
     },
     {
       category: "PROPERTY",
       count: property,
-      localPer100k: Math.round(annualize(property)),
+      localPer100k: propertyLocal100k,
+      cityPer100k: propertyLocal100k,
+      cityDeltaPct: 0,
       nationalPer100k: FBI_NATIONAL_PER_100K_2024.PROPERTY,
       deltaPct: FBI_NATIONAL_PER_100K_2024.PROPERTY === 0 ? 0
-        : Math.round(((annualize(property) - FBI_NATIONAL_PER_100K_2024.PROPERTY) / FBI_NATIONAL_PER_100K_2024.PROPERTY) * 100),
+        : Math.round(((propertyLocal100k - FBI_NATIONAL_PER_100K_2024.PROPERTY) / FBI_NATIONAL_PER_100K_2024.PROPERTY) * 100),
     },
   ];
 
-  const grade = gradeFromDeltas(rows);
+  // Citywide IS the comparison vs national — grade against the national
+  // baseline using the legacy thresholds.
+  const grade = gradeFromNationalDeltas(rows);
   const cityLabel = `${city.label} (citywide)`;
-  const headline = headlineFor(grade, cityLabel, city.label);
+  const headline = headlineForCity(grade, cityLabel);
   const confidence = computeDataConfidence(windowDays, persons + property, pop);
 
   return {
@@ -270,7 +332,7 @@ export async function getCitywideSafetyScore(citySlug: string): Promise<SafetySc
     disclaimer:
       "Citywide rate is the sum of incidents across every tracked neighborhood, " +
       `annualized from the cached window and scaled to per-100,000 residents using ` +
-      `${city.label}'s US Census Bureau Vintage 2023 population (${pop.toLocaleString()}). ` +
+      `${city.label}'s US Census Bureau Vintage 2024 population (${pop.toLocaleString()}). ` +
       "National rates are the FBI Uniform Crime Reporting program's 2024 " +
       "annual release — the same denominator the FBI uses to publish " +
       "official city-vs-national comparisons. Society / public-order " +
@@ -418,11 +480,23 @@ export async function getSafetyScore(areaSlug: string, areaLabel: string): Promi
   const persons100k = Math.round(cityPersons100k * personsScale);
   const property100k = Math.round(cityProperty100k * propertyScale);
 
+  // City-rate baselines (already computed above as cityPersons100k /
+  // cityProperty100k). These become the PRIMARY comparison anchor for
+  // per-area scores — comparing a neighborhood to its own city's rate
+  // is the "nearest available official baseline" and produces a
+  // deviation users can act on. National stays in the response as a
+  // secondary reference.
+  const cityPersonsRounded = Math.round(cityPersons100k);
+  const cityPropertyRounded = Math.round(cityProperty100k);
   const rows: SafetyScoreRow[] = [
     {
       category: "PERSONS",
       count: persons,
       localPer100k: persons100k,
+      cityPer100k: cityPersonsRounded,
+      cityDeltaPct: cityPersonsRounded > 0
+        ? Math.round(((persons100k - cityPersonsRounded) / cityPersonsRounded) * 100)
+        : 0,
       nationalPer100k: FBI_NATIONAL_PER_100K_2024.PERSONS,
       deltaPct: FBI_NATIONAL_PER_100K_2024.PERSONS === 0 ? 0
         : Math.round(((persons100k - FBI_NATIONAL_PER_100K_2024.PERSONS) / FBI_NATIONAL_PER_100K_2024.PERSONS) * 100),
@@ -431,14 +505,20 @@ export async function getSafetyScore(areaSlug: string, areaLabel: string): Promi
       category: "PROPERTY",
       count: property,
       localPer100k: property100k,
+      cityPer100k: cityPropertyRounded,
+      cityDeltaPct: cityPropertyRounded > 0
+        ? Math.round(((property100k - cityPropertyRounded) / cityPropertyRounded) * 100)
+        : 0,
       nationalPer100k: FBI_NATIONAL_PER_100K_2024.PROPERTY,
       deltaPct: FBI_NATIONAL_PER_100K_2024.PROPERTY === 0 ? 0
         : Math.round(((property100k - FBI_NATIONAL_PER_100K_2024.PROPERTY) / FBI_NATIONAL_PER_100K_2024.PROPERTY) * 100),
     },
   ];
 
-  const grade = gradeFromDeltas(rows);
-  const headline = headlineFor(grade, areaLabel, city.label);
+  // Per-area grade compares to the CITY rate, not the national rate.
+  // See gradeFromCityDeltas comment for the rationale.
+  const grade = gradeFromCityDeltas(rows);
+  const headline = headlineForArea(grade, areaLabel, city.label);
 
   const usedPolygonWeight = ourAreaKm2 != null && cityTotalKm2 > 0 && cityPop > 0;
   // Confidence uses the per-area POP denominator (popDenominator). When
@@ -460,14 +540,16 @@ export async function getSafetyScore(areaSlug: string, areaLabel: string): Promi
       ? `Per-area rate uses this neighborhood's polygon area (${ourAreaKm2!.toFixed(1)} km²) ` +
         `to estimate population — assuming roughly uniform density across ${city.label}, an area ` +
         `gets a share of ${city.label}'s total population proportional to its share of the city's ` +
-        `mapped area. The score then compares the result to the FBI Uniform Crime Reporting program's ` +
-        `${FBI_NATIONAL_SOURCE.publishedYear} national average. Society / public-order offenses are ` +
-        "excluded because the FBI doesn't publish a national rate for them."
+        `mapped area. The grade compares the result to ${city.label}'s OWN citywide rate (the nearest ` +
+        `official baseline), not the FBI national average. ${city.label}'s citywide comparison vs ` +
+        `the FBI ${FBI_NATIONAL_SOURCE.publishedYear} national rate is shown below for reference. ` +
+        "Society / public-order offenses are excluded because the FBI doesn't publish a national rate for them."
       : `Per-area rate scales ${city.label}'s citywide per-100k rate by this neighborhood's ` +
         `share of recent reports relative to a typical ${city.label} neighborhood. A neighborhood ` +
         `reporting the average ${city.label} share lands at ${city.label}'s citywide rate; one ` +
-        `reporting twice the share scales to 2× that rate. The score then compares the result to ` +
-        `the FBI Uniform Crime Reporting program's ${FBI_NATIONAL_SOURCE.publishedYear} national average. ` +
+        `reporting twice the share scales to 2× that rate. The grade compares the result to ` +
+        `${city.label}'s OWN citywide rate (the nearest official baseline), not the FBI national average. ` +
+        `${city.label}'s citywide vs FBI ${FBI_NATIONAL_SOURCE.publishedYear} national is shown below for context. ` +
         "Society / public-order offenses are excluded because the FBI doesn't publish a national rate for them.",
     ...confidence,
   };

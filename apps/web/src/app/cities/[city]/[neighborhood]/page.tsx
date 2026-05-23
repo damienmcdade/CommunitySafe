@@ -137,14 +137,21 @@ export default async function NeighborhoodLandingPage({ params }: Props) {
                 <p className="mt-1 text-slate2-900 tabular-nums">
                   <strong>{r.localPer100k.toLocaleString()}</strong> / 100k local
                 </p>
+                {/* Primary comparison: vs city. The grade itself was
+                    computed against the city baseline, so the headline
+                    delta should match. National stays as a secondary
+                    reference below. */}
                 <p className="text-xs text-slate2-500 tabular-nums">
-                  vs FBI {r.nationalPer100k.toLocaleString()} / 100k national ({r.deltaPct > 0 ? "+" : ""}{r.deltaPct}%)
+                  vs {city.label} {r.cityPer100k.toLocaleString()} / 100k citywide ({r.cityDeltaPct > 0 ? "+" : ""}{r.cityDeltaPct}%)
+                </p>
+                <p className="text-[11px] text-slate2-500 tabular-nums mt-0.5 opacity-80">
+                  reference: FBI {r.nationalPer100k.toLocaleString()} / 100k national ({r.deltaPct > 0 ? "+" : ""}{r.deltaPct}%)
                 </p>
               </li>
             ))}
           </ul>
           <p className="mt-4 text-xs text-slate2-500">
-            ~{score.populationEstimate.toLocaleString()} residents (estimated, US Census Vintage 2023) ·{" "}
+            ~{score.populationEstimate.toLocaleString()} residents (estimated, US Census Vintage 2024) ·{" "}
             window ~{score.windowDays} days ·{" "}
             {score.asOf && <>newest report {new Date(score.asOf).toLocaleDateString()} · </>}
             <a href={score.source.url} target="_blank" rel="noreferrer" className="text-bay-700 hover:underline">{score.source.label}</a>

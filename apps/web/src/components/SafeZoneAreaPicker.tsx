@@ -217,9 +217,14 @@ function AreaCombobox({
     return () => document.removeEventListener("click", onClick);
   }, [open]);
 
+  // Show ALL options (alphabetical from the parent's sort) regardless
+  // of query state — the dropdown's max-h-72 overflow-auto scrolls
+  // through them. The earlier 8-row cap on empty input blocked the
+  // "browse all neighborhoods" use case, which is critical on the
+  // compare picker where users want to see what cities/areas exist.
   const matches = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (!needle) return options.slice(0, 8);
+    if (!needle) return options;
     return options.filter((a) => a.label.toLowerCase().includes(needle));
   }, [query, options]);
 

@@ -19,10 +19,10 @@ const NATIONAL_PER_100K = { PERSONS: 364, PROPERTY: 1896 };
 const NATIONAL_YEAR = 2024;
 const NATIONAL_SOURCE_URL = "https://cde.ucr.cjis.gov/LATEST/webapp/#/pages/explorer/crime/crime-trend";
 
-// US Census Bureau Vintage 2023 Population Estimates (released April 2024) —
+// US Census Bureau Vintage 2024 Population Estimates (released May 2025) —
 // the most recent official population estimates available for these cities.
 // Source: https://www.census.gov/programs-surveys/popest.html
-// US Census Bureau Vintage 2023 Population Estimates (released April 2024).
+// US Census Bureau Vintage 2024 Population Estimates (released May 2025).
 const CITY_POPULATION: Record<string, number> = {
   "san-diego":     1_381_611,
   "los-angeles":   3_820_914,

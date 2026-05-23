@@ -12,7 +12,7 @@ import { CITIES, cityBySlug } from "../crime-data/cities";
 const NATIONAL_PER_100K = { PERSONS: 364, PROPERTY: 1896 };
 const NATIONAL_YEAR = 2024;
 
-// US Census Bureau Vintage 2023 Population Estimates — covers every city
+// US Census Bureau Vintage 2024 Population Estimates — covers every city
 // the app's adapters support. Previously this map only had 11 entries,
 // silently dropping any per-100k city-vs-national tool call for the other
 // 18. Now mirrors the canonical map in safety-score.ts.
@@ -206,7 +206,7 @@ export async function streamAssistant(messages: Array<{ role: "user" | "assistan
   const tools = {
     list_supported_cities: tool({
       description:
-        "Return the list of every city TravelSafe currently supports, with their slugs and US Census Vintage 2023 population estimates. Call this when the user asks 'what cities do you support?' or hasn't named one yet.",
+        "Return the list of every city TravelSafe currently supports, with their slugs and US Census Vintage 2024 population estimates. Call this when the user asks 'what cities do you support?' or hasn't named one yet.",
       inputSchema: z.object({}),
       execute: async () => listSupportedCities(),
     }),

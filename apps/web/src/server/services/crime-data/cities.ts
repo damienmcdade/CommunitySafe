@@ -255,9 +255,10 @@ export const CITIES: CityEntry[] = [
     discover: getDiscoveredAreasPittsburgh,
   },
   {
-    // Phoenix is the 30th city. Adapter is a bootstrap stub (returns
-    // empty until the Phoenix Open Data CSV endpoint is wired in
-    // properly) — /coverage shows the city as "Warming up" until then.
+    // Phoenix — 30th live city. Adapter pulls phoenixopendata.com's
+    // CKAN datastore (newest 50k incidents in 5 parallel pages), groups
+    // by ZIP, attaches Phoenix Urban Village labels where the ZIP maps
+    // to one cleanly.
     slug: "phoenix",
     label: "Phoenix",
     bbox: { south: 33.29, west: -112.32, north: 33.72, east: -111.93 },

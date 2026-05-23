@@ -49,7 +49,7 @@ export default function MethodologyPage() {
             . The FBI publishes a new annual release each October; we update the constant on each release.
           </li>
           <li>
-            <strong className="text-slate2-900">US Census Vintage 2023 population estimates.</strong> Used
+            <strong className="text-slate2-900">US Census Vintage 2024 population estimates.</strong> Used
             as the denominator for the per-100,000 rate calculation. Source:{" "}
             <a
               href="https://www.census.gov/programs-surveys/popest.html"
@@ -76,7 +76,7 @@ export default function MethodologyPage() {
           </li>
           <li>
             <strong className="text-slate2-900">Estimate per-area population.</strong> For citywide
-            scores, the denominator is the city&apos;s actual US Census Vintage 2023 population. For
+            scores, the denominator is the city&apos;s actual US Census Vintage 2024 population. For
             per-neighborhood scores, the denominator is approximated two ways:
             <ul className="list-disc pl-5 mt-2 space-y-1">
               <li>
@@ -99,12 +99,16 @@ export default function MethodologyPage() {
             denominator and unit the FBI uses for its city-vs-national comparisons.
           </li>
           <li>
-            <strong className="text-slate2-900">Compare to the FBI national average.</strong> We average
-            the per-category ratios (local / national), then map onto a 0&ndash;100 scale via a
-            piecewise-linear function: ratio 0 &rarr; 100, ratio 1 &rarr; 50, ratio 2+ &rarr; floors at
-            5. The result is bucketed: 80&ndash;100 &ldquo;Fewer reports than national average&rdquo;,
-            50&ndash;79 &ldquo;About the national average&rdquo;, 0&ndash;49 &ldquo;More reports than
-            national average&rdquo;.
+            <strong className="text-slate2-900">Compare to the nearest official baseline.</strong> The
+            per-neighborhood grade compares the area&apos;s rate to its OWN CITY&apos;s rate, not the
+            FBI national average. Cities concentrate reportable activity, and neighborhoods concentrate it
+            further &mdash; comparing a tightly-bounded urban neighborhood directly to a national average
+            (which is itself a blend of rural, suburban, and urban) systematically inflates the
+            &ldquo;above national&rdquo; appearance. The city baseline is the nearest official
+            comparison we can compute consistently across every supported city. The FBI national rate is
+            kept in the response as a secondary reference so users can see where each city sits relative
+            to national. For the citywide score itself, the FBI national rate IS the right comparison
+            anchor and is used as primary.
           </li>
         </ol>
       </section>
