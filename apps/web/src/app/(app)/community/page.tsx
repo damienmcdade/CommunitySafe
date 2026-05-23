@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { api, useApi } from "@/lib/api-client";
 import { useArea } from "@/lib/use-area";
 import { useDocumentTitle } from "@/lib/use-document-title";
@@ -8,12 +9,8 @@ import { useCommunityStream, relativeTime } from "@/lib/sse";
 import { DataProvenanceBanner, CommunityReportedLabel, type ProvenanceLike } from "@/components/DataProvenanceBanner";
 import { LocationSearch } from "@/components/LocationSearch";
 import { AreaInsightsPanel } from "@/components/AreaInsightsPanel";
-import { OfficialAlertsPanel } from "@/components/OfficialAlertsPanel";
 import { LiveActivityBadge } from "@/components/LiveActivityBadge";
-import { CategoryBreakdown } from "@/components/CategoryBreakdown";
 import { RecentIncidentsCards } from "@/components/RecentIncidentsCards";
-import { NewsPanel } from "@/components/NewsPanel";
-import { CrimeMixCard } from "@/components/CrimeMixCard";
 import { CommunitySignalsPanel } from "@/components/CommunitySignalsPanel";
 import { CityBanner } from "@/components/CitySelector";
 import { useCity } from "@/lib/use-city";
@@ -32,9 +29,6 @@ interface PostListItem {
   author: { id: string; displayName: string | null };
   _count: { comments: number; reactions: number };
 }
-interface PerArea { slug: string; byCategory: { PERSONS: number; PROPERTY: number; SOCIETY: number } }
-interface Citywide { perArea: PerArea[] }
-
 const KIND_LABEL: Record<PostListItem["kind"], string> = {
   HEADS_UP: "Heads-up",
   AREA_HAZARD: "Area hazard",
@@ -80,16 +74,11 @@ export default function CommunityPage() {
     area ? `/crime-data/area-stats?neighborhood=${encodeURIComponent(area.slug)}` : null,
     [area?.slug ?? ""],
   );
-  const { data: citywide } = useApi<Citywide>(`/crime-data/citywide?city=${city.slug}`, [city.slug]);
-
-  const counts = (() => {
-    if (!citywide) return { PERSONS: 0, PROPERTY: 0, SOCIETY: 0 };
-    if (area) return citywide.perArea.find((p) => p.slug === area.slug)?.byCategory ?? { PERSONS: 0, PROPERTY: 0, SOCIETY: 0 };
-    return citywide.perArea.reduce(
-      (acc, p) => ({ PERSONS: acc.PERSONS + p.byCategory.PERSONS, PROPERTY: acc.PROPERTY + p.byCategory.PROPERTY, SOCIETY: acc.SOCIETY + p.byCategory.SOCIETY }),
-      { PERSONS: 0, PROPERTY: 0, SOCIETY: 0 },
-    );
-  })();
+  // citywide aggregate + CategoryBreakdown + CrimeMixCard previously
+  // duplicated the same data already shown on /threats (Awareness in
+  // the Browse workflow). Per the Option-2 IA, those cards now live in
+  // exactly one tab; /community focuses on the social/posts side and
+  // cross-links to /threats for the awareness widgets.
 
   const [livePulse, setLivePulse] = useState(0);
   useCommunityStream((e) => {
@@ -167,30 +156,21 @@ export default function CommunityPage() {
 
           {/* Insights panel only renders when an area is picked — the
               insights service queries per-area, doesn't have a real
-              citywide aggregate yet. */}
+              citywide aggregate yet. Kept on /community because it
+              contextualizes the neighbor-report feed (e.g. "this week's
+              uptick mirrors what neighbors are flagging"). */}
           {area && <AreaInsightsPanel areaQueryString={`neighborhood=${encodeURIComponent(area.slug)}`} />}
-          <CategoryBreakdown
-            counts={counts}
-            title={area ? `${area.label} — incident mix` : `${city.label} incident mix`}
-            subtitle={`${city.label} police data, recent cached window.`}
-          />
-          {/* Per-area cards only render when an area is picked. The
-              adapters can't fulfill a city-slug "area" query (it's not a
-              real neighborhood), so previously these collapsed to empty
-              states that read as "data missing" — the citywide context
-              above (CategoryBreakdown using the citywide aggregate) is
-              enough until the user drills in. */}
+
+          {/* Recent published police incidents, side-by-side with the
+              neighbor-reported feed above — lets users compare what
+              police published vs what neighbors are flagging. Only
+              rendered with a picked area (the city-aggregate version of
+              this lives on /threats). */}
           {area && (
-            <>
-              <CrimeMixCard
-                areaSlug={area.slug}
-                title={`${area.label} — specific offenses, last 30 days`}
-              />
-              <RecentIncidentsCards
-                area={area.slug}
-                title={`Recently reported in ${area.label}`}
-              />
-            </>
+            <RecentIncidentsCards
+              area={area.slug}
+              title={`Recently reported in ${area.label}`}
+            />
           )}
 
           <section className="surface p-6 border-amber2-500/30">
@@ -206,10 +186,20 @@ export default function CommunityPage() {
           <DataProvenanceBanner provenance={stats?.provenance ?? null} />
         </div>
         <aside className="space-y-4">
-          {/* NewsPanel handles citywide internally — see threats/page.tsx
-              for the matching cleanup. */}
-          <NewsPanel areaSlug={area?.slug} />
-          <OfficialAlertsPanel />
+          {/* Cross-link to Browse → Awareness for the citywide news +
+              crime-mix + official alerts widgets. Per the Option-2 IA,
+              those cards live on /threats only — we don't double-render
+              them here. */}
+          <section className="surface p-4 text-sm text-slate2-700 leading-snug">
+            <h2 className="font-display text-base text-slate2-900">Looking for news + official alerts?</h2>
+            <p className="mt-2">
+              The {city.label} citywide news feed, FBI category breakdown, and
+              official-alert digest live on the Awareness tab in the Browse workflow.
+            </p>
+            <Link href="/threats" className="mt-3 inline-block text-bay-700 hover:underline font-medium">
+              Go to Awareness →
+            </Link>
+          </section>
         </aside>
       </div>
     </main>
