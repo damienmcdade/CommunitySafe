@@ -64,14 +64,16 @@ export default function SafeRoutePage() {
   useDocumentTitle(`Safe Route · ${city.label}`);
   // Scope autofill to the active city. Routing only works within a single
   // city because the exposure scoring uses that city's police adapter.
+  // Response is wrapped — `{ areas, stale? }`.
+  interface GeoAreasResp { areas: Area[]; stale?: boolean }
   const areasPath = `/geo/areas?city=${city.slug}`;
-  const { data: areas, loading: areasLoading, error: areasErr } = useApi<Area[]>(areasPath, [areasPath]);
+  const { data: areasResp, loading: areasLoading, error: areasErr } = useApi<GeoAreasResp>(areasPath, [areasPath]);
   const cityAreas = useMemo(() => {
-    if (!areas) return [];
+    const areas = areasResp?.areas ?? [];
     return areas
       .filter((a) => a.jurisdiction.toLowerCase() === city.label.toLowerCase())
       .sort((a, b) => a.label.localeCompare(b.label));
-  }, [areas, city.label]);
+  }, [areasResp, city.label]);
 
   // Two committed picks + their query strings drive the search UI.
   // We do NOT keep raw free-text — the user must select a neighborhood
@@ -158,7 +160,7 @@ export default function SafeRoutePage() {
       </aside>
 
       <section className="surface p-5 space-y-3">
-        {areasLoading && !areas ? (
+        {areasLoading && !areasResp ? (
           <p className="text-sm text-slate2-500 animate-pulse">Loading {city.label} neighborhoods…</p>
         ) : areasErr || cityAreas.length === 0 ? (
           <p className="text-sm text-dusk-700">

@@ -11,6 +11,13 @@ import { findArea } from "../neighborhoods";
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; year: number; rows: Incident[] } | null = null;
 
+// Last-known-good discovered-areas cache. Independent from `cache` (rows)
+// so a transient upstream failure that empties the row cache doesn't also
+// blank the neighborhood list — the UI keeps showing the previously
+// discovered neighborhoods and surfaces a "stale" flag so the page can
+// say "live feed warming up" instead of "0 neighborhoods".
+let lastDiscovered: { fetchedAt: number; areas: KnownArea[] } | null = null;
+
 function mapCrimeAgainst(value: string | undefined): CrimeCategory {
   const v = (value ?? "").trim().toUpperCase();
   if (v === "PE" || v === "PERSON" || v === "PERSONS") return CrimeCategory.PERSONS;
@@ -88,7 +95,44 @@ export async function getRows(): Promise<Incident[]> {
 /// name in the data becomes a KnownArea with a centroid computed from the
 /// average of its incidents' lat/lng. This replaces the hardcoded list of 7
 /// neighborhoods with the full ~100 SDPD recognizes.
+///
+/// SOFT-FAIL: when the upstream CSV is unreachable (network error, 5xx,
+/// rate-limited) or returns an empty body, the freshly-computed list is
+/// empty. Instead of propagating that empty result — which earlier caused
+/// the "0 supported neighborhoods" UI bug — we return the LAST-KNOWN-GOOD
+/// list cached in `lastDiscovered` and let the API layer surface a
+/// "stale" marker so the page can say "live feed warming up" rather than
+/// silently rendering an empty wheel.
 export async function getDiscoveredAreas(): Promise<KnownArea[]> {
+  const fresh = await computeDiscovered();
+  if (fresh.length > 0) {
+    lastDiscovered = { fetchedAt: Date.now(), areas: fresh };
+    return fresh;
+  }
+  // Fresh pull came back empty — fall back to the last-known-good list
+  // if we have one. The UI sees a non-zero list and renders normally;
+  // staleness is exposed separately via `getDiscoveredAreasStale()`.
+  if (lastDiscovered && lastDiscovered.areas.length > 0) {
+    return lastDiscovered.areas;
+  }
+  return [];
+}
+
+/// True when the most recent getDiscoveredAreas() call served stale
+/// data because the fresh pull came back empty. The /api/geo/areas route
+/// includes this flag in its response so the client can render a
+/// "live feed warming up" hint instead of "0 neighborhoods".
+export function getDiscoveredAreasStale(): boolean {
+  if (!lastDiscovered) return false;
+  // Stale only matters if the cache is fresher than the row cache —
+  // otherwise we have no signal whether we'd have data if upstream
+  // were healthy. Approximation: stale when row cache is missing OR
+  // the row cache fetchedAt is older than the last-discovered fetchedAt.
+  if (!cache) return true;
+  return cache.fetchedAt < lastDiscovered.fetchedAt;
+}
+
+async function computeDiscovered(): Promise<KnownArea[]> {
   const rows = await getRows().catch(() => [] as Incident[]);
   const agg = new Map<string, { latSum: number; lngSum: number; count: number }>();
   for (const r of rows) {

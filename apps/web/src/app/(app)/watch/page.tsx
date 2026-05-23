@@ -46,21 +46,22 @@ export default function NeighborhoodWatchPage() {
   const [pendingSlug, setPendingSlug] = useState<string | null>(null);
   const [committedSlug, setCommittedSlug] = useState<string | null>(null);
 
-  // Areas come from /api/geo/areas?city=<slug> — the per-city scoped path
-  // only fans out ONE adapter discovery on cold cache (2-5s vs the 30s+
-  // all-cities call), so the wheel populates quickly. Refetches whenever
-  // the user switches city.
+  // Areas come from /api/geo/areas?city=<slug>. The wrapped shape lets
+  // the response carry a "stale" flag when the adapter served a
+  // last-known-good list because the fresh upstream pull failed —
+  // surfaced as a banner so users see "live feed warming up" instead
+  // of "0 neighborhoods" when the city's police feed is briefly down.
+  interface GeoAreasResp { areas: Area[]; stale?: boolean; staleMessage?: string }
   const areasPath = `/geo/areas?city=${city.slug}`;
-  const { data: areas, loading: areasLoading, error: areasErr } = useApi<Area[]>(areasPath, [areasPath]);
+  const { data: areasResp, loading: areasLoading, error: areasErr } = useApi<GeoAreasResp>(areasPath, [areasPath]);
   const cityAreas = useMemo(() => {
-    if (!areas) return [];
-    // Adapter discovery already scopes by city; this filter is belt-and-suspenders
-    // in case the all-cities path returns (e.g. cached response from before the
-    // city query was added) so the wheel never shows another city's areas.
+    const areas = areasResp?.areas ?? [];
     return areas
       .filter((a) => a.jurisdiction.toLowerCase() === city.label.toLowerCase())
       .sort((a, b) => a.label.localeCompare(b.label));
-  }, [areas, city.label]);
+  }, [areasResp, city.label]);
+  const isStale = areasResp?.stale === true;
+  const staleMessage = areasResp?.staleMessage;
 
   // Seed the wheel from the GLOBAL area whenever it changes (city switch,
   // pick in another tab, or first mount). If no global pick exists, fall
@@ -117,6 +118,12 @@ export default function NeighborhoodWatchPage() {
       </header>
 
       <CityBanner />
+
+      {isStale && staleMessage && (
+        <aside role="status" className="surface-muted px-4 py-3 text-xs text-amber2-700 border border-amber2-300/40 rounded-xl">
+          <strong className="text-slate2-900">Live feed warming up.</strong> {staleMessage}
+        </aside>
+      )}
 
       <section className="surface p-4 sm:p-6">
         <div className="flex items-baseline justify-between flex-wrap gap-2">

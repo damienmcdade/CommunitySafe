@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { allKnownAreas } from "@/server/services/geo/lookup";
 import { cityBySlug } from "@/server/services/crime-data/cities";
+import { getDiscoveredAreasStale as sdpdStale } from "@/server/services/crime-data/adapters/sdpd-nibrs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -14,18 +15,34 @@ const STABLE_CACHE_HEADERS = {
 
 /// /api/geo/areas — returns all neighborhoods we track across every city.
 ///
-/// Adds a `?city=<slug>` short-path that scopes the response to ONE city's
-/// adapter. The all-cities path is cold-slow (it fans 27 adapter discoveries
-/// in parallel; the slowest dominates), and the Neighborhood Watch wheel
-/// only ever needs one city's neighborhoods. Scoping turns a 30s cold call
-/// into a 2-5s cold call and unblocks the wheel.
+/// Two response shapes:
+///   - Without `?city=`: bare `KnownArea[]` (back-compat for legacy callers)
+///   - With `?city=<slug>`: `{ areas, stale?, staleMessage? }` so the
+///     client can render a "live feed warming up" hint when an adapter
+///     is serving last-known-good data instead of a fresh pull.
+///
+/// The per-city short-path also fans one adapter discovery instead of 29
+/// (the unbounded all-cities call is cold-slow because the slowest
+/// adapter dominates), so this is the preferred path for the wheel.
 export async function GET(req: NextRequest) {
   const citySlug = req.nextUrl.searchParams.get("city");
   if (citySlug) {
     const city = cityBySlug(citySlug);
-    if (!city) return NextResponse.json([], { status: 200, headers: STABLE_CACHE_HEADERS });
+    if (!city) {
+      return NextResponse.json({ areas: [] }, { status: 200, headers: STABLE_CACHE_HEADERS });
+    }
     const areas = await city.discover().catch(() => []);
-    return NextResponse.json(areas, { headers: STABLE_CACHE_HEADERS });
+    // Per-adapter staleness. Today only SDPD has a last-known-good
+    // fallback wired in (because seshat.datasd.org has intermittently
+    // rejected Vercel IPs); generalize as other adapters get the same
+    // treatment.
+    let stale = false;
+    let staleMessage: string | undefined;
+    if (citySlug === "san-diego" && sdpdStale()) {
+      stale = true;
+      staleMessage = "Live SDPD feed warming up — showing the last successfully discovered San Diego neighborhood list. Scores and incidents below may be a few minutes behind.";
+    }
+    return NextResponse.json({ areas, stale, staleMessage }, { headers: STABLE_CACHE_HEADERS });
   }
   return NextResponse.json(await allKnownAreas(), { headers: STABLE_CACHE_HEADERS });
 }
