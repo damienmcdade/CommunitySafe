@@ -1,7 +1,9 @@
 "use client";
+import { useEffect, useState } from "react";
 import { useApi } from "@/lib/api-client";
 import { useCity } from "@/lib/use-city";
 import { relativeTime } from "@/lib/sse";
+import { explainOffense } from "@/lib/offense-explainer";
 
 interface Slice { offense: string; category: "PERSONS" | "PROPERTY" | "SOCIETY"; count: number; lastOccurredAt: string }
 interface Mix { area: string; windowDays: number; asOf: string | null; totalIncidents: number; topOffenses: Slice[] }
@@ -81,11 +83,12 @@ export function CrimeMixCard({ areaSlug, jurisdictionSlug, title }: { areaSlug?:
             return (
               <li key={s.offense} className="group" title={`Last reported ${relativeTime(s.lastOccurredAt)}`}>
                 <div className="flex items-baseline justify-between gap-3 text-sm">
-                  <span className="flex items-center gap-2 text-slate2-900">
-                    <span className={`inline-block w-1.5 h-1.5 rounded-full ${tone.chip.split(" ")[0]}`} />
-                    {s.offense}
+                  <span className="flex items-center gap-1.5 text-slate2-900 min-w-0">
+                    <span className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${tone.chip.split(" ")[0]}`} />
+                    <span className="truncate">{s.offense}</span>
+                    <OffenseInfoButton offenseName={s.offense} />
                   </span>
-                  <span className="tabular-nums text-slate2-700">{s.count.toLocaleString()}</span>
+                  <span className="tabular-nums text-slate2-700 shrink-0">{s.count.toLocaleString()}</span>
                 </div>
                 <div className="mt-1 h-2.5 rounded-full bg-sand-100 overflow-hidden">
                   <div className="h-full transition-all duration-700 ease-spring group-hover:saturate-150" style={{ width: `${pct}%`, background: tone.bar }} />
@@ -97,5 +100,63 @@ export function CrimeMixCard({ areaSlug, jurisdictionSlug, title }: { areaSlug?:
         </ul>
       )}
     </section>
+  );
+}
+
+/// Small "i" button next to each offense name. Click to toggle a
+/// plain-English explanation pulled from explainOffense. Closes on
+/// outside-click + Escape; uses native focus styling so keyboard
+/// users get the same affordance.
+function OffenseInfoButton({ offenseName }: { offenseName: string }) {
+  const [open, setOpen] = useState(false);
+  const info = explainOffense(offenseName);
+
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  return (
+    <span className="relative inline-flex shrink-0">
+      <button
+        type="button"
+        aria-label={`About ${offenseName}`}
+        aria-expanded={open}
+        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+        className="w-4 h-4 inline-flex items-center justify-center rounded-full ring-1 ring-slate2-300 text-[10px] font-semibold text-slate2-500 hover:bg-bay-50 hover:text-bay-700 hover:ring-bay-300 transition-colors"
+      >
+        i
+      </button>
+      {open && (
+        <>
+          {/* Backdrop swallows outside clicks. Transparent and
+              z-index just behind the popover so the popover stays
+              fully interactive while everything else collapses on
+              click. */}
+          <button
+            type="button"
+            aria-hidden
+            tabIndex={-1}
+            onClick={() => setOpen(false)}
+            className="fixed inset-0 z-30 cursor-default bg-transparent"
+          />
+          <div
+            role="dialog"
+            aria-label={`${offenseName} explanation`}
+            className="absolute z-40 left-1/2 -translate-x-1/2 top-5 w-72 max-w-[calc(100vw-2rem)] surface p-3 text-xs leading-snug shadow-lg ring-1 ring-sand-300"
+          >
+            <p className="font-medium text-slate2-900">{info.label}</p>
+            <p className="mt-1 text-slate2-700">{info.description}</p>
+            <p className="mt-2 text-[10px] text-slate2-500">
+              Reported as &ldquo;{offenseName}&rdquo; by the city&apos;s police feed.
+            </p>
+          </div>
+        </>
+      )}
+    </span>
   );
 }
