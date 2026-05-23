@@ -28,6 +28,8 @@ interface ScoreResp {
   rows: ScoreRow[];
   source: { label: string; url: string; publishedYear: number };
   disclaimer: string;
+  dataConfidence?: "high" | "medium" | "low";
+  dataConfidenceNote?: string;
 }
 
 // Five-step grade tone with a gentle green → sand → terracotta gradient.
@@ -210,6 +212,25 @@ function ScoreReport({ score, accent, categoryFilter }: { score: ScoreResp; acce
           {score.windowDays > 0 && <span>·  window: ~{score.windowDays} days</span>}
           {score.asOf && <span>·  newest report: {new Date(score.asOf).toLocaleDateString()}</span>}
         </div>
+        {/* Data-confidence caveat — shown when the underlying data is
+            short of what's needed for a stable grade. Prevents users
+            from reading a transient upstream slowdown as a definitive
+            judgment. Tone bands match the existing semantic palette. */}
+        {score.dataConfidence && score.dataConfidence !== "high" && score.dataConfidenceNote && (
+          <p
+            role="status"
+            className={`mt-3 text-xs px-3 py-2 rounded-lg border leading-snug ${
+              score.dataConfidence === "low"
+                ? "bg-amber2-50 border-amber2-300/60 text-amber2-700"
+                : "bg-sand-50 border-sand-300 text-slate2-700"
+            }`}
+          >
+            <strong className="text-slate2-900">
+              {score.dataConfidence === "low" ? "Limited data — grade is provisional." : "Smaller-than-usual data window."}
+            </strong>{" "}
+            {score.dataConfidenceNote}
+          </p>
+        )}
       </section>
 
       <ul className={`grid grid-cols-1 ${filteredRows.length > 1 ? "md:grid-cols-2" : ""} gap-3`}>

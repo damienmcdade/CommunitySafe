@@ -115,6 +115,21 @@ export default async function NeighborhoodLandingPage({ params }: Props) {
             {score.asOf && <>newest report {new Date(score.asOf).toLocaleDateString()} · </>}
             <a href={score.source.url} target="_blank" rel="noreferrer" className="text-bay-700 hover:underline">{score.source.label}</a>
           </p>
+          {score.dataConfidence && score.dataConfidence !== "high" && score.dataConfidenceNote && (
+            <p
+              role="status"
+              className={`mt-3 text-xs px-3 py-2 rounded-lg border leading-snug ${
+                score.dataConfidence === "low"
+                  ? "bg-amber2-50 border-amber2-300/60 text-amber2-700"
+                  : "bg-sand-50 border-sand-300 text-slate2-700"
+              }`}
+            >
+              <strong className="text-slate2-900">
+                {score.dataConfidence === "low" ? "Limited data — grade is provisional." : "Smaller-than-usual data window."}
+              </strong>{" "}
+              {score.dataConfidenceNote}
+            </p>
+          )}
         </section>
       )}
 

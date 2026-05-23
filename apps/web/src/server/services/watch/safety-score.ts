@@ -91,6 +91,71 @@ export interface SafetyScoreResponse {
   rows: SafetyScoreRow[];
   source: typeof FBI_NATIONAL_SOURCE;
   disclaimer: string;
+  /// How much confidence the data supports. "high" = window + volume
+  /// match expected baselines for this city; "medium" = data is short
+  /// of expected (grade may shift when the feed refreshes); "low" =
+  /// notably under-served (grade should be read as provisional). Driven
+  /// by comparing the annualized observed rate against the FBI national
+  /// rate baseline — when the upstream feed is partial we annualize a
+  /// small sample, producing rates that can flip the grade misleadingly.
+  dataConfidence: "high" | "medium" | "low";
+  /// Optional human-readable explanation when dataConfidence < "high".
+  /// UI surfaces this verbatim as a caveat banner near the grade card.
+  dataConfidenceNote?: string;
+}
+
+/// Compute a confidence signal for the score. A small/short data window
+/// produces a per-capita rate that can swing wildly even when the city's
+/// actual crime profile is steady (annualizing a 14-day sample from a
+/// slow upstream day flips grades). We expose three buckets:
+///   - "low"    : window too short OR rate implausibly low for the city size
+///   - "medium" : window short of the ideal 90+ days OR rate notably low
+///   - "high"   : enough data + plausible rate
+/// `note` is a UI-ready sentence the score card can render verbatim when
+/// confidence < "high". Returning a structured note (rather than building
+/// it client-side) keeps the API the single source of truth.
+function computeDataConfidence(
+  windowDays: number,
+  totalIncidents: number,
+  pop: number,
+): { dataConfidence: SafetyScoreResponse["dataConfidence"]; dataConfidenceNote?: string } {
+  if (windowDays === 0 || totalIncidents === 0) {
+    return {
+      dataConfidence: "low",
+      dataConfidenceNote:
+        "No incidents are in the cached window — the upstream feed may be temporarily unavailable. Grade is shown for shape only.",
+    };
+  }
+  if (windowDays < 30) {
+    return {
+      dataConfidence: "low",
+      dataConfidenceNote:
+        `Score reflects only ~${windowDays} days of data, which is short of the 90+ days needed for a stable comparison. The grade may shift when the feed refreshes.`,
+    };
+  }
+  // Annualized observed rate vs combined FBI national (persons + property).
+  const nationalCombined = FBI_NATIONAL_PER_100K_2024.PERSONS + FBI_NATIONAL_PER_100K_2024.PROPERTY;
+  const observedAnnual = pop > 0
+    ? (totalIncidents * (365 / windowDays) / pop) * 100_000
+    : 0;
+  const ratio = nationalCombined > 0 ? observedAnnual / nationalCombined : 1;
+  // Major cities (>500k) almost never run < 25% of the FBI national rate;
+  // that ratio is the signature of a partial upstream pull.
+  if (pop > 500_000 && ratio < 0.25) {
+    return {
+      dataConfidence: "low",
+      dataConfidenceNote:
+        "The reported per-capita rate is much lower than expected for a city this size, suggesting the upstream feed is currently serving partial data. Grade may shift when the feed refreshes.",
+    };
+  }
+  if (windowDays < 90 || (pop > 200_000 && ratio < 0.5)) {
+    return {
+      dataConfidence: "medium",
+      dataConfidenceNote:
+        `Based on a ~${windowDays}-day data window — read the grade as provisional. When the upstream feed refreshes, the longer window will tighten the comparison.`,
+    };
+  }
+  return { dataConfidence: "high" };
 }
 
 function gradeFromDeltas(rows: SafetyScoreRow[]): SafetyScoreResponse["grade"] {
@@ -190,6 +255,7 @@ export async function getCitywideSafetyScore(citySlug: string): Promise<SafetySc
   const grade = gradeFromDeltas(rows);
   const cityLabel = `${city.label} (citywide)`;
   const headline = headlineFor(grade, cityLabel, city.label);
+  const confidence = computeDataConfidence(windowDays, persons + property, pop);
 
   return {
     city: { slug: city.slug, label: city.label },
@@ -209,6 +275,7 @@ export async function getCitywideSafetyScore(citySlug: string): Promise<SafetySc
       "annual release — the same denominator the FBI uses to publish " +
       "official city-vs-national comparisons. Society / public-order " +
       "offenses are excluded because the FBI does not publish a national rate.",
+    ...confidence,
   };
 }
 
@@ -374,6 +441,11 @@ export async function getSafetyScore(areaSlug: string, areaLabel: string): Promi
   const headline = headlineFor(grade, areaLabel, city.label);
 
   const usedPolygonWeight = ourAreaKm2 != null && cityTotalKm2 > 0 && cityPop > 0;
+  // Confidence uses the per-area POP denominator (popDenominator). When
+  // we couldn't estimate it (no polygon, no peer-share basis), volume-vs-
+  // population doesn't carry a stable signal so we fall back to a window-
+  // only heuristic via computeDataConfidence's first branches.
+  const confidence = computeDataConfidence(windowDays, persons + property, popDenominator);
   return {
     city: { slug: city.slug, label: city.label },
     area: { slug: areaSlug, label: areaLabel },
@@ -397,5 +469,6 @@ export async function getSafetyScore(areaSlug: string, areaLabel: string): Promi
         `reporting twice the share scales to 2× that rate. The score then compares the result to ` +
         `the FBI Uniform Crime Reporting program's ${FBI_NATIONAL_SOURCE.publishedYear} national average. ` +
         "Society / public-order offenses are excluded because the FBI doesn't publish a national rate for them.",
+    ...confidence,
   };
 }
