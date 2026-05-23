@@ -4,6 +4,7 @@ import Link from "next/link";
 import { TabNav } from "@/components/TabNav";
 import { CitySelector } from "@/components/CitySelector";
 import { AIAssistant } from "@/components/AIAssistant";
+import { SavedAreasRail } from "@/components/SavedAreasRail";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
@@ -23,7 +24,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </div>
       </header>
       <TabNav />
-      <div key={typeof window === "undefined" ? "ssr" : window.location.pathname} className="max-w-5xl mx-auto px-4 py-8 animate-fade-in">
+      <div key={typeof window === "undefined" ? "ssr" : window.location.pathname} className="max-w-5xl mx-auto px-4 py-8 animate-fade-in space-y-4">
+        <SavedAreasRail />
         {children}
       </div>
       <AIAssistant />

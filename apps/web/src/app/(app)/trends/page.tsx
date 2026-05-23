@@ -1,11 +1,13 @@
 "use client";
+import { useState } from "react";
 import { useApi } from "@/lib/api-client";
 import { useCity } from "@/lib/use-city";
-import { useArea } from "@/lib/use-area";
+import { useArea, type AreaSelection } from "@/lib/use-area";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { CityBanner } from "@/components/CitySelector";
 import { SafeZoneSubNav } from "@/components/SafeZoneSubNav";
 import { SafeZoneAreaPicker } from "@/components/SafeZoneAreaPicker";
+import { SaveAreaStar } from "@/components/SavedAreasRail";
 
 interface TrendBullet {
   kind: "trend" | "dispatch";
@@ -46,13 +48,27 @@ export default function TrendFeedPage() {
   const { area, setArea } = useArea(city.slug);
   useDocumentTitle(`Trend Feed · ${area?.label ?? city.label}`);
 
-  const path = area
-    ? `/safezone/trend?area=${encodeURIComponent(area.slug)}&label=${encodeURIComponent(area.label)}`
-    : `/safezone/trend?city=${encodeURIComponent(city.slug)}`;
-  const { data: trend, loading, error } = useApi<TrendResp>(path, [path]);
+  // Compare area is local-only — same pattern as the Safety Score page.
+  // Comparison is transient and shouldn't write to the global useArea
+  // store, which would flip selections on other tabs unexpectedly.
+  const [compareArea, setCompareArea] = useState<AreaSelection | null>(null);
+  const [showComparePicker, setShowComparePicker] = useState(false);
 
-  const trendBullets = trend?.bullets.filter((b) => b.kind === "trend") ?? [];
-  const dispatchBullets = trend?.bullets.filter((b) => b.kind === "dispatch") ?? [];
+  // Window size — default 30 days, presets at 7/14/30/90. Applies to both
+  // the primary and the compare panel so the comparison is apples-to-apples.
+  const [windowDays, setWindowDays] = useState<number>(30);
+
+  const windowSuffix = `&days=${windowDays}`;
+  const path = area
+    ? `/safezone/trend?area=${encodeURIComponent(area.slug)}&label=${encodeURIComponent(area.label)}${windowSuffix}`
+    : `/safezone/trend?city=${encodeURIComponent(city.slug)}${windowSuffix}`;
+  const comparePath = compareArea
+    ? `/safezone/trend?area=${encodeURIComponent(compareArea.slug)}&label=${encodeURIComponent(compareArea.label)}${windowSuffix}`
+    : null;
+  const { data: trend, loading, error } = useApi<TrendResp>(path, [path]);
+  const { data: compareTrend, loading: compareLoading } = useApi<TrendResp>(comparePath, [comparePath]);
+
+  const compareMode = compareArea !== null;
 
   return (
     <main className="space-y-6">
@@ -73,12 +89,15 @@ export default function TrendFeedPage() {
           <p className="text-sm text-slate2-700">
             Showing {area.label} · drill-down view.
           </p>
-          <button
-            onClick={() => setArea(null)}
-            className="text-xs text-bay-700 hover:underline"
-          >
-            ← Back to {city.label} citywide
-          </button>
+          <div className="flex items-center gap-2">
+            <SaveAreaStar area={area} />
+            <button
+              onClick={() => setArea(null)}
+              className="text-xs text-bay-700 hover:underline"
+            >
+              ← Back to {city.label} citywide
+            </button>
+          </div>
         </div>
       )}
 
@@ -87,10 +106,12 @@ export default function TrendFeedPage() {
         onCommit={setArea}
         selectedSlug={area?.slug ?? null}
         title={`Drill into a ${city.label} neighborhood (optional)`}
-        subtitle={`Citywide is the default. Pick a neighborhood to see just that area's 30-day timeline.`}
+        subtitle={`Citywide is the default. Pick a neighborhood to see just that area's timeline.`}
         commitLabel="Show this neighborhood"
         autoCommit={false}
       />
+
+      <WindowSelector value={windowDays} onChange={setWindowDays} />
 
       {loading && !trend && <TrendSkeleton />}
       {error && !loading && (
@@ -101,65 +122,30 @@ export default function TrendFeedPage() {
 
       {trend && !loading && (
         <>
-          {trendBullets.length > 0 && (
-            <section className="surface p-5 bg-gradient-to-br from-white to-bay-50">
-              <header className="flex items-baseline justify-between flex-wrap gap-2">
-                <h2 className="font-display text-lg text-slate2-900">Week-over-week shift</h2>
-                <span className="text-xs text-slate2-500">{trend.area.label}</span>
-              </header>
-              <ul className="mt-3 space-y-2">
-                {trendBullets.map((b, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-slate2-700">
-                    <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${b.category ? CAT_DOT[b.category] : "bg-slate2-400"}`} />
-                    <span>{b.text}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {trend.timeOfDay && (
-            <TimeOfDayChart data={trend.timeOfDay} areaLabel={trend.area.label} />
-          )}
-
-          <section className="surface p-5">
-            <header className="flex items-baseline justify-between flex-wrap gap-2">
-              <h2 className="font-display text-lg text-slate2-900">Recent dispatches in {trend.area.label}</h2>
-              <div className="flex items-center gap-3 text-xs text-slate2-500">
-                <span>{trend.totalIncidents.toLocaleString()} in last 30 days</span>
-                {dispatchBullets.length > 0 && (
-                  <button
-                    onClick={() => downloadDispatchCsv(trend, dispatchBullets)}
-                    className="text-bay-700 hover:underline"
-                    aria-label="Download dispatches as CSV"
-                  >
-                    Download CSV
-                  </button>
-                )}
-              </div>
-            </header>
-
-            {dispatchBullets.length === 0 ? (
-              <p className="mt-3 text-sm text-slate2-500">
-                No dispatches in the past 30 days for this neighborhood — that&apos;s normal for many areas in any given month.
-              </p>
-            ) : (
-              <ol className="mt-3 space-y-1.5">
-                {dispatchBullets.map((b, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-slate2-700">
-                    <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${b.category ? CAT_DOT[b.category] : "bg-slate2-400"}`} />
-                    <span>{b.text}</span>
-                  </li>
-                ))}
-              </ol>
+          <div className={compareMode ? "grid grid-cols-1 lg:grid-cols-2 gap-4 items-start" : "space-y-4"}>
+            <TrendReport trend={trend} />
+            {compareMode && (
+              compareTrend
+                ? <TrendReport trend={compareTrend} accent="compare" />
+                : compareLoading
+                  ? <TrendSkeleton />
+                  : (
+                    <p className="surface p-4 text-sm text-dusk-700">
+                      Couldn&apos;t load the comparison feed for {compareArea?.label}.
+                    </p>
+                  )
             )}
-            <p className="mt-4 text-xs text-slate2-500">
-              Source:{" "}
-              <a href={trend.source.url} target="_blank" rel="noreferrer" className="text-bay-700 hover:underline">
-                {trend.source.label}
-              </a>
-            </p>
-          </section>
+          </div>
+
+          <TrendCompareControls
+            cityLabel={city.label}
+            compareArea={compareArea}
+            primarySlug={area?.slug ?? null}
+            showPicker={showComparePicker}
+            onTogglePicker={() => setShowComparePicker((v) => !v)}
+            onPickCompare={(a) => { setCompareArea(a); setShowComparePicker(false); }}
+            onClearCompare={() => setCompareArea(null)}
+          />
 
           <p className="surface-muted p-3 text-xs text-slate2-700 leading-snug">
             {trend.disclaimer}
@@ -167,6 +153,160 @@ export default function TrendFeedPage() {
         </>
       )}
     </main>
+  );
+}
+
+/// Stateless TrendReport — renders the WoW shift bullets, time-of-day
+/// chart, and recent dispatches list for a single TrendResponse.
+/// Reused for both the primary view and the compare panel.
+function TrendReport({ trend, accent }: { trend: TrendResp; accent?: "compare" }) {
+  const trendBullets = trend.bullets.filter((b) => b.kind === "trend");
+  const dispatchBullets = trend.bullets.filter((b) => b.kind === "dispatch");
+  return (
+    <section className="space-y-3">
+      {accent === "compare" && (
+        <span className="inline-block text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full bg-bay-100 text-bay-700">
+          Comparison
+        </span>
+      )}
+      {trendBullets.length > 0 && (
+        <section className="surface p-5 bg-gradient-to-br from-white to-bay-50">
+          <header className="flex items-baseline justify-between flex-wrap gap-2">
+            <h2 className="font-display text-lg text-slate2-900">Week-over-week shift</h2>
+            <span className="text-xs text-slate2-500">{trend.area.label}</span>
+          </header>
+          <ul className="mt-3 space-y-2">
+            {trendBullets.map((b, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-slate2-700">
+                <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${b.category ? CAT_DOT[b.category] : "bg-slate2-400"}`} />
+                <span>{b.text}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {trend.timeOfDay && (
+        <TimeOfDayChart data={trend.timeOfDay} areaLabel={trend.area.label} />
+      )}
+
+      <section className="surface p-5">
+        <header className="flex items-baseline justify-between flex-wrap gap-2">
+          <h2 className="font-display text-lg text-slate2-900">Recent dispatches in {trend.area.label}</h2>
+          <div className="flex items-center gap-3 text-xs text-slate2-500">
+            <span>{trend.totalIncidents.toLocaleString()} in last 30 days</span>
+            {dispatchBullets.length > 0 && (
+              <button
+                onClick={() => downloadDispatchCsv(trend, dispatchBullets)}
+                className="text-bay-700 hover:underline"
+                aria-label="Download dispatches as CSV"
+              >
+                Download CSV
+              </button>
+            )}
+          </div>
+        </header>
+
+        {dispatchBullets.length === 0 ? (
+          <p className="mt-3 text-sm text-slate2-500">
+            No dispatches in the past 30 days for this neighborhood — that&apos;s normal for many areas in any given month.
+          </p>
+        ) : (
+          <ol className="mt-3 space-y-1.5">
+            {dispatchBullets.map((b, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-slate2-700">
+                <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${b.category ? CAT_DOT[b.category] : "bg-slate2-400"}`} />
+                <span>{b.text}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+        <p className="mt-4 text-xs text-slate2-500">
+          Source:{" "}
+          <a href={trend.source.url} target="_blank" rel="noreferrer" className="text-bay-700 hover:underline">
+            {trend.source.label}
+          </a>
+        </p>
+      </section>
+    </section>
+  );
+}
+
+function WindowSelector({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  const presets: Array<{ label: string; days: number }> = [
+    { label: "7 days",  days: 7  },
+    { label: "14 days", days: 14 },
+    { label: "30 days", days: 30 },
+    { label: "90 days", days: 90 },
+  ];
+  return (
+    <div className="surface-muted px-4 py-2.5 flex items-center justify-between flex-wrap gap-2 text-xs">
+      <span className="text-slate2-700 font-medium">Window:</span>
+      <div className="flex gap-1">
+        {presets.map((p) => (
+          <button
+            key={p.days}
+            onClick={() => onChange(p.days)}
+            className={`px-2.5 py-1 rounded-md transition-colors ${
+              value === p.days
+                ? "bg-bay-500 text-white"
+                : "text-slate2-700 hover:bg-bay-100"
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TrendCompareControls({
+  cityLabel, compareArea, primarySlug, showPicker,
+  onTogglePicker, onPickCompare, onClearCompare,
+}: {
+  cityLabel: string;
+  compareArea: AreaSelection | null;
+  primarySlug: string | null;
+  showPicker: boolean;
+  onTogglePicker: () => void;
+  onPickCompare: (a: AreaSelection | null) => void;
+  onClearCompare: () => void;
+}) {
+  if (compareArea) {
+    return (
+      <div className="flex items-center justify-between flex-wrap gap-2 surface-muted px-4 py-3">
+        <p className="text-sm text-slate2-700">
+          Comparing against <strong className="text-slate2-900">{compareArea.label}</strong>.
+        </p>
+        <button onClick={onClearCompare} className="text-xs text-bay-700 hover:underline">
+          ← End comparison
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-3">
+      <button
+        onClick={onTogglePicker}
+        className="text-sm text-bay-700 hover:underline font-medium"
+      >
+        {showPicker ? "− Hide compare picker" : "+ Compare with another neighborhood"}
+      </button>
+      {showPicker && (
+        <SafeZoneAreaPicker
+          storageKey="trend-feed.compare"
+          onCommit={onPickCompare}
+          selectedSlug={null}
+          title={`Pick another ${cityLabel} neighborhood to compare`}
+          subtitle={primarySlug
+            ? `The first neighborhood stays in the left column; this pick lands on the right.`
+            : `Currently showing ${cityLabel} citywide on the left; this pick lands on the right.`}
+          commitLabel="Compare this neighborhood"
+          autoCommit={false}
+        />
+      )}
+    </div>
   );
 }
 

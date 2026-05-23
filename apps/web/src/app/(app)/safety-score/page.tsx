@@ -7,6 +7,7 @@ import { useDocumentTitle } from "@/lib/use-document-title";
 import { CityBanner } from "@/components/CitySelector";
 import { SafeZoneSubNav } from "@/components/SafeZoneSubNav";
 import { SafeZoneAreaPicker } from "@/components/SafeZoneAreaPicker";
+import { SaveAreaStar } from "@/components/SavedAreasRail";
 
 interface ScoreRow {
   category: "PERSONS" | "PROPERTY";
@@ -52,6 +53,12 @@ export default function SafetyScorePage() {
   const { area, setArea } = useArea(city.slug);
   useDocumentTitle(`Safety Score · ${area?.label ?? city.label}`);
 
+  // Category filter — client-side only. Hides the row for the deselected
+  // category. The hero grade reflects the overall (both categories) so
+  // there's a small caption explaining that the chip narrows the
+  // visible comparison without changing the score itself.
+  const [categoryFilter, setCategoryFilter] = useState<"ALL" | "PERSONS" | "PROPERTY">("ALL");
+
   // Compare area is local-only — comparison is a transient action, not a
   // persistent preference, so it doesn't write to the global useArea
   // store (would cause other tabs to flip selections unexpectedly).
@@ -88,12 +95,15 @@ export default function SafetyScorePage() {
           <p className="text-sm text-slate2-700">
             Showing {area.label} · drill-down view.
           </p>
-          <button
-            onClick={() => { setArea(null); setCompareArea(null); setShowComparePicker(false); }}
-            className="text-xs text-bay-700 hover:underline"
-          >
-            ← Back to {city.label} citywide
-          </button>
+          <div className="flex items-center gap-2">
+            <SaveAreaStar area={area} />
+            <button
+              onClick={() => { setArea(null); setCompareArea(null); setShowComparePicker(false); }}
+              className="text-xs text-bay-700 hover:underline"
+            >
+              ← Back to {city.label} citywide
+            </button>
+          </div>
         </div>
       )}
 
@@ -119,11 +129,13 @@ export default function SafetyScorePage() {
           {/* Side-by-side when comparing, single column otherwise. items-start
               keeps the two columns from stretching to match each other's
               empty space when one finishes loading first. */}
+          <CategoryFilterChips value={categoryFilter} onChange={setCategoryFilter} />
+
           <div className={compareMode ? "grid grid-cols-1 lg:grid-cols-2 gap-4 items-start" : ""}>
-            <ScoreReport score={score} />
+            <ScoreReport score={score} categoryFilter={categoryFilter} />
             {compareMode && (
               compareScore
-                ? <ScoreReport score={compareScore} accent="compare" />
+                ? <ScoreReport score={compareScore} accent="compare" categoryFilter={categoryFilter} />
                 : compareLoading
                   ? <ScoreSkeleton />
                   : (
@@ -163,8 +175,11 @@ export default function SafetyScorePage() {
 /// comparison rows. The `accent` prop lets the compare-mode variant use a
 /// slightly different visual marker so users can tell at a glance which
 /// panel is the primary view and which is the compare overlay.
-function ScoreReport({ score, accent }: { score: ScoreResp; accent?: "compare" }) {
+function ScoreReport({ score, accent, categoryFilter }: { score: ScoreResp; accent?: "compare"; categoryFilter?: "ALL" | "PERSONS" | "PROPERTY" }) {
   const tone = GRADE_TONE[score.grade];
+  const filteredRows = categoryFilter && categoryFilter !== "ALL"
+    ? score.rows.filter((r) => r.category === categoryFilter)
+    : score.rows;
   return (
     <section className="space-y-3">
       {accent === "compare" && (
@@ -190,8 +205,8 @@ function ScoreReport({ score, accent }: { score: ScoreResp; accent?: "compare" }
         </div>
       </section>
 
-      <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {score.rows.map((r) => {
+      <ul className={`grid grid-cols-1 ${filteredRows.length > 1 ? "md:grid-cols-2" : ""} gap-3`}>
+        {filteredRows.map((r) => {
           const above = r.deltaPct > 5;
           const below = r.deltaPct < -5;
           const max = Math.max(r.localPer100k, r.nationalPer100k) * 1.15 || 1;
@@ -272,6 +287,42 @@ function CompareControls({
           autoCommit={false}
         />
       )}
+    </div>
+  );
+}
+
+function CategoryFilterChips({
+  value, onChange,
+}: { value: "ALL" | "PERSONS" | "PROPERTY"; onChange: (v: "ALL" | "PERSONS" | "PROPERTY") => void }) {
+  const chips: Array<{ id: "ALL" | "PERSONS" | "PROPERTY"; label: string; sublabel: string }> = [
+    { id: "ALL",      label: "Both categories", sublabel: "Violent + property" },
+    { id: "PERSONS",  label: "Violent only",    sublabel: "NIBRS persons" },
+    { id: "PROPERTY", label: "Property only",   sublabel: "NIBRS property" },
+  ];
+  return (
+    <div className="surface-muted px-4 py-3 flex items-center justify-between flex-wrap gap-2">
+      <p className="text-xs text-slate2-700">
+        <strong className="text-slate2-900">Show:</strong>{" "}
+        {value === "ALL"
+          ? "Both FBI categories side by side."
+          : value === "PERSONS"
+            ? "Violent (NIBRS persons) only. Grade still reflects the overall comparison."
+            : "Property only. Grade still reflects the overall comparison."}
+      </p>
+      <div className="flex gap-1 text-xs">
+        {chips.map((c) => (
+          <button
+            key={c.id}
+            onClick={() => onChange(c.id)}
+            title={c.sublabel}
+            className={`px-2.5 py-1 rounded-md transition-colors ${
+              value === c.id ? "bg-bay-500 text-white" : "text-slate2-700 hover:bg-bay-100"
+            }`}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

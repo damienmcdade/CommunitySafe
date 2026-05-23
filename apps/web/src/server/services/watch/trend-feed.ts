@@ -99,12 +99,13 @@ function timeOfDayAnalysis(incidents: Array<{ occurredAt: string }>):
 /// when the user hasn't drilled into a specific neighborhood. Same
 /// response shape as getTrendForArea so the page renders both with one
 /// component.
-export async function getCitywideTrend(citySlug: string): Promise<TrendResponse> {
+export async function getCitywideTrend(citySlug: string, opts?: { windowDays?: number }): Promise<TrendResponse> {
   const { cityBySlug } = await import("../crime-data/cities");
   const city = cityBySlug(citySlug) ?? cityForArea("");
   const areas = await city.discover().catch(() => []);
   const now = Date.now();
-  const cutoff = new Date(now - 30 * DAY);
+  const windowDays = Math.max(1, Math.min(180, opts?.windowDays ?? 30));
+  const cutoff = new Date(now - windowDays * DAY);
 
   // Concatenate the 30-day window across every neighborhood. The adapter
   // cache de-duplicates upstream pulls so this is one fetch per adapter
@@ -180,7 +181,7 @@ export async function getCitywideTrend(citySlug: string): Promise<TrendResponse>
     trendBullets.push({
       kind: "trend",
       at: new Date(now).toISOString(),
-      text: `Most reports across ${city.label} occur during ${PERIOD_LABEL[tod.dominantPeriod]} — ${tod.dominantPct}% of the past 30 days landed in that window.`,
+      text: `Most reports across ${city.label} occur during ${PERIOD_LABEL[tod.dominantPeriod]} — ${tod.dominantPct}% of the past ${windowDays} days landed in that window.`,
     });
   }
 
@@ -221,10 +222,11 @@ export async function getCitywideTrend(citySlug: string): Promise<TrendResponse>
   };
 }
 
-export async function getTrendForArea(areaSlug: string, areaLabel: string): Promise<TrendResponse> {
+export async function getTrendForArea(areaSlug: string, areaLabel: string, opts?: { windowDays?: number }): Promise<TrendResponse> {
   const city = cityForArea(areaSlug);
   const now = Date.now();
-  const cutoff = new Date(now - 30 * DAY);
+  const windowDays = Math.max(1, Math.min(180, opts?.windowDays ?? 30));
+  const cutoff = new Date(now - windowDays * DAY);
 
   // Pull a generous batch — the adapter cache holds up to 5k rows for the
   // area, which is far more than 30 days for any realistic neighborhood.
@@ -276,7 +278,7 @@ export async function getTrendForArea(areaSlug: string, areaLabel: string): Prom
     trendBullets.push({
       kind: "trend",
       at: new Date(now).toISOString(),
-      text: `Most reports in ${areaLabel} occur during ${PERIOD_LABEL[tod.dominantPeriod]} — ${tod.dominantPct}% of the past 30 days landed in that window.`,
+      text: `Most reports in ${areaLabel} occur during ${PERIOD_LABEL[tod.dominantPeriod]} — ${tod.dominantPct}% of the past ${windowDays} days landed in that window.`,
     });
   }
 

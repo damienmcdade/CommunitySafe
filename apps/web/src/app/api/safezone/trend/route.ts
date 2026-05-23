@@ -9,11 +9,13 @@ import {
 /// Accepts ?city=<slug> (citywide aggregate, the page's default state) OR
 /// ?area=<slug>&label=<label> (drill-down to one neighborhood). Both paths
 /// return the same TrendResponse shape, so the client renders either with
-/// one component.
+/// one component. Optional ?days=<7|14|30|90> controls the window size;
+/// defaults to 30 to preserve back-compat.
 const Query = z.object({
   city:  z.string().min(1).max(120).optional(),
   area:  z.string().min(1).max(120).optional(),
   label: z.string().min(1).max(120).optional(),
+  days:  z.coerce.number().int().min(1).max(180).optional(),
 }).refine((q) => Boolean(q.city) !== Boolean(q.area), {
   message: "Pass exactly one of `city` or `area`.",
 });
@@ -27,7 +29,7 @@ const CACHE_HEADERS = {
 };
 
 export const GET = wrap(async (req: NextRequest) => {
-  const { city, area, label } = Query.parse(Object.fromEntries(req.nextUrl.searchParams));
-  if (city) return NextResponse.json(await getCitywideTrend(city), { headers: CACHE_HEADERS });
-  return NextResponse.json(await getTrendForArea(area!, label ?? area!), { headers: CACHE_HEADERS });
+  const { city, area, label, days } = Query.parse(Object.fromEntries(req.nextUrl.searchParams));
+  if (city) return NextResponse.json(await getCitywideTrend(city, { windowDays: days }), { headers: CACHE_HEADERS });
+  return NextResponse.json(await getTrendForArea(area!, label ?? area!, { windowDays: days }), { headers: CACHE_HEADERS });
 });
