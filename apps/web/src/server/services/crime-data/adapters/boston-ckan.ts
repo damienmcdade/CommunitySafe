@@ -112,11 +112,25 @@ const PROVENANCE: DataProvenance = {
 };
 
 function safeIsoFromBostonDate(raw: string | null | undefined): string {
-  // BPD CSV stamps dates as "2026-04-21 02:49:00+00" but some rows have
-  // truncated/missing values. new Date().toISOString() throws RangeError on
-  // any invalid Date — fall back to epoch so the whole map() doesn't bail.
+  // BPD CSV stamps dates as "2026-04-21 02:49:00+00". The "+00" short-form
+  // timezone offset is NOT a valid ECMAScript Date format — V8 parses it
+  // as NaN. That dropped EVERY row's occurredAt to the 1970 epoch fallback,
+  // which the citywide aggregator (safety-score.ts) then filtered out via
+  // its `t > 0` invariant. Result: Boston citywide windowDays = 0 →
+  // localPer100k = 0 → ratio 0.00 → BlockScore claimed Boston is "lower
+  // than national" when really we couldn't compute anything.
+  //
+  // Fix: normalize the short offset to "+00:00" (RFC 3339 / spec-compliant)
+  // before parsing. Also accept dates with no offset at all by appending
+  // "Z" so they parse as UTC instead of local time (which would shift
+  // every Boston incident by ±5 hours depending on Vercel POP region).
   if (!raw) return new Date(0).toISOString();
-  const d = new Date(raw.replace(" ", "T"));
+  let s = raw.replace(" ", "T");
+  // Match a +HH or -HH offset that's NOT already followed by :MM.
+  s = s.replace(/([+-]\d{2})$/, "$1:00");
+  // No offset at all → declare UTC explicitly.
+  if (!/[Zz]|[+-]\d{2}:?\d{2}$/.test(s)) s = s + "Z";
+  const d = new Date(s);
   return Number.isNaN(d.getTime()) ? new Date(0).toISOString() : d.toISOString();
 }
 

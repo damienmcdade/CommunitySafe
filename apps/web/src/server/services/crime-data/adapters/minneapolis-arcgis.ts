@@ -83,24 +83,30 @@ async function fetchMinneapolis(): Promise<Incident[]> {
     Array.from({ length: PAGES }, (_, i) => fetchPage(i * PAGE_SIZE).catch(() => [] as MplsRow[])),
   );
   const rows = pages.flat();
-  return rows.map((r, i) => {
+  // Drop rows with no parseable date — see charlotte-arcgis comment.
+  const out: Incident[] = [];
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const rawDate = r.Occurred_Date ?? r.Reported_Date;
+    if (rawDate == null) continue;
+    const d = new Date(rawDate);
+    if (Number.isNaN(d.getTime()) || d.getTime() <= 0) continue;
     const lat = r.Latitude;
     const lng = r.Longitude;
     const area = r.Neighborhood?.trim() || "Unknown";
-    return {
+    out.push({
       id: `mpls-${r.Case_Number ?? i}`,
       area,
-      occurredAt: r.Occurred_Date ? new Date(r.Occurred_Date).toISOString()
-                : r.Reported_Date ? new Date(r.Reported_Date).toISOString()
-                : new Date(0).toISOString(),
+      occurredAt: d.toISOString(),
       nibrsCategory: mapToNibrs(r),
       ibrOffenseDescription: r.Offense?.trim() || r.Offense_Category?.trim() || "Unknown",
       beat: r.Precinct != null ? `Precinct ${r.Precinct}` : null,
       blockLabel: undefined,
       lat: typeof lat === "number" && lat !== 0 ? lat : undefined,
       lng: typeof lng === "number" && lng !== 0 ? lng : undefined,
-    };
-  });
+    });
+  }
+  return out;
 }
 
 export async function getRowsMinneapolis(): Promise<Incident[]> {

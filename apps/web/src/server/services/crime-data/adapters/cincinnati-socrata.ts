@@ -58,10 +58,14 @@ const PROVENANCE: DataProvenance = {
     "gender) — only neighborhood, offense, date, and coordinates.",
 };
 
-function safeIso(raw: string | null | undefined): string {
-  if (!raw) return new Date(0).toISOString();
+/// Parse a date string, returning null when invalid. See kansas-city
+/// adapter for the rationale — epoch-fallback rows pollute the citywide
+/// aggregator and collapse windowDays.
+function safeIso(raw: string | null | undefined): string | null {
+  if (!raw) return null;
   const d = new Date(raw);
-  return Number.isNaN(d.getTime()) ? new Date(0).toISOString() : d.toISOString();
+  if (Number.isNaN(d.getTime()) || d.getTime() <= 0) return null;
+  return d.toISOString();
 }
 
 async function fetchCin(): Promise<Incident[]> {
@@ -73,21 +77,26 @@ async function fetchCin(): Promise<Incident[]> {
   });
   if (!res.ok) throw new Error(`Cincinnati Socrata ${res.status}`);
   const rows = (await res.json()) as CinRow[];
-  return rows.map((r, i) => {
+  const out: Incident[] = [];
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const occurredAt = safeIso(r.date_reported);
+    if (!occurredAt) continue;
     const lat = Number(r.latitude_x);
     const lng = Number(r.longitude_x);
-    return {
+    out.push({
       id: `cin-${r.incident_no ?? i}`,
       area: r.cpd_neighborhood ? titleCase(r.cpd_neighborhood.trim()) : "Unknown",
-      occurredAt: safeIso(r.date_reported),
+      occurredAt,
       nibrsCategory: mapToNibrs(r),
       ibrOffenseDescription: r.offense?.trim() || r.ucr_group?.trim() || "Unknown",
       beat: null,
       blockLabel: undefined,
       lat: !isNaN(lat) && lat !== 0 ? lat : undefined,
       lng: !isNaN(lng) && lng !== 0 ? lng : undefined,
-    };
-  });
+    });
+  }
+  return out;
 }
 
 export async function getRowsCincinnati(): Promise<Incident[]> {

@@ -258,20 +258,42 @@ export async function getCitywideSafetyScore(citySlug: string): Promise<SafetySc
   const perArea = await Promise.all(
     areas.map((a) => crimeData.getIncidents(a.slug, { limit: 5000 }).catch(() => [])),
   );
+  // Cap rate window to the last 365 days from the newest incident in the
+  // dataset. Several adapters (Charlotte, MPLS, KC, DC, Cincinnati) return
+  // rows spanning many years — annualizing total counts across decades
+  // dilutes the rate to ~1/N of the real annual rate (Charlotte was
+  // reporting 0.01× national with windowDays=19752 = 54 years of data).
+  //
+  // Step 1: find newest valid date across all areas to anchor the cap.
+  let datasetLatest = 0;
   for (const incidents of perArea) {
     for (const i of incidents) {
+      const t = +new Date(i.occurredAt);
+      // Cap datasetLatest at the present moment — a bogus future-dated
+      // row would otherwise pin the rate window 365 days into the
+      // future, dropping every real incident from the count.
+      if (Number.isFinite(t) && t > 0 && t <= Date.now() && t > datasetLatest) datasetLatest = t;
+    }
+  }
+  const MS_PER_DAY = 24 * 60 * 60 * 1000;
+  const RATE_WINDOW_DAYS = 365;
+  const cutoff = datasetLatest > 0 ? datasetLatest - RATE_WINDOW_DAYS * MS_PER_DAY : 0;
+
+  // Step 2: count incidents and track date span ONLY within the cap.
+  for (const incidents of perArea) {
+    for (const i of incidents) {
+      const t = +new Date(i.occurredAt);
+      if (!Number.isFinite(t) || t <= 0) continue;
+      if (t < cutoff) continue; // outside the rate-compute window
       const k = i.nibrsCategory as "PERSONS" | "PROPERTY" | "SOCIETY";
       if (k === "PERSONS") persons += 1;
       else if (k === "PROPERTY") property += 1;
-      const t = +new Date(i.occurredAt);
-      if (Number.isFinite(t) && t > 0) {
-        if (t < earliest) earliest = t;
-        if (t > latest) latest = t;
-      }
+      if (t < earliest) earliest = t;
+      if (t > latest) latest = t;
     }
   }
   const windowDays = (latest > 0 && earliest < Infinity)
-    ? Math.max(1, Math.round((latest - earliest) / (24 * 60 * 60 * 1000)))
+    ? Math.max(1, Math.round((latest - earliest) / MS_PER_DAY))
     : 0;
   // Full city population — no per-area division. The Vintage 2024 Census
   // total is the canonical denominator the FBI itself uses to publish
@@ -367,19 +389,39 @@ export async function getSafetyScore(areaSlug: string, areaLabel: string): Promi
     areas.map((a) => crimeData.getIncidents(a.slug, { limit: 5000 }).catch(() => [])),
   );
 
-  // Citywide totals across every tracked neighborhood.
+  // Same rate-window cap as getCitywideSafetyScore — see comment there.
+  // Find the dataset's newest timestamp first; only rows within the last
+  // 365 days from that anchor count toward citywide totals and area
+  // counts. Without this, adapters that publish multi-year datasets
+  // (Charlotte at 54 years, MPLS at 22 years) annualize over the full
+  // span and produce ~1/N of the real annual rate.
+  const PER_AREA_MS_PER_DAY = 24 * 60 * 60 * 1000;
+  const PER_AREA_RATE_WINDOW_DAYS = 365;
+  let datasetLatest = 0;
+  for (const arr of incidentsPerArea) {
+    for (const i of arr) {
+      const t = +new Date(i.occurredAt);
+      // Cap datasetLatest at the present moment — a bogus future-dated
+      // row would otherwise pin the rate window 365 days into the
+      // future, dropping every real incident from the count.
+      if (Number.isFinite(t) && t > 0 && t <= Date.now() && t > datasetLatest) datasetLatest = t;
+    }
+  }
+  const perAreaCutoff = datasetLatest > 0 ? datasetLatest - PER_AREA_RATE_WINDOW_DAYS * PER_AREA_MS_PER_DAY : 0;
+
+  // Citywide totals across every tracked neighborhood, within the cap.
   let cityPersons = 0, cityProperty = 0;
   let earliest = Infinity, latest = 0;
   for (const arr of incidentsPerArea) {
     for (const i of arr) {
+      const t = +new Date(i.occurredAt);
+      if (!Number.isFinite(t) || t <= 0) continue;
+      if (t < perAreaCutoff) continue;
       const k = i.nibrsCategory as "PERSONS" | "PROPERTY" | "SOCIETY";
       if (k === "PERSONS") cityPersons += 1;
       else if (k === "PROPERTY") cityProperty += 1;
-      const t = +new Date(i.occurredAt);
-      if (Number.isFinite(t) && t > 0) {
-        if (t < earliest) earliest = t;
-        if (t > latest) latest = t;
-      }
+      if (t < earliest) earliest = t;
+      if (t > latest) latest = t;
     }
   }
 
@@ -415,8 +457,14 @@ export async function getSafetyScore(areaSlug: string, areaLabel: string): Promi
     );
   }
 
+  // Per-area count uses the same 365-day cap so it's apples-to-apples
+  // with the citywide totals computed above. The areaIncidents list may
+  // include older rows from a multi-year adapter dataset.
   let persons = 0, property = 0;
   for (const i of areaIncidents) {
+    const t = +new Date(i.occurredAt);
+    if (!Number.isFinite(t) || t <= 0) continue;
+    if (t < perAreaCutoff) continue;
     const k = i.nibrsCategory as "PERSONS" | "PROPERTY" | "SOCIETY";
     if (k === "PERSONS") persons += 1;
     else if (k === "PROPERTY") property += 1;

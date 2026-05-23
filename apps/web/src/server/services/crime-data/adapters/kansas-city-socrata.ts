@@ -117,10 +117,16 @@ const PROVENANCE: DataProvenance = {
     "neighborhoods) since KCPD's `area` field has only 6 patrol divisions.",
 };
 
-function safeIso(raw: string | null | undefined): string {
-  if (!raw) return new Date(0).toISOString();
+/// Parse a date string, returning null when invalid. The earlier
+/// epoch-fallback variant silently included bad-date rows in the cache,
+/// which the citywide aggregator then filtered out via `t > 0` —
+/// collapsing the rate-compute window to 0 days and rendering Kansas
+/// City's citywide score as ~0.00× national misleadingly.
+function safeIso(raw: string | null | undefined): string | null {
+  if (!raw) return null;
   const d = new Date(raw);
-  return Number.isNaN(d.getTime()) ? new Date(0).toISOString() : d.toISOString();
+  if (Number.isNaN(d.getTime()) || d.getTime() <= 0) return null;
+  return d.toISOString();
 }
 
 async function fetchKansasCity(): Promise<Incident[]> {
@@ -151,10 +157,12 @@ async function fetchKansasCity(): Promise<Incident[]> {
       area = geocodeKansasCity(lng, lat) ?? "Unknown";
     }
     if (area === "Unknown") continue;
+    const occurredAt = safeIso(r.from_date ?? r.report_date);
+    if (!occurredAt) continue; // drop rows with no valid date
     out.push({
       id: `kc-${id || out.length}`,
       area,
-      occurredAt: safeIso(r.from_date ?? r.report_date),
+      occurredAt,
       nibrsCategory: cat,
       ibrOffenseDescription: desc,
       beat: r.beat ?? (r.area ? `${r.area} division` : null),

@@ -88,23 +88,35 @@ async function fetchCharlotte(): Promise<Incident[]> {
     Array.from({ length: PAGES }, (_, i) => fetchPage(i * PAGE_SIZE).catch(() => [] as CmpdRow[])),
   );
   const rows = pages.flat();
-  return rows.map((r, i) => {
+  // Filter out rows with no parseable date BEFORE constructing Incidents.
+  // The earlier `new Date(0).toISOString()` fallback survived row mapping
+  // but was filtered out by the citywide aggregator's `t > 0` invariant,
+  // collapsing the rate-compute window to 0 days and rendering the score
+  // as 0.00× national misleadingly. Dropping these rows up-front keeps
+  // the row.length honest (= rows with usable timestamps) and the
+  // citywide rate windowDays > 0.
+  const out: Incident[] = [];
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const rawDate = r.DATE_INCIDENT_BEGAN ?? r.DATE_REPORTED;
+    if (rawDate == null) continue;
+    const d = new Date(rawDate);
+    if (Number.isNaN(d.getTime()) || d.getTime() <= 0) continue;
     const div = r.CMPD_PATROL_DIVISION?.trim();
     const area = div && div !== "NA" ? div : "Unknown";
-    return {
+    out.push({
       id: `clt-${r.INCIDENT_REPORT_ID ?? i}`,
       area,
-      occurredAt: r.DATE_INCIDENT_BEGAN ? new Date(r.DATE_INCIDENT_BEGAN).toISOString()
-                  : r.DATE_REPORTED ? new Date(r.DATE_REPORTED).toISOString()
-                  : new Date(0).toISOString(),
+      occurredAt: d.toISOString(),
       nibrsCategory: mapToNibrs(r),
       ibrOffenseDescription: r.HIGHEST_NIBRS_DESCRIPTION?.trim() || "Unknown",
       beat: r.NPA != null ? `NPA ${r.NPA}` : null,
       blockLabel: undefined,
       lat: typeof r.LATITUDE_PUBLIC === "number" && r.LATITUDE_PUBLIC !== 0 ? r.LATITUDE_PUBLIC : undefined,
       lng: typeof r.LONGITUDE_PUBLIC === "number" && r.LONGITUDE_PUBLIC !== 0 ? r.LONGITUDE_PUBLIC : undefined,
-    };
-  });
+    });
+  }
+  return out;
 }
 
 export async function getRowsCharlotte(): Promise<Incident[]> {

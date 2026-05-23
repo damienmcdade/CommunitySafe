@@ -126,7 +126,15 @@ async function fetchDC(): Promise<Incident[]> {
     Array.from({ length: PAGES }, (_, i) => fetchPage(i * PAGE_SIZE).catch(() => [] as DcRow[])),
   );
   const rows = pages.flat();
-  return rows.map((r, i) => {
+  // Filter rows with no parseable START_DATE before constructing Incidents.
+  // See charlotte-arcgis.ts for the rationale — epoch-fallback rows pollute
+  // the citywide aggregator's rate compute and collapse windowDays to 0.
+  const out: Incident[] = [];
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    if (r.START_DATE == null) continue;
+    const d = new Date(r.START_DATE);
+    if (Number.isNaN(d.getTime()) || d.getTime() <= 0) continue;
     const lat = r.LATITUDE;
     const lon = r.LONGITUDE;
     // Point-in-polygon geocode every row that has coords. Unmatched rows
@@ -137,18 +145,19 @@ async function fetchDC(): Promise<Incident[]> {
     } else if (r.WARD) {
       area = `Ward ${r.WARD}`;
     }
-    return {
+    out.push({
       id: `dc-${r.CCN ?? i}`,
       area,
-      occurredAt: r.START_DATE ? new Date(r.START_DATE).toISOString() : new Date(0).toISOString(),
+      occurredAt: d.toISOString(),
       nibrsCategory: mapToNibrs(r),
       ibrOffenseDescription: r.OFFENSE?.trim() || "Unknown",
       beat: r.DISTRICT ?? null,
       blockLabel: undefined,
       lat: typeof lat === "number" && lat !== 0 ? lat : undefined,
       lng: typeof lon === "number" && lon !== 0 ? lon : undefined,
-    };
-  });
+    });
+  }
+  return out;
 }
 
 export async function getRowsDC(): Promise<Incident[]> {
