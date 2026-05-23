@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { useCity } from "@/lib/use-city";
 import { useArea } from "@/lib/use-area";
 
@@ -116,57 +117,84 @@ export function TabNav() {
   const { area } = useArea(city.slug);
   const current = activeWorkflow(pathname);
 
+  // Scroll the active sub-tab into view on mount / route change so users
+  // on small viewports always see where they are in the sub-nav strip.
+  // Uses inline auto-scroll behavior — gentle but immediate, no smooth
+  // transition since the nav is sticky and a slow scroll would be jarring.
+  const subnavRef = useRef<HTMLUListElement | null>(null);
+  useEffect(() => {
+    const el = subnavRef.current?.querySelector<HTMLAnchorElement>('[aria-current="page"]');
+    if (el && typeof el.scrollIntoView === "function") {
+      el.scrollIntoView({ behavior: "auto", block: "nearest", inline: "center" });
+    }
+  }, [pathname]);
+
   return (
     <nav className="border-b border-sand-200 bg-white/80 backdrop-blur sticky top-0 z-20" aria-label="Primary">
-      {/* Row 1: workflow tabs (top-level intent) */}
-      <ul className="max-w-5xl mx-auto flex gap-1 px-4 pt-1 overflow-x-auto">
-        {WORKFLOWS.map((w) => {
-          const isActive = w.id === current.id;
-          // Land users on the FIRST tab of the chosen workflow.
-          const href = w.tabs[0]?.href ?? "/";
-          return (
-            <li key={w.id}>
-              <Link
-                href={href}
-                className={`inline-flex items-baseline gap-1.5 px-3 py-2 text-sm rounded-t-md transition-colors ${
-                  isActive
-                    ? "text-slate2-900 font-semibold bg-sand-50 border-x border-t border-sand-200"
-                    : "text-slate2-500 hover:text-bay-700"
-                }`}
-                aria-current={isActive ? "page" : undefined}
-                title={w.tagline}
-              >
-                {w.label}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-      {/* Row 2: sub-nav for the active workflow */}
-      <ul className="max-w-5xl mx-auto flex gap-0.5 px-4 py-1 overflow-x-auto text-xs border-t border-sand-100">
-        {current.tabs.map((t) => {
-          const active = isTabActive(t, pathname);
-          const onPreload = t.warm
-            ? () => {
-                const paths = t.warm!({ citySlug: city.slug, areaSlug: area?.slug ?? null });
-                for (const p of paths) warmFetch(p);
-              }
-            : undefined;
-          return (
-            <li key={t.href}>
-              <Link
-                href={t.href}
-                className={`tab-link ${active ? "is-active text-slate2-900 font-medium" : "text-slate2-500 hover:text-bay-700"}`}
-                aria-current={active ? "page" : undefined}
-                onMouseEnter={onPreload}
-                onFocus={onPreload}
-              >
-                {t.label}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+      {/* Row 1: workflow tabs (top-level intent) — wrapped in a
+          relative div so we can layer a right-edge fade for the
+          mobile horizontal-scroll affordance. The fade only appears
+          when the strip actually overflows (pointer-events-none so
+          it doesn't block taps on the rightmost tab). */}
+      <div className="relative">
+        <ul className="max-w-5xl mx-auto flex gap-1 px-4 pt-1 overflow-x-auto scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none]">
+          {WORKFLOWS.map((w) => {
+            const isActive = w.id === current.id;
+            // Land users on the FIRST tab of the chosen workflow.
+            const href = w.tabs[0]?.href ?? "/";
+            return (
+              <li key={w.id}>
+                <Link
+                  href={href}
+                  className={`inline-flex items-baseline gap-1.5 px-3 py-2 text-sm rounded-t-md transition-colors whitespace-nowrap ${
+                    isActive
+                      ? "text-slate2-900 font-semibold bg-sand-50 border-x border-t border-sand-200"
+                      : "text-slate2-500 hover:text-bay-700"
+                  }`}
+                  aria-current={isActive ? "page" : undefined}
+                  title={w.tagline}
+                >
+                  {w.label}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+        <div className="pointer-events-none absolute top-0 right-0 h-full w-6 bg-gradient-to-l from-white/90 to-transparent sm:hidden" aria-hidden />
+      </div>
+      {/* Row 2: sub-nav for the active workflow — same affordance:
+          horizontal scroll on mobile, right-edge fade, active tab
+          auto-scrolled into view on route change. */}
+      <div className="relative border-t border-sand-100">
+        <ul
+          ref={subnavRef}
+          className="max-w-5xl mx-auto flex gap-0.5 px-4 py-1 overflow-x-auto text-xs scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none]"
+        >
+          {current.tabs.map((t) => {
+            const active = isTabActive(t, pathname);
+            const onPreload = t.warm
+              ? () => {
+                  const paths = t.warm!({ citySlug: city.slug, areaSlug: area?.slug ?? null });
+                  for (const p of paths) warmFetch(p);
+                }
+              : undefined;
+            return (
+              <li key={t.href}>
+                <Link
+                  href={t.href}
+                  className={`tab-link whitespace-nowrap ${active ? "is-active text-slate2-900 font-medium" : "text-slate2-500 hover:text-bay-700"}`}
+                  aria-current={active ? "page" : undefined}
+                  onMouseEnter={onPreload}
+                  onFocus={onPreload}
+                >
+                  {t.label}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+        <div className="pointer-events-none absolute top-0 right-0 h-full w-6 bg-gradient-to-l from-white/90 to-transparent sm:hidden" aria-hidden />
+      </div>
     </nav>
   );
 }
