@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { MapContainer, TileLayer, GeoJSON, Tooltip, CircleMarker, useMap } from "react-leaflet";
 import type { Layer, LeafletMouseEvent, PathOptions } from "leaflet";
 import L from "leaflet";
@@ -785,25 +786,32 @@ function NeighborhoodPanel({ name, stats, recent }: { name: string; stats: AreaB
         </div>
       )}
 
+      {/* Each polygon click already syncs the global area selection
+          via pickPolygon → setArea(), so by the time these CTAs are
+          visible the destination page can read the area straight from
+          the useArea store. Next/Link gives us client-side navigation
+          (no full reload) without losing that context — the previous
+          <a> tags worked only because a full reload re-read storage,
+          which was slow and inconsistent with the rest of the app. */}
       <div className="mt-5 flex flex-wrap gap-2 text-xs">
-        <a
+        <Link
           href="/safety-score"
           className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-bay-500 text-white hover:bg-bay-700 transition-colors"
         >
           Safety Index for {name} →
-        </a>
-        <a
+        </Link>
+        <Link
           href="/trends"
           className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg surface-muted hover:bg-bay-200 hover:text-bay-700 text-slate2-700 transition-colors"
         >
-          30-day timeline →
-        </a>
-        <a
+          30-day timeline for {name} →
+        </Link>
+        <Link
           href="/threats"
           className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg surface-muted hover:bg-bay-200 hover:text-bay-700 text-slate2-700 transition-colors"
         >
-          Awareness brief →
-        </a>
+          Awareness brief for {name} →
+        </Link>
       </div>
     </section>
   );
