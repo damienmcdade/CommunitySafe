@@ -219,6 +219,11 @@ function CityCombobox({ excludeSlug, value, onPick }: { excludeSlug: string; val
     }
   }
 
+  // Stable ids for WAI-ARIA combobox linkage. excludeSlug is included
+  // in the id so multiple CityCompare instances on a page never collide.
+  const listboxId = `city-compare-list-${excludeSlug}`;
+  const optionId = (slug: string) => `city-compare-opt-${excludeSlug}-${slug}`;
+  const activeOption = open && matches[focusIdx];
   return (
     <div ref={wrapRef} className="relative w-full sm:w-72">
       <input
@@ -229,8 +234,11 @@ function CityCombobox({ excludeSlug, value, onPick }: { excludeSlug: string; val
         placeholder={currentLabel ? `Comparing to ${currentLabel} — type to switch` : "Pick a city to compare…"}
         className="input text-sm"
         autoComplete="off"
+        role="combobox"
         aria-autocomplete="list"
         aria-expanded={open}
+        aria-controls={listboxId}
+        aria-activedescendant={activeOption ? optionId(activeOption.slug) : undefined}
         aria-label="Pick a city to compare"
       />
       {value && (
@@ -244,11 +252,12 @@ function CityCombobox({ excludeSlug, value, onPick }: { excludeSlug: string; val
         </button>
       )}
       {open && matches.length > 0 && (
-        <ul className="absolute z-30 left-0 right-0 mt-1 surface shadow-card-lift max-h-72 overflow-auto p-1" role="listbox">
+        <ul id={listboxId} className="absolute z-30 left-0 right-0 mt-1 surface shadow-card-lift max-h-72 overflow-auto p-1" role="listbox" aria-label="Cities to compare against">
           {matches.map((c, i) => (
             <li key={c.slug}>
               <button
                 type="button"
+                id={optionId(c.slug)}
                 onMouseEnter={() => setFocusIdx(i)}
                 onMouseDown={(e) => { e.preventDefault(); pick(c.slug); }}
                 className={`w-full flex items-baseline justify-between gap-2 px-3 py-2 rounded-lg text-sm text-left transition-colors ${

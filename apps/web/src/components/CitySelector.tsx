@@ -121,6 +121,11 @@ function CitySearchCombobox({
     }
   }
 
+  // Stable ids for WAI-ARIA combobox linkage. Single instance per
+  // CitySelector so a constant id works.
+  const listboxId = "city-quick-search-listbox";
+  const optionId = (slug: string) => `city-quick-search-opt-${slug}`;
+  const activeOption = matches[focusIdx];
   return (
     <div>
       <p className="px-1 pt-1 pb-2 text-[10px] uppercase tracking-wider text-slate2-500">
@@ -134,12 +139,18 @@ function CitySearchCombobox({
         placeholder={`Search ${CITIES.length} cities…`}
         className="input text-sm"
         autoComplete="off"
+        role="combobox"
         aria-autocomplete="list"
+        aria-expanded
+        aria-controls={listboxId}
+        aria-activedescendant={activeOption ? optionId(activeOption.slug) : undefined}
         aria-label="Search cities"
       />
       <ul
+        id={listboxId}
         className="mt-2 max-h-72 overflow-auto rounded-lg border border-sand-200 divide-y divide-sand-100"
         role="listbox"
+        aria-label="Cities"
       >
         {matches.length === 0 && (
           <li className="px-3 py-3 text-xs text-slate2-500">
@@ -153,6 +164,7 @@ function CitySearchCombobox({
             <li key={c.slug}>
               <button
                 type="button"
+                id={optionId(c.slug)}
                 onMouseEnter={() => setFocusIdx(i)}
                 onMouseDown={(e) => { e.preventDefault(); commit(c); }}
                 disabled={!isLive}
@@ -164,6 +176,7 @@ function CitySearchCombobox({
                 }`}
                 role="option"
                 aria-selected={i === focusIdx}
+                aria-disabled={!isLive}
               >
                 <span className="truncate">
                   {c.label}
