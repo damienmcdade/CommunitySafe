@@ -55,6 +55,7 @@ const CITY_POPULATION: Record<string, number> = {
   "kansas-city":     510_704,
   "saint-paul":      303_820,
   "pittsburgh":      303_255,
+  "phoenix":       1_650_070,
 };
 
 export interface SafetyScoreRow {

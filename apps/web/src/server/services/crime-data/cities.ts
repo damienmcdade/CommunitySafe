@@ -30,6 +30,7 @@ import { tucsonAdapter, getDiscoveredAreasTucson } from "./adapters/tucson-arcgi
 import { kansasCityAdapter, getDiscoveredAreasKansasCity } from "./adapters/kansas-city-socrata";
 import { saintPaulAdapter, getDiscoveredAreasSaintPaul } from "./adapters/saint-paul-arcgis";
 import { pittsburghAdapter, getDiscoveredAreasPittsburgh } from "./adapters/pittsburgh-ckan";
+import { phoenixAdapter, getDiscoveredAreasPhoenix } from "./adapters/phoenix-socrata";
 
 // City registry.
 //
@@ -253,6 +254,16 @@ export const CITIES: CityEntry[] = [
     adapter: pittsburghAdapter,
     discover: getDiscoveredAreasPittsburgh,
   },
+  {
+    // Phoenix is the 30th city. Adapter is a bootstrap stub (returns
+    // empty until the Phoenix Open Data CSV endpoint is wired in
+    // properly) — /coverage shows the city as "Warming up" until then.
+    slug: "phoenix",
+    label: "Phoenix",
+    bbox: { south: 33.29, west: -112.32, north: 33.72, east: -111.93 },
+    adapter: phoenixAdapter,
+    discover: getDiscoveredAreasPhoenix,
+  },
 ];
 
 export function cityFromLatLng(point: { lat: number; lng: number }): CityEntry | null {
@@ -295,6 +306,7 @@ export function cityForArea(slug: string): CityEntry {
   if (slug.startsWith("kc-")   || slug === "kansas-city")  return CITIES[26];
   if (slug.startsWith("sp-")   || slug === "saint-paul")   return CITIES[27];
   if (slug.startsWith("pgh-")  || slug === "pittsburgh")   return CITIES[28];
+  if (slug.startsWith("phx-")  || slug === "phoenix")      return CITIES[29];
   return CITIES[0];
 }
 

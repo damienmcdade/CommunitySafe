@@ -65,6 +65,12 @@ export const CITIES: CityInfo[] = [
   { slug: "washington-dc", label: "Washington",    state: "DC", stateLabel: "District of Columbia", defaultArea: "dc-downtown", centroid: { lat: 38.91, lng: -77.04 }, status: "live",        source: "DC MPD Crime Incidents (last 30 days) · opendata.dc.gov" },
   { slug: "denver",        label: "Denver",        state: "CO", stateLabel: "Colorado",       defaultArea: "den-five-points",centroid: { lat: 39.74,  lng: -104.99 }, status: "live",        source: "Denver Crime Offenses · Denver Open Data (ArcGIS)" },
   { slug: "detroit",       label: "Detroit",       state: "MI", stateLabel: "Michigan",       defaultArea: "det-downtown",   centroid: { lat: 42.33,  lng: -83.05  }, status: "live",        source: "Detroit RMS Crime Incidents · Detroit Open Data (ArcGIS)" },
+  // Phoenix — 30th city. Adapter is a bootstrap stub today (returns
+  // empty until the Phoenix Open Data CSV endpoint is wired in). Listed
+  // as coming-soon so the wheel renders it greyed-out and users don't
+  // pick it expecting full data; the /coverage page surfaces it with
+  // "Warming up" status reflecting the actual adapter state.
+  { slug: "phoenix",       label: "Phoenix",       state: "AZ", stateLabel: "Arizona",        defaultArea: "phx-downtown",     centroid: { lat: 33.45, lng: -112.07 }, status: "coming-soon", source: "Phoenix Police Crime Statistics · phoenixopendata.com (adapter in bootstrap)" },
 ];
 
 /// All US states with at least one TravelSafe city, sorted alphabetically.
