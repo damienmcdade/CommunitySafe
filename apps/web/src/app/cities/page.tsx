@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CITIES } from "@/server/services/crime-data/cities";
+import { CityStatusInline } from "@/components/CityStatusInline";
 
 export const metadata: Metadata = {
   title: "All supported cities",
@@ -32,14 +33,15 @@ export default function CitiesIndexPage() {
         </p>
       </header>
 
-      <ul className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
+      <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-sm">
         {sorted.map((c) => (
           <li key={c.slug}>
             <Link
               href={`/cities/${c.slug}`}
               className="surface block px-3 py-2 hover:bg-bay-50 transition-colors"
             >
-              {c.label}
+              <span className="block font-medium text-slate2-900">{c.label}</span>
+              <CityStatusInline citySlug={c.slug} />
             </Link>
           </li>
         ))}
