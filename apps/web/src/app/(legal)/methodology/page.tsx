@@ -32,7 +32,7 @@ export default function MethodologyPage() {
             (SDPD NIBRS, LAPD Crime Data, SFPD Incident Reports, Chicago CPD, NYPD Complaint Data,
             Seattle SPD, Boston BPD, DC MPD, Philadelphia PPD, Denver, Detroit, Oakland, Cincinnati,
             New Orleans, Baton Rouge, Cambridge, Dallas, Charlotte, Nashville, Minneapolis, Cleveland,
-            Montgomery County, Las Vegas, Boise, Buffalo, Tucson, Kansas City, Saint Paul, Pittsburgh).
+            Milwaukee, Las Vegas, Boise, Buffalo, Tucson, Kansas City, Saint Paul, Pittsburgh).
             We pull the raw records via the same public API the city itself documents.
           </li>
           <li>

@@ -208,11 +208,27 @@ async function getCached(): Promise<Cache | null> {
   }
 }
 
+/// Static seed list derived from ZIP_NEIGHBORHOOD. Used as the floor
+/// for getDiscoveredAreas() so a cold Vercel instance (where the
+/// in-memory cache is empty and the live datastore fetch hasn't
+/// completed yet) never returns []. Without this the SafeZone area
+/// picker showed 0 Phoenix neighborhoods on every fresh instance, and
+/// /api/safezone/safety-score?area=phx-... 404'd as "unknown_area"
+/// for valid Phoenix slugs the user picked from coverage / cities pages.
+const STATIC_PHOENIX_AREAS: KnownArea[] = Object.entries(ZIP_NEIGHBORHOOD).map(([zip, label]) => ({
+  slug: `phx-${zip}`,
+  label: `${label} (${zip})`,
+  jurisdiction: "Phoenix",
+  centroid: { lat: 33.45, lng: -112.07 },
+}));
+
 export async function getDiscoveredAreas(): Promise<KnownArea[]> {
   const c = await getCached();
   if (c && c.areas.length > 0) return c.areas;
   if (lastDiscovered) return lastDiscovered.areas;
-  return [];
+  // Static floor — guaranteed non-empty so the picker always has options
+  // and per-area safety-score calls don't 404 on a cold instance.
+  return STATIC_PHOENIX_AREAS;
 }
 
 // Re-export with the city-prefixed name the cities.ts registry expects.

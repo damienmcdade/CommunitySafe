@@ -25,7 +25,7 @@ export type CitySlug =
   | "washington-dc" | "boston" | "philadelphia" | "cincinnati"
   | "new-orleans" | "baton-rouge" | "cambridge" | "dallas"
   | "charlotte" | "nashville" | "minneapolis" | "cleveland"
-  | "montgomery-county" | "las-vegas" | "boise" | "buffalo" | "tucson"
+  | "milwaukee" | "las-vegas" | "boise" | "buffalo" | "tucson"
   | "kansas-city" | "saint-paul" | "pittsburgh";
 export type TipGroup = "prevention" | "self-defense" | "ca-legal";
 
@@ -70,7 +70,7 @@ export const NON_EMERGENCY: Record<CitySlug, { line: string; label: string; url:
   "nashville":     { line: "615-862-8600", label: "MNPD non-emergency",   url: "https://www.nashville.gov/departments/police" },
   "minneapolis":   { line: "612-348-2345", label: "MPD non-emergency",    url: "https://www.minneapolismn.gov/police/" },
   "cleveland":     { line: "216-621-1234", label: "CDP non-emergency",    url: "https://www.clevelandpolice.org/" },
-  "montgomery-county": { line: "301-279-8000", label: "MCPD non-emergency", url: "https://www.montgomerycountymd.gov/POL/" },
+  "milwaukee":     { line: "414-933-4444", label: "MPD non-emergency",     url: "https://city.milwaukee.gov/police" },
   "las-vegas":     { line: "702-828-3111", label: "LVMPD non-emergency",  url: "https://www.lvmpd.com/" },
   "boise":         { line: "208-377-6790", label: "BPD non-emergency",    url: "https://www.cityofboise.org/departments/police/" },
   "buffalo":       { line: "716-851-4444", label: "Buffalo PD non-emergency", url: "https://www.buffalony.gov/" },
@@ -108,7 +108,7 @@ export const CITY_RESOURCES: Record<CitySlug, { name: string; url: string; progr
   "nashville":     { name: "Metro Nashville Police Department", url: "https://www.nashville.gov/departments/police", programName: "Metro Nashville Police Department", programUrl: "https://www.nashville.gov/departments/police" },
   "minneapolis":   { name: "Minneapolis Police Department",  url: "https://www.minneapolismn.gov/police/", programName: "Minneapolis Police Department", programUrl: "https://www.minneapolismn.gov/resident-services/public-safety/police-public-safety/" },
   "cleveland":     { name: "Cleveland Division of Police",   url: "https://www.clevelandpolice.org/", programName: "CDP Community Policing", programUrl: "https://www.clevelandpolice.org/about/community" },
-  "montgomery-county": { name: "Montgomery County Police Department", url: "https://www.montgomerycountymd.gov/POL/", programName: "Montgomery County Police Department", programUrl: "https://www.montgomerycountymd.gov/POL/" },
+  "milwaukee":     { name: "Milwaukee Police Department", url: "https://city.milwaukee.gov/police", programName: "MPD Community Engagement", programUrl: "https://city.milwaukee.gov/police/Community" },
   "las-vegas":     { name: "Las Vegas Metropolitan Police Department", url: "https://www.lvmpd.com/", programName: "LVMPD Community Engagement", programUrl: "https://www.lvmpd.com/en-us/Pages/Community-Engagement.aspx" },
   "boise":         { name: "Boise Police Department", url: "https://www.cityofboise.org/departments/police/", programName: "Boise Police Department", programUrl: "https://www.cityofboise.org/departments/police/" },
   "buffalo":       { name: "Buffalo Police Department", url: "https://www.buffalony.gov/", programName: "Buffalo Police Department", programUrl: "https://www.buffalony.gov/" },

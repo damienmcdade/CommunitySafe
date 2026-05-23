@@ -35,7 +35,7 @@ const SOURCES: Record<string, string> = {
   "nashville":     "Metro Nashville PD Incidents (NashvilleOpenData, ArcGIS Feature Server), geocoded to MNPD precinct. Victim-demographic columns are excluded at request time.",
   "minneapolis":   "Minneapolis Crime_Data (City of Minneapolis Open Data, ArcGIS Feature Server). NIBRS-classified per row by MPD, aggregated to one of 87 named neighborhoods.",
   "cleveland":     "Cleveland Division of Police Calls for Service (City of Cleveland Open Data, ArcGIS Feature Server). Administrative dispatches filtered at ingest. Includes non-NIBRS reports.",
-  "montgomery-county": "Montgomery County Police Crime (Montgomery County MD Open Data, Socrata). NIBRS-classified per row by MCPD, aggregated to one of seven MCPD policing districts.",
+  "milwaukee":     "Milwaukee Police WIBR Crime Data (data.milwaukee.gov, CKAN datastore). Per-incident boolean offense flags mapped to NIBRS PERSONS/PROPERTY; aggregated to ZIP-level neighborhood groupings.",
   "las-vegas":     "LVMPD Calls for Service (Opendata Las Vegas, ArcGIS Feature Server). Administrative dispatches and ambiguous calls filtered at ingest. Geocoded to one of 26 named Las Vegas neighborhoods.",
   "boise":         "Boise Police Calls for Service (City of Boise Open Data, ArcGIS). BPD's own Violent/Property/Society category labels are honored, aggregated to one of 35 official Boise neighborhood associations.",
   "buffalo":       "Buffalo Police Crime Incidents (Open Data Buffalo, Socrata). BPD's clean parent_incident_type taxonomy (Theft / Assault / Vehicle Theft / Breaking & Entering / Robbery / Sexual Offense / Homicide), aggregated to one of 36 official Buffalo neighborhoods.",

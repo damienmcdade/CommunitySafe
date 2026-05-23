@@ -22,7 +22,7 @@ import { charlotteAdapter, getDiscoveredAreasCharlotte } from "./adapters/charlo
 import { nashvilleAdapter, getDiscoveredAreasNashville } from "./adapters/nashville-arcgis";
 import { minneapolisAdapter, getDiscoveredAreasMinneapolis } from "./adapters/minneapolis-arcgis";
 import { clevelandAdapter, getDiscoveredAreasCleveland } from "./adapters/cleveland-arcgis";
-import { montgomeryCountyAdapter, getDiscoveredAreasMontgomeryCounty } from "./adapters/montgomery-county-socrata";
+import { milwaukeeAdapter, getDiscoveredAreasMilwaukee } from "./adapters/milwaukee-ckan";
 import { lasVegasAdapter, getDiscoveredAreasLasVegas } from "./adapters/las-vegas-arcgis";
 import { boiseAdapter, getDiscoveredAreasBoise } from "./adapters/boise-arcgis";
 import { buffaloAdapter, getDiscoveredAreasBuffalo } from "./adapters/buffalo-socrata";
@@ -199,11 +199,14 @@ export const CITIES: CityEntry[] = [
     discover: getDiscoveredAreasCleveland,
   },
   {
-    slug: "montgomery-county",
-    label: "Montgomery County",
-    bbox: { south: 38.93, west: -77.53, north: 39.36, east: -76.89 },
-    adapter: montgomeryCountyAdapter,
-    discover: getDiscoveredAreasMontgomeryCounty,
+    // Replaced Montgomery County (county-level, ambiguous to users) with
+    // Milwaukee — a real city with an actively-maintained CKAN dataset
+    // (WIBR Group A) on data.milwaukee.gov, ~9k incidents grouped by ZIP.
+    slug: "milwaukee",
+    label: "Milwaukee",
+    bbox: { south: 42.92, west: -88.07, north: 43.20, east: -87.83 },
+    adapter: milwaukeeAdapter,
+    discover: getDiscoveredAreasMilwaukee,
   },
   {
     slug: "las-vegas",
@@ -299,7 +302,7 @@ export function cityForArea(slug: string): CityEntry {
   if (slug.startsWith("nas-")  || slug === "nashville")    return CITIES[18];
   if (slug.startsWith("mpls-") || slug === "minneapolis")  return CITIES[19];
   if (slug.startsWith("cle-")  || slug === "cleveland")    return CITIES[20];
-  if (slug.startsWith("moco-") || slug === "montgomery-county") return CITIES[21];
+  if (slug.startsWith("mke-")  || slug === "milwaukee")    return CITIES[21];
   if (slug.startsWith("lv-")   || slug === "las-vegas")    return CITIES[22];
   if (slug.startsWith("bzi-")  || slug === "boise")        return CITIES[23];
   if (slug.startsWith("buf-")  || slug === "buffalo")      return CITIES[24];

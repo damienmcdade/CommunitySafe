@@ -124,7 +124,7 @@ const STATE_BY_SLUG: Record<string, string> = {
   "charlotte": "NC",
   "nashville": "TN",
   "minneapolis": "MN", "saint-paul": "MN",
-  "montgomery-county": "MD",
+  "milwaukee": "WI",
   "las-vegas": "NV",
   "boise": "ID",
   "tucson": "AZ",

@@ -29,7 +29,7 @@ const SOURCE_LABELS: Record<string, string> = {
   "nashville":     "MNPD Incidents · refreshed every 5 min",
   "minneapolis":   "MPD Crime_Data · refreshed every 5 min",
   "cleveland":     "CDP Calls for Service · refreshed every 5 min",
-  "montgomery-county": "MCPD Crime · refreshed every 5 min",
+  "milwaukee":     "Milwaukee Police WIBR · refreshed daily",
   "las-vegas":     "LVMPD Calls for Service · refreshed every 5 min",
   "boise":         "BPD Calls for Service · refreshed every 5 min",
   "buffalo":       "Buffalo PD Crime Incidents · refreshed every 5 min",

@@ -38,7 +38,7 @@ const CITY_POPULATION: Record<string, number> = {
   "nashville":       687_788,
   "minneapolis":     421_874,
   "cleveland":       362_656,
-  "montgomery-county": 1_058_812,
+  "milwaukee":         561_385,
   "las-vegas":       660_929,
   "boise":           237_446,
   "buffalo":         272_140,
