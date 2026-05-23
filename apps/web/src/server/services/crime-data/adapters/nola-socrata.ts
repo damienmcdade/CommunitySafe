@@ -33,21 +33,44 @@ interface NolaRow {
   dispositiontext?: string;
 }
 
-// NOPD call type substrings → NIBRS-ish bucketing. Calls include non-crime
-// like "BUSINESS CHECK", "WELFARE CHECK" — these become SOCIETY (catch-all).
+// NOPD call type substrings → NIBRS-ish bucketing.
+//
+// Tightened 2026-05-23: NOPD's CFS feed pulls EVERY dispatched call
+// including welfare checks, business checks, alarms, 911 hangups,
+// traffic complaints, etc. The earlier mapToNibrs returned SOCIETY
+// as the catch-all for any unmatched call, which inflated New
+// Orleans' citywide ratio to 13× national. Now we:
+//   - Drop CFS-only dispatches explicitly (SKIP_TYPES below)
+//   - Match against tighter inclusion lists for PERSONS/PROPERTY
+//   - Match an explicit SOCIETY inclusion list (public-order crimes)
+//   - Return null for everything else (gets filtered at ingest)
+const SKIP_TYPES = [
+  "WELFARE CHECK", "BUSINESS CHECK", "ALARM", "ASSIST", "ESCORT",
+  "RESPOND TO HEADQUARTERS", "MISSING ADULT", "MISSING JUVENILE",
+  "MISSING PERSON", "FOLLOW UP", "MEDICAL", "FIRE", "TRAFFIC",
+  "ACCIDENT", "9-1-1", "911", "HANGUP", "ABANDONED",
+  "UNCLASSIFIED", "UNKNOWN", "DETAIL", "OFFICER NEEDS",
+];
 const PERSONS_TYPES = [
   "ASSAULT", "BATTERY", "MURDER", "HOMICIDE", "ROBBERY", "RAPE",
-  "SEX", "DOMESTIC", "KIDNAP", "AGGRAVATED",
+  "SEX OFFENSE", "DOMESTIC VIOL", "DOMESTIC DISTURB", "KIDNAP",
+  "AGGRAVATED", "INTIMIDAT", "STALKING",
 ];
 const PROPERTY_TYPES = [
-  "THEFT", "BURGLARY", "STOLEN", "VEHICLE", "AUTO", "ARSON",
-  "VANDALISM", "FRAUD", "FORGERY", "PROPERTY",
+  "THEFT", "BURGLARY", "STOLEN", "VEHICLE THEFT", "AUTO THEFT", "ARSON",
+  "VANDALISM", "FRAUD", "FORGERY", "CRIMINAL DAMAGE", "SHOPLIFT",
 ];
-function mapToNibrs(row: NolaRow): CrimeCategory {
+const SOCIETY_TYPES = [
+  "DRUG", "NARCOTIC", "WEAPON", "FIREARM", "DISCHARGING",
+  "TRESPASS", "DISORDERLY", "DUI", "DWI",
+];
+function mapToNibrs(row: NolaRow): CrimeCategory | null {
   const t = (row.typetext ?? "").toUpperCase();
+  if (SKIP_TYPES.some((k) => t.includes(k))) return null;
   if (PERSONS_TYPES.some((k) => t.includes(k))) return CrimeCategory.PERSONS;
   if (PROPERTY_TYPES.some((k) => t.includes(k))) return CrimeCategory.PROPERTY;
-  return CrimeCategory.SOCIETY;
+  if (SOCIETY_TYPES.some((k) => t.includes(k))) return CrimeCategory.SOCIETY;
+  return null;
 }
 
 // ---- Point-in-polygon ------------------------------------------------------
@@ -115,7 +138,13 @@ async function fetchNola(): Promise<Incident[]> {
   });
   if (!res.ok) throw new Error(`NOLA Socrata ${res.status}`);
   const rows = (await res.json()) as NolaRow[];
-  return rows.map((r, i) => {
+  const out: Incident[] = [];
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    // Drop CFS-only dispatches up-front (welfare checks, alarms, etc.)
+    // so they never contribute to citywide totals or per-area scores.
+    const cat = mapToNibrs(r);
+    if (cat === null) continue;
     const c = r.location?.coordinates;
     const lng = Array.isArray(c) ? Number(c[0]) : NaN;
     const lat = Array.isArray(c) ? Number(c[1]) : NaN;
@@ -125,18 +154,19 @@ async function fetchNola(): Promise<Incident[]> {
     } else if (r.policedistrict) {
       area = `District ${r.policedistrict}`;
     }
-    return {
+    out.push({
       id: `nola-${r.nopd_item ?? i}`,
       area,
       occurredAt: safeIso(r.timecreate),
-      nibrsCategory: mapToNibrs(r),
+      nibrsCategory: cat,
       ibrOffenseDescription: r.typetext?.trim() || r.type_?.trim() || "Unknown",
       beat: r.beat ?? null,
       blockLabel: r.block_address ?? undefined,
       lat: !isNaN(lat) && lat !== 0 ? lat : undefined,
       lng: !isNaN(lng) && lng !== 0 ? lng : undefined,
-    };
-  });
+    });
+  }
+  return out;
 }
 
 export async function getRowsNola(): Promise<Incident[]> {

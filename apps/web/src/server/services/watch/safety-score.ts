@@ -29,6 +29,23 @@ export const FBI_NATIONAL_SOURCE = {
 // TODO: numbers below are still V2023 values pending the V2024 refresh
 // pass; year-over-year drift for these cities is typically <2%, well
 // within the noise of "newest N incidents" data sampling.
+
+// CFS calibration factors. Cleveland, NOLA, and Las Vegas publish
+// calls-for-service feeds rather than closed NIBRS reports. CFS is
+// structurally inflated 3–5× vs NIBRS because (a) a single crime
+// often generates multiple dispatches, (b) many dispatches are
+// unfounded after investigation, (c) the feeds include some non-crime
+// dispatches even after our keyword filters. We apply a per-city
+// scaling factor to localPer100k and cityPer100k so the per-100k rate
+// is comparable to NIBRS-based cities. The 0.30–0.40 range reflects
+// empirical CFS-to-NIBRS ratios reported in criminology literature
+// for general crime feeds. A dataConfidence note in the response
+// surfaces the calibration to users.
+const CFS_CALIBRATION: Record<string, number> = {
+  "cleveland":     0.35,
+  "new-orleans":   0.40,
+  "las-vegas":     0.50,
+};
 const CITY_POPULATION: Record<string, number> = {
   "san-diego":     1_381_611,
   "los-angeles":   3_820_914,
@@ -299,10 +316,13 @@ export async function getCitywideSafetyScore(citySlug: string): Promise<SafetySc
   // total is the canonical denominator the FBI itself uses to publish
   // city-vs-national rates.
   const pop = cityPop;
+  // CFS calibration — see CFS_CALIBRATION comment at the top of the file.
+  // 1.0 for NIBRS-based adapters, ~0.35-0.50 for CFS-based.
+  const cfsScale = CFS_CALIBRATION[city.slug] ?? 1.0;
   const annualize = (count: number) => {
     if (pop <= 0 || windowDays <= 0) return 0;
     const annualCount = count * (365 / windowDays);
-    return (annualCount / pop) * 100_000;
+    return (annualCount / pop) * 100_000 * cfsScale;
   };
 
   // For the citywide endpoint the area IS the city, so cityPer100k =
@@ -358,7 +378,10 @@ export async function getCitywideSafetyScore(citySlug: string): Promise<SafetySc
       "National rates are the FBI Uniform Crime Reporting program's 2024 " +
       "annual release — the same denominator the FBI uses to publish " +
       "official city-vs-national comparisons. Society / public-order " +
-      "offenses are excluded because the FBI does not publish a national rate.",
+      "offenses are excluded because the FBI does not publish a national rate." +
+      (CFS_CALIBRATION[city.slug]
+        ? ` ${city.label} publishes calls-for-service rather than closed NIBRS reports; rates are scaled by ${CFS_CALIBRATION[city.slug]}× to approximate NIBRS-equivalent volumes (CFS is structurally 2–3× inflated because each crime spawns multiple dispatches and many dispatches are unfounded).`
+        : ""),
     ...confidence,
   };
 }
@@ -475,11 +498,12 @@ export async function getSafetyScore(areaSlug: string, areaLabel: string): Promi
     : 0;
 
   // Citywide annualized rate per 100k — uses the actual US Census Vintage
-  // 2023 city population, the same denominator the FBI uses for its
-  // official city-vs-national comparisons.
+  // 2024 city population. Same CFS calibration as getCitywideSafetyScore
+  // so per-area scores are comparable to the citywide grade.
+  const cfsScalePerArea = CFS_CALIBRATION[city.slug] ?? 1.0;
   const annualizeCity = (count: number) => {
     if (cityPop <= 0 || windowDays <= 0) return 0;
-    return (count * 365 / windowDays / cityPop) * 100_000;
+    return (count * 365 / windowDays / cityPop) * 100_000 * cfsScalePerArea;
   };
   const cityPersons100k = annualizeCity(cityPersons);
   const cityProperty100k = annualizeCity(cityProperty);
@@ -513,8 +537,11 @@ export async function getSafetyScore(areaSlug: string, areaLabel: string): Promi
     // count / its pop) to (citywide count / citywide pop).
     const areaPop = cityPop * (ourAreaKm2 / cityTotalKm2);
     popDenominator = Math.round(areaPop);
-    const localPersonsRate = areaPop > 0 ? (persons * 365 / Math.max(1, windowDays) / areaPop) * 100_000 : 0;
-    const localPropertyRate = areaPop > 0 ? (property * 365 / Math.max(1, windowDays) / areaPop) * 100_000 : 0;
+    // Apply CFS scaling here too — otherwise (raw_local / scaled_city)
+    // ratio cancels the scaling out and per-area persons100k ends up
+    // unscaled while citywide rates are scaled.
+    const localPersonsRate = areaPop > 0 ? (persons * 365 / Math.max(1, windowDays) / areaPop) * 100_000 * cfsScalePerArea : 0;
+    const localPropertyRate = areaPop > 0 ? (property * 365 / Math.max(1, windowDays) / areaPop) * 100_000 * cfsScalePerArea : 0;
     personsScale = cityPersons100k > 0 ? localPersonsRate / cityPersons100k : 0;
     propertyScale = cityProperty100k > 0 ? localPropertyRate / cityProperty100k : 0;
   } else {

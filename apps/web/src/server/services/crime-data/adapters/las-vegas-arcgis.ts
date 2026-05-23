@@ -40,31 +40,38 @@ interface LvRow {
 }
 
 // Keyword groups — keep ONLY rows that name an actual offense.
+//
+// Tightened 2026-05-23: dropped MISSING PERSON (not a NIBRS offense
+// category — usually administrative), HIT AND RUN (vehicle code, not
+// NIBRS property), and the bare INTOX/DRUNK (often paired with welfare
+// dispatch, not necessarily a public-intox offense). Also broadened
+// SKIP_KEYS to drop more dispatch-only categories so LV's citywide
+// ratio reflects actual crime reports, not total CAD events.
 const PERSONS_KEYS = [
   "ASSAULT", "BATTERY", "HOMICIDE", "MURDER", "ROBBERY",
   "KIDNAP", "ABDUCT", "SEX OFFENSE", "SEX CRIME", "RAPE",
   "FAMILY DISTURBANCE", "DOMESTIC", "THREATEN", "INTIMIDATE",
-  "MISSING PERSON",
 ];
 const PROPERTY_KEYS = [
   "LARCENY", "THEFT", "AUTO THEFT", "STOLEN", "BURGLARY",
   "VANDAL", "DAMAGE", "ARSON", "FRAUD", "FORGERY",
-  "EMBEZZLE", "SHOPLIFT", "HIT AND RUN",
+  "EMBEZZLE", "SHOPLIFT",
 ];
 const SOCIETY_KEYS = [
-  "DRUG", "NARCOTIC", "WEAPON", "FIREARM", "SHOTS FIRED",
-  "PROSTITUTION", "TRESPASS", "DISORDERLY", "DUI", "DRUNK",
-  "INTOX",
+  "DRUG", "NARCOTIC", "WEAPON", "FIREARM", "DISCHARGING",
+  "PROSTITUTION", "TRESPASS", "DISORDERLY CONDUCT", "DUI",
 ];
-// Anything mentioning these is dropped at ingest — they're either
-// administrative dispatches or non-crime calls, and including them
-// would over-count "incidents" relative to NIBRS-only city feeds.
+// Anything mentioning these is dropped at ingest — administrative
+// dispatches or non-crime calls that would over-count "incidents"
+// relative to NIBRS-only city feeds.
 const SKIP_KEYS = [
   "ALARM", "ASSIST", "INFO", "SUSPICIOUS", "UNKNOWN TROUBLE",
   "9-1-1 DISCONNECT", "ACCIDENT", "TRAFFIC PROBLEM",
   "CIVIL MATTER", "BROADCAST", "RECKLESS DRIVER", "UNHOUSED",
   "SPECIAL ATTENTION", "FOLLOW UP", "DETAIL", "PARK, WALK",
-  "WELFARE", "CHECK", "OFFICER INITIATED",
+  "WELFARE", "CHECK", "OFFICER INITIATED", "MISSING",
+  "HIT AND RUN", "SHOTS FIRED", "FOUND PROPERTY", "LOST",
+  "MENTAL HEALTH", "INTOX",
 ];
 
 function classify(desc: string): CrimeCategory | null {

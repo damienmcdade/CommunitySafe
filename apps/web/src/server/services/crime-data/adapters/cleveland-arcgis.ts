@@ -39,23 +39,29 @@ interface CleRow {
 // Cleveland CFS uses verbose all-caps descriptions. Group them into NIBRS
 // categories with explicit substring lists so the user-facing card mix is
 // meaningful and not dominated by administrative entries.
+//
+// Tightened 2026-05-23: dropped CFS-only categories that were inflating
+// Cleveland's citywide ratio to 27× national. Removed generic bucket
+// labels ("PERSON CRIME", "PROPERTY CRIME" — these are CDP's own
+// category headers, not specific offenses), MH dispatches (CRISIS
+// INTERVENTION), sensor events (SHOTSPOTTER alone), and broad public-
+// order calls (DISTURBANCE, NUISANCE) that don't map to NIBRS reports.
 const PERSONS_KEYS = [
   "ASSAULT", "FIGHT", "THREATEN", "THREATS", "DOM VIOL", "FAMILY TROUBLE",
-  "ROBBERY", "HOMICIDE", "MURDER", "KIDNAP", "ABDUCT", "PERSON CRIME",
-  "PERSON THREAT", "CRISIS INTERVENTION", "INTIMIDAT",
+  "ROBBERY", "HOMICIDE", "MURDER", "KIDNAP", "ABDUCT",
+  "PERSON THREAT", "INTIMIDAT", "RAPE", "SEX OFFENSE", "STALKING",
 ];
 const PROPERTY_KEYS = [
-  "BURGLAR", "THEFT", "PROPERTY CRIME", "AUTO RECOVERY", "STOLEN",
+  "BURGLAR", "THEFT", "AUTO RECOVERY", "STOLEN",
   "DAMAGE", "VANDAL", "ARSON", "FRAUD", "FORGERY", "EMBEZ", "LARC",
   "SHOPLIFT",
 ];
 const SOCIETY_KEYS = [
-  "DISTURBANCE", "NUISANCE", "SHOTSPOTTER", "SHOTS FIRED", "WEAPON",
-  "DRUG", "NARCOTIC", "INTOX", "TRESPASS", "DISORDERLY", "OUI", "DUI",
+  "WEAPON", "DRUG", "NARCOTIC", "TRESPASS", "DISORDERLY", "OUI", "DUI",
 ];
 // Anything that doesn't match the three lists above is administrative
-// (officer-initiated patrol, follow-ups, traffic stops, alarms) and is
-// filtered out at ingest.
+// (officer-initiated patrol, follow-ups, traffic stops, alarms, welfare
+// checks, MH responses) and is filtered out at ingest.
 function classify(desc: string): CrimeCategory | null {
   const t = desc.toUpperCase();
   if (PERSONS_KEYS.some((k) => t.includes(k))) return CrimeCategory.PERSONS;
