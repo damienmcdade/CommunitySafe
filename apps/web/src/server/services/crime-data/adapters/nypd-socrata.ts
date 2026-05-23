@@ -53,9 +53,10 @@ const PROVENANCE: DataProvenance = {
   granularity: "neighborhood",
   disclaimer:
     "Incidents are reported by the New York City Police Department and " +
-    "aggregated to NYPD precinct — not live, not street-level. TravelSafe " +
-    "does not track individuals and intentionally ignores victim-demographic " +
-    "columns published by NYPD.",
+    "aggregated by NYPD precinct, then surfaced under each precinct's " +
+    "primary-coverage neighborhood (per nyc.gov/site/nypd) — not live, " +
+    "not street-level. TravelSafe does not track individuals and " +
+    "intentionally ignores victim-demographic columns published by NYPD.",
 };
 
 function ordinal(n: number): string {
@@ -64,12 +65,109 @@ function ordinal(n: number): string {
   return `${n}${j === 1 ? "st" : j === 2 ? "nd" : j === 3 ? "rd" : "th"}`;
 }
 
-/// "47" → "47th Precinct". Matches the polygon file's `properties.name`.
+// NYPD precinct → recognizable-neighborhood label. NYPD publishes the
+// canonical precinct boundaries and primary-coverage neighborhoods at
+// nyc.gov/site/nypd/bureaus/patrol/precincts-landing.page. Every
+// precinct number that ships in NYPD complaint data is keyed here;
+// any unmapped number falls back to "<ordinal> Precinct" so the
+// adapter never drops rows.
+const PRECINCT_TO_NEIGHBORHOOD: Record<number, string> = {
+  // Manhattan (22 precincts)
+  1:  "Tribeca / Financial District (Manhattan)",
+  5:  "Chinatown / Little Italy (Manhattan)",
+  6:  "West Village (Manhattan)",
+  7:  "Lower East Side (Manhattan)",
+  9:  "East Village (Manhattan)",
+  10: "Chelsea (Manhattan)",
+  13: "Flatiron / Gramercy (Manhattan)",
+  14: "Midtown South / Hudson Yards (Manhattan)",
+  17: "Murray Hill / Turtle Bay (Manhattan)",
+  18: "Midtown North (Manhattan)",
+  19: "Upper East Side (Manhattan)",
+  20: "Upper West Side (Manhattan)",
+  22: "Central Park (Manhattan)",
+  23: "East Harlem South (Manhattan)",
+  24: "Morningside Heights (Manhattan)",
+  25: "East Harlem North (Manhattan)",
+  26: "Hamilton Heights (Manhattan)",
+  28: "Central Harlem South (Manhattan)",
+  30: "West Harlem (Manhattan)",
+  32: "Central Harlem North (Manhattan)",
+  33: "Washington Heights South (Manhattan)",
+  34: "Washington Heights North / Inwood (Manhattan)",
+  // Bronx (12 precincts)
+  40: "Mott Haven / Melrose (Bronx)",
+  41: "Hunts Point / Longwood (Bronx)",
+  42: "Morrisania (Bronx)",
+  43: "Soundview / Castle Hill (Bronx)",
+  44: "Highbridge / Concourse (Bronx)",
+  45: "Throgs Neck / Pelham Bay (Bronx)",
+  46: "Fordham (Bronx)",
+  47: "Wakefield / Williamsbridge (Bronx)",
+  48: "East Tremont / Belmont (Bronx)",
+  49: "Pelham Parkway / Allerton (Bronx)",
+  50: "Riverdale / Kingsbridge (Bronx)",
+  52: "Bedford Park / Norwood (Bronx)",
+  // Brooklyn (23 precincts)
+  60: "Coney Island / Brighton Beach (Brooklyn)",
+  61: "Sheepshead Bay (Brooklyn)",
+  62: "Bensonhurst (Brooklyn)",
+  63: "Marine Park / Mill Basin (Brooklyn)",
+  66: "Borough Park (Brooklyn)",
+  67: "East Flatbush (Brooklyn)",
+  68: "Bay Ridge / Dyker Heights (Brooklyn)",
+  69: "Canarsie (Brooklyn)",
+  70: "Midwood / Flatbush (Brooklyn)",
+  71: "Crown Heights South (Brooklyn)",
+  72: "Sunset Park (Brooklyn)",
+  73: "Brownsville (Brooklyn)",
+  75: "East New York (Brooklyn)",
+  76: "Cobble Hill / Red Hook (Brooklyn)",
+  77: "Crown Heights North (Brooklyn)",
+  78: "Park Slope (Brooklyn)",
+  79: "Bedford-Stuyvesant West (Brooklyn)",
+  81: "Bedford-Stuyvesant East (Brooklyn)",
+  83: "Bushwick (Brooklyn)",
+  84: "Brooklyn Heights / DUMBO / Downtown Brooklyn (Brooklyn)",
+  88: "Fort Greene / Clinton Hill (Brooklyn)",
+  90: "Williamsburg South (Brooklyn)",
+  94: "Greenpoint / Williamsburg North (Brooklyn)",
+  // Queens (16 precincts)
+  100: "Rockaway (Queens)",
+  101: "Far Rockaway / Edgemere (Queens)",
+  102: "Richmond Hill / Woodhaven (Queens)",
+  103: "Jamaica Center (Queens)",
+  104: "Ridgewood / Glendale / Middle Village (Queens)",
+  105: "Queens Village / Cambria Heights (Queens)",
+  106: "Ozone Park (Queens)",
+  107: "Fresh Meadows / Briarwood (Queens)",
+  108: "Long Island City / Sunnyside / Woodside (Queens)",
+  109: "Flushing / Whitestone (Queens)",
+  110: "Elmhurst / Corona (Queens)",
+  111: "Bayside / Auburndale (Queens)",
+  112: "Forest Hills / Rego Park (Queens)",
+  113: "South Jamaica / St. Albans (Queens)",
+  114: "Astoria (Queens)",
+  115: "Jackson Heights / East Elmhurst (Queens)",
+  116: "Rosedale / Laurelton (Queens)",
+  // Staten Island (4 precincts)
+  120: "St. George / Stapleton (Staten Island)",
+  121: "Mariners Harbor / Port Richmond (Staten Island)",
+  122: "South Beach / New Dorp (Staten Island)",
+  123: "Tottenville (Staten Island)",
+};
+
+/// Translate a raw NYPD precinct number into the recognizable
+/// neighborhood label users expect. Unmapped numbers fall back to
+/// "<ordinal> Precinct" so the adapter still ingests them; PSA
+/// (Police Service Area) housing-bureau codes and transit-bureau
+/// codes that NYPD occasionally writes into addr_pct_cd will land
+/// in that fallback bucket rather than being dropped.
 function precinctName(p: string | undefined): string | null {
   if (!p) return null;
   const n = Number(p);
   if (!Number.isFinite(n) || n <= 0) return null;
-  return `${ordinal(n)} Precinct`;
+  return PRECINCT_TO_NEIGHBORHOOD[n] ?? `${ordinal(n)} Precinct`;
 }
 
 async function fetchNypd(): Promise<Incident[]> {
@@ -139,18 +237,21 @@ export async function getDiscoveredAreasNYC(): Promise<KnownArea[]> {
   return Array.from(agg.entries())
     .filter(([, e]) => e.count >= 3)
     .map(([name, e]) => ({
+      // Slug derived from the full label (neighborhood + borough),
+      // including the "(Brooklyn)" / "(Queens)" suffix so two
+      // similarly-named neighborhoods across boroughs (e.g.,
+      // Washington Heights vs the imaginary collision) stay
+      // unambiguous. Round-trip works because labelForNYCSlug() does
+      // the same slugify().
       slug: `ny-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`,
       label: name,
       jurisdiction: "New York City",
       centroid: { lat: e.latSum / e.count, lng: e.lngSum / e.count },
     }))
-    .sort((a, b) => {
-      // Sort by precinct number rather than alpha so the wheel reads like
-      // "1st Precinct, 5th Precinct, ..." not "10th, 100th, 1st".
-      const na = parseInt(a.label, 10) || 999;
-      const nb = parseInt(b.label, 10) || 999;
-      return na - nb;
-    });
+    // Alpha sort by neighborhood name. The old precinct-number sort
+    // no longer applies — labels are now neighborhood names, so
+    // alphabetical is the natural reading order in the picker wheel.
+    .sort((a, b) => a.label.localeCompare(b.label));
 }
 
 function labelForNYCSlug(slug: string, rows: Incident[]): string | null {
