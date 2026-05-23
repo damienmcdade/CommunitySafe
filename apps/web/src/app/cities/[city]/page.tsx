@@ -48,6 +48,11 @@ export default async function CityLandingPage({ params }: Props) {
 
   return (
     <main className="max-w-4xl mx-auto px-4 py-10 space-y-6">
+      <nav aria-label="Breadcrumb" className="text-xs text-slate2-500">
+        <Link href="/cities" className="text-bay-700 hover:underline">Cities</Link>
+        {" / "}
+        <span>{city.label}</span>
+      </nav>
       <header>
         <p className="text-xs uppercase tracking-[0.18em] text-bay-700 font-medium">City overview</p>
         <h1 className="mt-1 font-display text-3xl text-slate2-900">{city.label}</h1>

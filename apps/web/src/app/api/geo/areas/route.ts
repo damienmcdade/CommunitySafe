@@ -40,7 +40,12 @@ export async function GET(req: NextRequest) {
     let staleMessage: string | undefined;
     if (citySlug === "san-diego" && sdpdStale()) {
       stale = true;
-      staleMessage = "Live SDPD feed warming up — showing the last successfully discovered San Diego neighborhood list. Scores and incidents below may be a few minutes behind.";
+      // Accuracy: the SDPD upstream periodically rejects Vercel IPs, so a
+      // fresh adapter pull can come back empty. We fall back to the last
+      // successful pull. The earlier copy ("warming up") implied an
+      // initialization state; the rewrite below names the actual cause
+      // so users understand the data is cached, not loading.
+      staleMessage = "The San Diego police feed didn't return new data this request, so we're showing the last successful neighborhood pull. Scores and incidents below may be a few minutes behind.";
     }
     return NextResponse.json({ areas, stale, staleMessage }, { headers: STABLE_CACHE_HEADERS });
   }

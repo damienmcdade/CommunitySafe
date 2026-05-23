@@ -33,8 +33,10 @@ pnpm-debug.log*
 !.vscode/extensions.json
 .idea
 
-# testing / coverage
-coverage
+# testing / coverage — anchor to repo root so we don't swallow
+# `apps/web/src/app/coverage/` (the public /coverage status dashboard).
+/coverage
+**/coverage-report
 .nyc_output
 
 # prisma
