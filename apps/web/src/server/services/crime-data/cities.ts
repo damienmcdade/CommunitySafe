@@ -279,6 +279,32 @@ export function cityFromLatLng(point: { lat: number; lng: number }): CityEntry |
   return null;
 }
 
+/// Closest tracked city by great-circle distance from the point to the
+/// city's bbox centroid. Used as a fallback when cityFromLatLng()
+/// returns null — a user just outside SD's bbox (e.g., Tijuana side
+/// of the border, or El Cajon) shouldn't see an outside_coverage
+/// error when SD is obviously their nearest tracked city. Returns
+/// the city and the haversine distance in km so the caller can
+/// decide if they're close enough to be useful.
+export function nearestCityByCentroid(point: { lat: number; lng: number }): { city: CityEntry; km: number } | null {
+  const R = 6371;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+    const dLat = toRad(b.lat - a.lat);
+    const dLng = toRad(b.lng - a.lng);
+    const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(s));
+  }
+  let best: { city: CityEntry; km: number } | null = null;
+  for (const c of CITIES) {
+    const cx = (c.bbox.south + c.bbox.north) / 2;
+    const cy = (c.bbox.west + c.bbox.east) / 2;
+    const km = haversineKm(point, { lat: cx, lng: cy });
+    if (!best || km < best.km) best = { city: c, km };
+  }
+  return best;
+}
+
 /// Route an area slug to its city. Slugs are prefixed by adapter
 /// (la-*, sf-*, chi-*); bare slugs default to San Diego.
 export function cityForArea(slug: string): CityEntry {

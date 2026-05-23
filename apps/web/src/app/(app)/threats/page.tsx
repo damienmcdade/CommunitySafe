@@ -50,6 +50,11 @@ export default function ThreatsPage() {
   );
   const [pushStatus, setPushStatus] = useState<string | null>(null);
   const [locError, setLocError] = useState<string | null>(null);
+  // Success / informational status from the location flow ("Found you
+  // in Pacific Beach, San Diego" or "Routed to LA Downtown — closest
+  // tracked area, ~7 km away"). Distinct from locError so we can
+  // render the two with different visual weight.
+  const [locStatus, setLocStatus] = useState<string | null>(null);
   // Busy flags so the two action buttons render their in-flight state.
   // Geolocation can take 2-5s on cold permission prompts and push
   // subscription waits for the browser dialog; silent buttons made the
@@ -81,21 +86,49 @@ export default function ThreatsPage() {
   async function useMyLocation() {
     if (locBusy) return;
     setLocError(null);
+    setLocStatus(null);
     setLocBusy(true);
     try {
       const pos = await requestLocation();
-      const r = await api<{ area: string; label: string; city: string; alerts: Alert[] }>(
+      const r = await api<{
+        area: string;
+        label: string;
+        city: string;
+        citySlug: string | null;
+        offBbox: boolean;
+        distanceKm: number | null;
+        alerts: Alert[];
+      }>(
         `/crime-data/alerts?lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`,
       );
-      // If geolocation lands the user in a different supported city, switch
-      // the whole app to that city automatically so all tabs follow.
-      const matchedCity = cities.find((c) => c.label.toLowerCase() === r.city.toLowerCase());
+      // Prefer the citySlug the server picked over fuzzy label-matching
+      // — the route now publishes the canonical slug directly so we
+      // don't risk a case/punctuation mismatch ("Washington" vs
+      // "Washington, DC", etc.).
+      const matchedCity = (r.citySlug && cities.find((c) => c.slug === r.citySlug))
+        ?? cities.find((c) => c.label.toLowerCase() === r.city.toLowerCase());
       if (matchedCity && matchedCity.slug !== city.slug) setCity(matchedCity.slug);
+      // setArea broadcasts to every useArea subscriber (Safety Score,
+      // Crime Chart, Crime Map, AreaBrief, etc.) so the whole app
+      // pivots to this neighborhood on a single click.
       setArea({ slug: r.area, label: r.label, jurisdiction: r.city });
-      // Geolocation always resolves to a specific neighborhood, so it
-      // only makes sense from the Neighborhood tab and the result
-      // should stay there.
       setTab("neighborhood");
+      // Friendly status. Three cases worth distinguishing:
+      //   (a) Exact-bbox match    → "found you in <area>"
+      //   (b) Off-bbox fallback   → "routed to <area> (closest tracked
+      //                             area, ~X km away)"
+      //   (c) Distance > 5km     → still inside bbox but the nearest
+      //                             tracked centroid is far — surface
+      //                             the distance so the user knows the
+      //                             match is approximate.
+      if (r.offBbox) {
+        const km = r.distanceKm != null ? `, ~${Math.round(r.distanceKm)} km away` : "";
+        setLocStatus(`Routed to ${r.label} in ${r.city} — closest tracked area${km}.`);
+      } else if (r.distanceKm != null && r.distanceKm > 5) {
+        setLocStatus(`Showing ${r.label} in ${r.city} — closest tracked area to your location (~${Math.round(r.distanceKm)} km).`);
+      } else {
+        setLocStatus(`Found you in ${r.label}, ${r.city}.`);
+      }
     } catch (err) {
       const e = err as Error & { status?: number; body?: { message?: string } };
       const msg = e.body?.message ?? e.message ?? "Unknown error.";
@@ -166,6 +199,7 @@ export default function ThreatsPage() {
           locBusy={locBusy}
           pushBusy={pushBusy}
           locError={locError}
+          locStatus={locStatus}
           pushStatus={pushStatus}
         />
       )}
@@ -298,6 +332,7 @@ function NeighborhoodAwareness({
   locBusy,
   pushBusy,
   locError,
+  locStatus,
   pushStatus,
 }: {
   city: { slug: string; label: string };
@@ -314,6 +349,7 @@ function NeighborhoodAwareness({
   locBusy: boolean;
   pushBusy: boolean;
   locError: string | null;
+  locStatus: string | null;
   pushStatus: string | null;
 }) {
   return (
@@ -341,6 +377,7 @@ function NeighborhoodAwareness({
             {pushBusy ? "Subscribing…" : "Enable notifications"}
           </button>
           {pushStatus && <p className="text-xs text-slate2-500">{pushStatus}</p>}
+          {locStatus && <p className="text-xs text-sage-700">{locStatus}</p>}
           {locError && <p className="text-xs text-amber2-700">{locError}</p>}
           <p className="text-xs text-slate2-500">Notifications default to a once-daily digest.</p>
         </div>

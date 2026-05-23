@@ -3,7 +3,7 @@ import { z } from "zod";
 import { wrap, HttpError } from "@/server/lib/http";
 import { crimeData } from "@/server/services/crime-data";
 import { listKnownAreas, nearestArea, type KnownArea } from "@/server/services/crime-data/neighborhoods";
-import { cityFromLatLng, cityForArea } from "@/server/services/crime-data/cities";
+import { cityFromLatLng, cityForArea, nearestCityByCentroid } from "@/server/services/crime-data/cities";
 
 const Query = z.object({
   neighborhood: z.string().optional(),
@@ -22,25 +22,55 @@ function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: num
   return 2 * R * Math.asin(Math.sqrt(s));
 }
 
-/// Resolve a (lat,lng) to a KnownArea. The previous implementation used the
-/// sync nearestArea(), which silently fell back to a 7-neighborhood hardcoded
-/// list on cold function instances — meaning anyone outside that small set
-/// (most of LA, all of SF, anywhere in California outside ~7 SD points)
-/// got a 400. We now:
-///   1. Identify the city by bounding box.
-///   2. Pull that city's full discovered neighborhood list.
-///   3. Pick the nearest by great-circle distance, capped at 30km.
-async function resolveByLatLng(lat: number, lng: number): Promise<{ area: KnownArea; cityLabel: string } | null> {
-  const city = cityFromLatLng({ lat, lng });
-  if (!city) return null;
+/// Resolve a (lat,lng) to a KnownArea. Two-pass:
+///   1. If the point is inside a city's bbox, use that city directly.
+///   2. Otherwise fall back to nearestCityByCentroid — a user just
+///      outside a city's bbox (suburb, neighboring township, the next
+///      county over) should still route to that obvious-closest
+///      tracked city instead of seeing "outside coverage". Only when
+///      the closest tracked city is more than 100km from the point
+///      do we treat them as outside coverage entirely.
+///
+/// Once a city is picked, we walk that city's full discovered area
+/// list and pick the nearest centroid. No hard cap — if the user's
+/// city has been picked, ANY area in it is a meaningful result
+/// (better than 404). We expose how far the picked area is so the
+/// caller can show "we routed you to LA Downtown, 18 km from your
+/// location" when the match isn't exact.
+async function resolveByLatLng(lat: number, lng: number): Promise<{
+  area: KnownArea;
+  cityLabel: string;
+  citySlug: string;
+  /// True when the user's point fell OUTSIDE the picked city's bbox
+  /// and we fell back to nearest-city-by-centroid. Lets the UI show
+  /// a "routed to <closest tracked city>" hint instead of pretending
+  /// the user is in that city.
+  offBbox: boolean;
+  /// Great-circle distance from the user's point to the picked
+  /// area's centroid, in km.
+  distanceKm: number;
+} | null> {
+  let city = cityFromLatLng({ lat, lng });
+  let offBbox = false;
+  if (!city) {
+    const near = nearestCityByCentroid({ lat, lng });
+    // 100km cap: a user in Honolulu shouldn't get routed to LA. If
+    // the nearest tracked city is more than 100km from the point,
+    // we're genuinely outside meaningful coverage.
+    if (!near || near.km > 100) return null;
+    city = near.city;
+    offBbox = true;
+  }
   const all = await listKnownAreas();
-  const candidates = all.filter((a) => a.jurisdiction.toLowerCase() === city.label.toLowerCase());
+  const candidates = all.filter((a) => a.jurisdiction.toLowerCase() === city!.label.toLowerCase());
+  if (candidates.length === 0) return null;
   let best: { area: KnownArea; km: number } | null = null;
   for (const a of candidates) {
     const km = haversineKm({ lat, lng }, a.centroid);
     if (!best || km < best.km) best = { area: a, km };
   }
-  return best && best.km < 30 ? { area: best.area, cityLabel: city.label } : null;
+  if (!best) return null;
+  return { area: best.area, cityLabel: city.label, citySlug: city.slug, offBbox, distanceKm: best.km };
 }
 
 export const dynamic = "force-dynamic";
@@ -79,15 +109,25 @@ export const GET = wrap(async (req: NextRequest) => {
           area: fallback.slug,
           label: fallback.label,
           city: fallback.jurisdiction,
+          citySlug: null,
+          offBbox: true,
+          distanceKm: null,
           alerts: await crimeData.getAreaAlerts(fallback.slug, { limit: q.limit }),
         }, { headers: PRIVATE_CACHE_HEADERS });
       }
-      throw new HttpError(404, "outside_coverage", "Your location is outside the cities TravelSafe currently covers (San Diego, Los Angeles, San Francisco).");
+      throw new HttpError(
+        404,
+        "outside_coverage",
+        "Your location is outside the cities TravelSafe currently covers. Pick a city manually from the wheel to browse its data.",
+      );
     }
     return NextResponse.json({
       area: resolved.area.slug,
       label: resolved.area.label,
       city: resolved.cityLabel,
+      citySlug: resolved.citySlug,
+      offBbox: resolved.offBbox,
+      distanceKm: resolved.distanceKm,
       alerts: await crimeData.getAreaAlerts(resolved.area.slug, { limit: q.limit }),
     }, { headers: PRIVATE_CACHE_HEADERS });
   }
