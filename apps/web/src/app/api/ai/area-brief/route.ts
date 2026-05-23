@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { wrap } from "@/server/lib/http";
+import { requireSession } from "@/server/lib/auth";
 import { generateAreaBrief } from "@/server/services/ai/area-brief";
 
 const Query = z.object({
@@ -10,7 +11,11 @@ const Query = z.object({
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
+// Auth-gated because each call invokes a paid LLM. Anonymous device
+// sessions qualify; the per-IP middleware cap (5/min on /api/ai/*)
+// still applies on top.
 export const GET = wrap(async (req: NextRequest) => {
+  requireSession(req);
   const { area } = Query.parse(Object.fromEntries(req.nextUrl.searchParams));
   const brief = await generateAreaBrief(area);
   return NextResponse.json({

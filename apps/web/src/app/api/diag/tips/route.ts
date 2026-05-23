@@ -9,7 +9,7 @@ export const maxDuration = 30;
 // adapter + AI pipeline end to end. Gated because each call costs
 // AI tokens.
 export async function GET(req: NextRequest) {
-  const denied = requireCronSecret(req, { softMode: true });
+  const denied = requireCronSecret(req);
   if (denied) return denied;
 
   const area = req.nextUrl.searchParams.get("area") ?? "chi-loop";

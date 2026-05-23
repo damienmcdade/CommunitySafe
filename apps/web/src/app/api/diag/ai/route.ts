@@ -10,7 +10,7 @@ export const maxDuration = 30;
 // because each call costs tokens; without the gate this is a free AI
 // generation endpoint anyone could hammer.
 export async function GET(req: NextRequest) {
-  const denied = requireCronSecret(req, { softMode: true });
+  const denied = requireCronSecret(req);
   if (denied) return denied;
 
   const configured = aiConfigured();

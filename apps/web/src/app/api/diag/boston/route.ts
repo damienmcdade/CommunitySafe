@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 // disclosure (even just true/false) is a useful pre-attack
 // reconnaissance signal.
 export async function GET(req: NextRequest) {
-  const denied = requireCronSecret(req, { softMode: true });
+  const denied = requireCronSecret(req);
   if (denied) return denied;
 
   // Pipeline trace: snapshot → adapter rows → discovered areas → env state.

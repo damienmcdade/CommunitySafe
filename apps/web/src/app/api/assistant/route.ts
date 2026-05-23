@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z, ZodError } from "zod";
+import { requireSession } from "@/server/lib/auth";
+import { HttpError } from "@/server/lib/http";
 import { streamAssistant } from "@/server/services/ai/assistant";
 
 const Body = z.object({
@@ -14,9 +16,12 @@ export const maxDuration = 60;
 
 // Streaming endpoint — wraps its own error handling because the route returns
 // the AI SDK's text-stream Response (not NextResponse), so it can't go through
-// the shared `wrap` helper.
+// the shared `wrap` helper. Auth-gated because each call streams a paid LLM
+// with tool-calling. Anonymous device sessions (useAnonymousAuth) qualify;
+// the per-IP middleware cap (10/min) still applies on top.
 export async function POST(req: NextRequest): Promise<Response> {
   try {
+    requireSession(req);
     const { messages } = Body.parse(await req.json());
     const r = await streamAssistant(messages);
     if (!r.configured) {
@@ -29,6 +34,9 @@ export async function POST(req: NextRequest): Promise<Response> {
       headers: { "Cache-Control": "no-cache, no-transform" },
     });
   } catch (err) {
+    if (err instanceof HttpError) {
+      return NextResponse.json({ error: err.code, message: err.message }, { status: err.status });
+    }
     if (err instanceof ZodError) {
       return NextResponse.json({ error: "validation_failed", issues: err.issues }, { status: 400 });
     }

@@ -41,22 +41,43 @@ interface BucketEntry {
 const WINDOW_MS = 60_000;
 
 // Per-path-prefix limit table. Longest-prefix match wins.
+// Audit added: /api/route (safe-route planner — DB + 2 upstream pulls
+// per call), /api/neighborhood (feed + watch), /api/official-alerts
+// (NWS/USGS proxies), /api/ai (area-brief + compose-feedback — billed
+// AI calls), /api/auth/anonymous (unbounded User row creation —
+// special-cased lower since each call writes to Postgres).
+// /api/safety used to live in SKIP_PREFIXES on the theory that every
+// safety route required auth — but by-coordinates, tips, and trends
+// are PUBLIC routes that hammer upstream police APIs. Now in LIMITS.
 const LIMITS: Array<{ prefix: string; cap: number }> = [
-  { prefix: "/api/assistant",     cap: 10 },
-  { prefix: "/api/coverage",      cap: 30 },
-  { prefix: "/api/community",     cap: 30 },
-  { prefix: "/api/news",          cap: 30 },
-  { prefix: "/api/safezone/",     cap: 60 },
-  { prefix: "/api/crime-data/",   cap: 60 },
-  { prefix: "/api/geo/",          cap: 60 },
+  { prefix: "/api/auth/anonymous", cap: 5 },   // unbounded User row creation
+  { prefix: "/api/ai/",            cap: 5 },   // billed AI calls
+  { prefix: "/api/assistant",      cap: 10 },  // AI streaming — most expensive
+  { prefix: "/api/safety/",        cap: 30 },  // by-coordinates / tips / trends
+  { prefix: "/api/route",          cap: 30 },  // safe-route planner (DB + 2 upstream)
+  { prefix: "/api/neighborhood",   cap: 30 },  // feed + watch
+  { prefix: "/api/official-alerts", cap: 30 }, // NWS/USGS proxies
+  { prefix: "/api/coverage",       cap: 30 },
+  { prefix: "/api/community",      cap: 30 },
+  { prefix: "/api/news",           cap: 30 },
+  { prefix: "/api/safezone/",      cap: 60 },
+  { prefix: "/api/crime-data/",    cap: 60 },
+  { prefix: "/api/geo/",           cap: 60 },
 ];
 
-// Path prefixes that are NEVER rate-limited (they're auth-protected
-// or part of bootstrap / token-issued flows).
+// Path prefixes that are NEVER rate-limited (auth-protected by their
+// own session check, or token-issued bootstrap flows that need to
+// burst). /api/auth/ remains here for register/login/me; the
+// anonymous-bootstrap sub-path is special-cased in LIMITS above and
+// the longest-prefix match in pickLimit() ensures it wins.
+// /api/account/* and /api/diag/* are session-protected (account) or
+// CRON_SECRET-protected (diag) — explicit skip beats relying on the
+// "not in LIMITS" fallthrough.
 const SKIP_PREFIXES = [
   "/api/cron/",
   "/api/auth/",
-  "/api/safety/",
+  "/api/account/",
+  "/api/diag/",
   "/api/preferences/",
   "/api/moderation/",
   "/api/share/",
@@ -96,9 +117,14 @@ export function middleware(req: NextRequest) {
   // Skip everything that isn't an API route.
   if (!pathname.startsWith("/api/")) return NextResponse.next();
 
-  // Skip auth-protected / bootstrap routes.
-  if (SKIP_PREFIXES.some((p) => pathname.startsWith(p))) return NextResponse.next();
-
+  // Resolve the LIMIT first so a specific sub-path (e.g.
+  // /api/auth/anonymous) can override a broader SKIP_PREFIXES entry
+  // (/api/auth/). Without this ordering, /api/auth/anonymous would
+  // be silently exempted by the /api/auth/ skip and an attacker
+  // could create unbounded User rows. When no LIMIT matches, we
+  // fall through to SKIP_PREFIXES, which documents the routes that
+  // are intentionally not rate-limited (auth-gated, token-issued,
+  // or cron-secret-gated).
   const cap = pickLimit(pathname);
   if (cap == null) return NextResponse.next();
 

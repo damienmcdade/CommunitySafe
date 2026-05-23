@@ -1,5 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { requireSession } from "@/server/lib/auth";
+import { errorResponse } from "@/server/lib/http";
 import { streamComposeFeedback } from "@/server/services/ai/compose-feedback";
 
 const Body = z.object({
@@ -9,7 +11,15 @@ const Body = z.object({
 });
 
 export const dynamic = "force-dynamic";
+// Auth-gated because each call invokes a paid LLM. requireSession throws
+// HttpError(401); we catch via errorResponse since this returns a raw
+// streaming Response (not NextResponse) and can't go through wrap().
 export async function POST(req: NextRequest) {
+  try {
+    requireSession(req);
+  } catch (err) {
+    return errorResponse(err);
+  }
   const draft = Body.parse(await req.json());
   const result = await streamComposeFeedback(draft);
   if (!result.configured) {

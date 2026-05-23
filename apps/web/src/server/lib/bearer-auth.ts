@@ -8,16 +8,14 @@ import { env } from "./env";
 // on failure (which the caller should return as-is); returns null when
 // the request is authorized so the route can continue.
 //
-// The "soft" mode accepts the secret EITHER in the Authorization header
-// (Bearer scheme — the way Vercel cron sends it) OR in a ?secret=...
-// query string. Browsers can't easily set custom headers, so the query
-// string is the only practical way to hit a diag route from the URL bar.
-// Don't enable softMode on cron routes — they receive a real Bearer
-// header from Vercel and shouldn't accept query strings.
-export function requireCronSecret(
-  req: NextRequest,
-  opts: { softMode?: boolean } = {},
-): NextResponse | null {
+// Earlier versions exposed a `softMode` flag that accepted the secret
+// in a `?secret=...` query string for browser-friendly debugging. The
+// audit caught that this leaks the secret into every CDN access log,
+// browser history, and Referer header on outbound link clicks (the
+// boston diag returns external URLs that the browser may then fetch).
+// Removed. Diag routes are now hit via curl with an explicit
+// Authorization header.
+export function requireCronSecret(req: NextRequest): NextResponse | null {
   // If the secret isn't configured we deliberately FAIL CLOSED — return
   // 503 rather than silently allowing the request through. A missing
   // secret means the protection isn't real, and "missing config" is a
@@ -27,9 +25,5 @@ export function requireCronSecret(
   }
   const header = req.headers.get("authorization");
   if (header === `Bearer ${env.CRON_SECRET}`) return null;
-  if (opts.softMode) {
-    const queryParam = req.nextUrl.searchParams.get("secret");
-    if (queryParam === env.CRON_SECRET) return null;
-  }
   return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 }
