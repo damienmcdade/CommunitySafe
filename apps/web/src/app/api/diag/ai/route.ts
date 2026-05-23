@@ -1,10 +1,18 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { aiConfigured, getAIModel } from "@/server/services/ai/provider";
+import { requireCronSecret } from "@/server/lib/bearer-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
-export async function GET() {
+// Diagnostic — runs a real generateText call against the configured AI
+// model to verify provider config end to end. Gated behind CRON_SECRET
+// because each call costs tokens; without the gate this is a free AI
+// generation endpoint anyone could hammer.
+export async function GET(req: NextRequest) {
+  const denied = requireCronSecret(req, { softMode: true });
+  if (denied) return denied;
+
   const configured = aiConfigured();
   if (!configured) return NextResponse.json({ configured: false });
 

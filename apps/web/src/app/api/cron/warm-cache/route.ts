@@ -1,9 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { env } from "@/server/lib/env";
 import { CITIES } from "@/server/services/crime-data/cities";
 import { crimeData } from "@/server/services/crime-data";
 import { getCitywideSafetyScore } from "@/server/services/watch/safety-score";
 import { getCitywideTrend } from "@/server/services/watch/trend-feed";
+import { requireCronSecret } from "@/server/lib/bearer-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -19,14 +19,8 @@ export const maxDuration = 60;
 // If CRON_SECRET is set, require it as a Bearer header so the endpoint
 // isn't a public trigger.
 export async function GET(req: NextRequest) {
-  // CRON_SECRET is REQUIRED — see /api/cron/audit-ratios for rationale.
-  if (!env.CRON_SECRET) {
-    return NextResponse.json({ error: "cron_secret_required" }, { status: 503 });
-  }
-  const auth = req.headers.get("authorization");
-  if (auth !== `Bearer ${env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const denied = requireCronSecret(req);
+  if (denied) return denied;
   const startedAt = Date.now();
   // The server-side CITIES registry only contains cities with verified live
   // public crime APIs — no need for a status filter.

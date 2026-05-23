@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { env } from "@/server/lib/env";
 import { CITIES } from "@/server/services/crime-data/cities";
 import { getCitywideSafetyScore } from "@/server/services/watch/safety-score";
+import { requireCronSecret } from "@/server/lib/bearer-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -28,16 +28,8 @@ export const maxDuration = 60;
 /// isn't a public trigger. Bypass available via NO_CRON_SECRET env var
 /// for local development.
 export async function GET(req: NextRequest) {
-  // CRON_SECRET is REQUIRED — return 503 if not set so the endpoint is
-  // never silently public. Vercel's platform cron passes the secret as
-  // Bearer auth; external triggers must do the same.
-  if (!env.CRON_SECRET) {
-    return NextResponse.json({ error: "cron_secret_required" }, { status: 503 });
-  }
-  const auth = req.headers.get("authorization");
-  if (auth !== `Bearer ${env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const denied = requireCronSecret(req);
+  if (denied) return denied;
   const startedAt = Date.now();
 
   const results = await Promise.all(

@@ -1,11 +1,19 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { bostonSnapshot } from "@/server/data/boston-snapshot";
 import { getRowsBoston, getDiscoveredAreasBoston } from "@/server/services/crime-data/adapters/boston-ckan";
 import { env } from "@/server/lib/env";
+import { requireCronSecret } from "@/server/lib/bearer-auth";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+// Diagnostic — traces the Boston pipeline (snapshot → adapter rows →
+// discovered areas → env-presence). Gated because env-presence
+// disclosure (even just true/false) is a useful pre-attack
+// reconnaissance signal.
+export async function GET(req: NextRequest) {
+  const denied = requireCronSecret(req, { softMode: true });
+  if (denied) return denied;
+
   // Pipeline trace: snapshot → adapter rows → discovered areas → env state.
   const rows = await getRowsBoston().catch((e) => ({ error: String(e) }));
   const areas = await getDiscoveredAreasBoston().catch((e) => ({ error: String(e) }));
