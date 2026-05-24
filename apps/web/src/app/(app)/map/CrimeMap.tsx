@@ -489,6 +489,7 @@ export default function CrimeMap() {
               </CircleMarker>
             );
           })}
+          <InvalidateOnMount />
           <ZoomController polygons={polygons} selectedName={selectedName} fallbackCenter={[city.centroid.lat, city.centroid.lng]} />
         </MapContainer>
       </div>
@@ -613,6 +614,31 @@ function NeighborhoodSearch({ value, onChange, suggestions, onSelect, onClear, s
       </div>
     </section>
   );
+}
+
+/// Defensive size-recalc helper. Leaflet measures its container at
+/// mount; if the container was 0×0 (display:none parent, late layout,
+/// orientation change) the tile pane stays empty until something
+/// triggers invalidateSize(). We trigger it on first mount, on a
+/// window resize, and on orientation change — all the cases that
+/// historically produced blank-tile renders on mobile, especially
+/// after the user lands on /overwatch via a sub-tab toggle.
+function InvalidateOnMount() {
+  const map = useMap();
+  useEffect(() => {
+    const fire = () => map.invalidateSize();
+    // rAF + a microtask buffer so the call lands AFTER React commits
+    // the size of the parent. Without the rAF the call sometimes
+    // fires before the container's geometry updates.
+    requestAnimationFrame(() => requestAnimationFrame(fire));
+    window.addEventListener("resize", fire);
+    window.addEventListener("orientationchange", fire);
+    return () => {
+      window.removeEventListener("resize", fire);
+      window.removeEventListener("orientationchange", fire);
+    };
+  }, [map]);
+  return null;
 }
 
 function ZoomController({ polygons, selectedName, fallbackCenter }: { polygons: FeatureCollection | null; selectedName: string | null; fallbackCenter: [number, number] }) {

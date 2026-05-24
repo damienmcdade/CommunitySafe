@@ -2,6 +2,14 @@ import "server-only";
 import { CrimeCategory } from "@prisma/client";
 import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../types";
 import type { KnownArea } from "../neighborhoods";
+import { phoenixPolygons } from "../../../data/phoenix-neighborhoods";
+
+// Per-village centroid lookup, derived from the bundled official
+// Phoenix Urban Village polygons. Used as the centroid for every
+// village area (Phoenix crime rows don't have lat/lng so we use the
+// polygon center as the representative point for the entire village).
+const VILLAGE_CENTROID: Record<string, { lat: number; lng: number }> =
+  Object.fromEntries(phoenixPolygons.map((p) => [p.name, p.centroid]));
 
 // Phoenix AZ — Phoenix Police Crime Statistics on phoenixopendata.com.
 //
@@ -39,48 +47,57 @@ interface RawRow {
 // Sourced from Phoenix's official Urban Villages map + commonly used
 // community profiles. Public knowledge, not derived from the police
 // feed. Unknown ZIPs render as "Phoenix 85xxx" via the fallback path.
-const ZIP_NEIGHBORHOOD: Record<string, string> = {
-  "85003": "Downtown Phoenix",
-  "85004": "Downtown East",
-  "85006": "Garfield",
-  "85007": "Capitol",
-  "85008": "Eastlake Park",
-  "85009": "Maryvale East",
+// Phoenix ZIP → official Phoenix urban-village name. Phoenix's 15
+// urban villages are the city's actual published planning units
+// (https://maps.phoenix.gov/pub/rest/services/Public/Villages); the
+// polygon data is bundled in src/server/data/phoenix-neighborhoods.ts.
+// Each ZIP falls in exactly one village (with minor edge cases for
+// ZIPs that straddle the city boundary — picked the dominant village).
+// Multiple ZIPs map to the same village (e.g. all five Maryvale ZIPs
+// collapse to "Maryvale"); the discovery code aggregates by village
+// so users see real Phoenix-planning names instead of derived ZIP
+// labels.
+const ZIP_TO_VILLAGE: Record<string, string> = {
+  "85003": "Central City",
+  "85004": "Central City",
+  "85006": "Encanto",
+  "85007": "Central City",
+  "85008": "Encanto",
+  "85009": "Maryvale",
   "85013": "Encanto",
-  "85014": "North Central",
-  "85015": "Encanto Fairway",
+  "85014": "Camelback East",
+  "85015": "Alhambra",
   "85016": "Camelback East",
-  "85017": "Estrella",
-  "85018": "Arcadia",
+  "85017": "Alhambra",
+  "85018": "Camelback East",
   "85019": "Maryvale",
   "85020": "North Mountain",
-  "85021": "Sunnyslope",
-  "85022": "Paradise Valley South",
+  "85021": "North Mountain",
+  "85022": "Paradise Valley",
   "85023": "Deer Valley",
-  "85024": "Tatum Ranch",
-  "85027": "Anthem South",
-  "85028": "Paradise Valley Village",
-  "85029": "Moon Valley",
-  "85031": "Maryvale Central",
+  "85024": "Desert View",
+  "85027": "Deer Valley",
+  "85028": "Paradise Valley",
+  "85029": "North Mountain",
+  "85031": "Maryvale",
   "85032": "Paradise Valley",
-  "85033": "Maryvale West",
-  "85034": "South Mountain North",
-  "85035": "Maryvale Far West",
-  "85037": "Estrella West",
-  "85040": "South Mountain Village",
-  "85041": "South Mountain South",
-  "85042": "Ahwatukee",
+  "85033": "Maryvale",
+  "85034": "South Mountain",
+  "85035": "Maryvale",
+  "85037": "Estrella",
+  "85040": "South Mountain",
+  "85041": "South Mountain",
+  "85042": "South Mountain",
   "85043": "Laveen",
   "85044": "Ahwatukee Foothills",
-  "85045": "Ahwatukee North",
-  "85048": "Ahwatukee Lakes",
-  "85050": "Desert Ridge",
-  "85051": "Moon Valley West",
-  "85053": "Deer Valley West",
-  "85054": "Desert Ridge East",
-  "85083": "Anthem North",
-  "85085": "Anthem East",
-  "85086": "Cave Creek",
+  "85045": "Ahwatukee Foothills",
+  "85048": "Ahwatukee Foothills",
+  "85050": "Desert View",
+  "85051": "North Mountain",
+  "85053": "Deer Valley",
+  "85054": "Desert View",
+  "85083": "Deer Valley",
+  "85085": "North Gateway",
 };
 
 const PROVENANCE: DataProvenance = {
@@ -156,37 +173,43 @@ async function fetchAndParse(): Promise<Cache> {
   const rawRows = pages.flat();
 
   const rows: Incident[] = [];
-  const zipCounts = new Map<string, number>();
+  const villageCounts = new Map<string, number>();
+  // Phoenix metro centroid — last-resort fallback for ZIPs that
+  // don't map to any village (shouldn't happen for in-city PD rows,
+  // but the discovery code must still produce a valid centroid).
+  const PHOENIX_METRO_CENTROID = { lat: 33.45, lng: -112.07 };
+
   for (const r of rawRows) {
     const occurred = parsePhoenixDate(r["OCCURRED ON"]);
     if (!occurred) continue;
     const zip = (r["ZIP"] ?? "").trim();
     if (!/^\d{5}$/.test(zip)) continue;
-    const slug = `phx-${zip}`;
+    // Aggregate by village. Unmapped ZIPs fall back to the legacy
+    // "Phoenix 85xxx" label so the row isn't dropped — discovery
+    // still surfaces it as a known area.
+    const village = ZIP_TO_VILLAGE[zip] ?? `Phoenix ${zip}`;
     rows.push({
       id: `phx-${r["INC NUMBER"] ?? `${rows.length}`}`,
-      area: slug,
+      area: village,
       occurredAt: occurred.toISOString(),
       nibrsCategory: mapUcrToNibrs(r["UCR CRIME CATEGORY"]),
       ibrOffenseDescription: (r["UCR CRIME CATEGORY"] ?? "Unknown").trim(),
       beat: r["GRID"] ?? null,
       blockLabel: r["100 BLOCK ADDR"] ?? undefined,
     });
-    zipCounts.set(zip, (zipCounts.get(zip) ?? 0) + 1);
+    villageCounts.set(village, (villageCounts.get(village) ?? 0) + 1);
   }
 
-  // Order areas by incident volume so the wheel surfaces the busiest
-  // (most user-recognizable) neighborhoods first when search is empty.
-  // Centroid is the Phoenix metro center — we don't compute per-ZIP
-  // centroids because lat/lng isn't in this dataset.
-  const phoenixCentroid = { lat: 33.45, lng: -112.07 };
-  const areas: KnownArea[] = Array.from(zipCounts.entries())
+  // Order by incident volume so the wheel surfaces the busiest
+  // villages first. Centroids come from the bundled village
+  // polygon centers (real geometry, not a metro placeholder).
+  const areas: KnownArea[] = Array.from(villageCounts.entries())
     .sort((a, b) => b[1] - a[1])
-    .map(([zip]) => ({
-      slug: `phx-${zip}`,
-      label: ZIP_NEIGHBORHOOD[zip] ?? `Phoenix ${zip}`,
+    .map(([village]) => ({
+      slug: `phx-${village.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`,
+      label: village,
       jurisdiction: "Phoenix",
-      centroid: phoenixCentroid,
+      centroid: VILLAGE_CENTROID[village] ?? PHOENIX_METRO_CENTROID,
     }));
 
   return { fetchedAt: Date.now(), rows, areas };
@@ -214,25 +237,42 @@ async function getCached(): Promise<Cache | null> {
 /// completed yet) never returns []. Without this the SafeZone area
 /// picker showed 0 Phoenix neighborhoods on every fresh instance, and
 /// /api/safezone/safety-score?area=phx-... 404'd as "unknown_area"
-/// for valid Phoenix slugs the user picked from coverage / cities pages.
-const STATIC_PHOENIX_AREAS: KnownArea[] = Object.entries(ZIP_NEIGHBORHOOD).map(([zip, label]) => ({
-  slug: `phx-${zip}`,
-  label: `${label} (${zip})`,
+// Static fallback: every village from the polygon dataset gets a
+// slug entry. Guarantees the picker always has options + lookups
+// resolve on a cold instance before the first fetch lands.
+function villageSlug(name: string): string {
+  return `phx-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
+}
+const STATIC_PHOENIX_AREAS: KnownArea[] = phoenixPolygons.map((p) => ({
+  slug: villageSlug(p.name),
+  label: p.name,
   jurisdiction: "Phoenix",
-  centroid: { lat: 33.45, lng: -112.07 },
+  centroid: p.centroid,
 }));
 
 export async function getDiscoveredAreas(): Promise<KnownArea[]> {
   const c = await getCached();
   if (c && c.areas.length > 0) return c.areas;
   if (lastDiscovered) return lastDiscovered.areas;
-  // Static floor — guaranteed non-empty so the picker always has options
-  // and per-area safety-score calls don't 404 on a cold instance.
   return STATIC_PHOENIX_AREAS;
 }
 
 // Re-export with the city-prefixed name the cities.ts registry expects.
 export { getDiscoveredAreas as getDiscoveredAreasPhoenix };
+
+/// Resolve a Phoenix area slug ("phx-central-city") to its actual
+/// village name ("Central City") as stored on r.area. Falls back to
+/// the legacy "phx-85003" → "Phoenix 85003" path for unmapped ZIPs.
+function labelForPhxSlug(slug: string): string {
+  const want = slug.replace(/^phx-/, "");
+  // ZIP-style legacy slug: "phx-85003"
+  if (/^\d{5}$/.test(want)) {
+    return ZIP_TO_VILLAGE[want] ?? `Phoenix ${want}`;
+  }
+  // Modern slug derived from village name. Search the polygon list.
+  const hit = phoenixPolygons.find((p) => villageSlug(p.name) === slug);
+  return hit?.name ?? slug;
+}
 
 export const phoenixAdapter: CrimeDataAdapter = {
   name: "phoenix-socrata",
@@ -240,22 +280,21 @@ export const phoenixAdapter: CrimeDataAdapter = {
   async getAreaStats(area: string): Promise<AreaStats | null> {
     const c = await getCached();
     if (!c) return null;
-    const incs = c.rows.filter((r) => r.area === area);
+    const label = labelForPhxSlug(area);
+    const incs = c.rows.filter((r) => r.area === label);
     if (incs.length === 0) return null;
-    const zip = area.replace(/^phx-/, "");
     return {
-      area: ZIP_NEIGHBORHOOD[zip] ?? `Phoenix ${zip}`,
-      // Per-1,000 rates would require a per-ZIP population denominator
-      // we don't carry today. Leave null and let the higher-level
-      // citywide aggregator handle ratemath against the Census total.
+      area: label,
       crimeRate: null,
       violentCrimeRate: null,
       propertyCrimeRate: null,
+      // Thresholds rescaled to per-village volume (15 villages
+      // vs 41 ZIPs — each village ~3x the ZIP-level count).
       riskLevel: (
-        incs.length > 2000 ? 5 :
-        incs.length > 800  ? 4 :
-        incs.length > 200  ? 3 :
-        incs.length > 50   ? 2 : 1
+        incs.length > 6000 ? 5 :
+        incs.length > 2400 ? 4 :
+        incs.length > 600  ? 3 :
+        incs.length > 150  ? 2 : 1
       ) as 1 | 2 | 3 | 4 | 5,
       provenance: PROVENANCE,
     };
@@ -264,14 +303,13 @@ export const phoenixAdapter: CrimeDataAdapter = {
   async getIncidents(area: string, opts?: { limit?: number; since?: Date }) {
     const c = await getCached();
     if (!c) return [];
-    let filtered = c.rows.filter((r) => r.area === area);
+    const label = labelForPhxSlug(area);
+    let filtered = c.rows.filter((r) => r.area === label);
     if (opts?.since) {
       const cutoff = +opts.since;
       filtered = filtered.filter((r) => +new Date(r.occurredAt) >= cutoff);
     }
     if (opts?.limit && filtered.length > opts.limit) {
-      // Keep the MOST RECENT `limit` rows. Rows arrive sorted newest-
-      // first from the datastore so slice from the head.
       filtered = filtered.slice(0, opts.limit);
     }
     return filtered;
@@ -280,8 +318,8 @@ export const phoenixAdapter: CrimeDataAdapter = {
   async getRecentReports(area: string, opts?: { limit?: number }) {
     const c = await getCached();
     if (!c) return [];
-    // Rows are already sorted newest-first by fetch order.
-    const filtered = c.rows.filter((r) => r.area === area);
+    const label = labelForPhxSlug(area);
+    const filtered = c.rows.filter((r) => r.area === label);
     return filtered.slice(0, opts?.limit ?? 50);
   },
 };

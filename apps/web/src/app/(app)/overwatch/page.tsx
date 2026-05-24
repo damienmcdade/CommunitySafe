@@ -51,12 +51,25 @@ function OverwatchInner() {
         ))}
       </div>
 
-      <div hidden={tab !== "map"} id="overwatch-panel-map" role="tabpanel" aria-labelledby="overwatch-tab-map">
-        <MapPage />
-      </div>
-      <div hidden={tab !== "route"} id="overwatch-panel-route" role="tabpanel" aria-labelledby="overwatch-tab-route">
-        <SafeRoutePage />
-      </div>
+      {/* Conditional mount instead of hidden-attr toggle. Leaflet
+          measures the container at 0×0 when mounted inside a
+          display:none parent and never re-measures when the parent
+          becomes visible — produced silent blank-tile rendering on
+          mobile when the user landed on /overwatch?tab=route then
+          switched to map. Conditional mount fixes that at the cost
+          of losing pan/zoom state when toggling — acceptable for
+          this hub since map ↔ route is a context switch, not an
+          incremental adjustment. */}
+      {tab === "map" && (
+        <div id="overwatch-panel-map" role="tabpanel" aria-labelledby="overwatch-tab-map">
+          <MapPage />
+        </div>
+      )}
+      {tab === "route" && (
+        <div id="overwatch-panel-route" role="tabpanel" aria-labelledby="overwatch-tab-route">
+          <SafeRoutePage />
+        </div>
+      )}
     </div>
   );
 }

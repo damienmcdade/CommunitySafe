@@ -17,6 +17,14 @@ const DATASTORE_API = "https://data.milwaukee.gov/api/3/action/datastore_search"
 const PAGE_SIZE = 10_000; // dataset total is ~9.4k; one page covers it
 const CACHE_TTL_MS = 10 * 60 * 1000;
 
+import { milwaukeePolygons } from "../../../data/milwaukee-neighborhoods";
+
+// Per-neighborhood centroid lookup from the bundled DCD polygon set.
+// Used as the centroid for every area (Milwaukee crime rows lack
+// lat/lng so the polygon center is the representative point).
+const MKE_CENTROID: Record<string, { lat: number; lng: number }> =
+  Object.fromEntries(milwaukeePolygons.map((p) => [p.name, p.centroid]));
+
 interface RawRow {
   IncidentNum?: string;
   ReportedDateTime?: string;
@@ -40,35 +48,42 @@ interface RawRow {
 // Milwaukee ZIPs → neighborhood / area name. Public knowledge from
 // Milwaukee's planning documents and community area profiles. Unknown
 // ZIPs render as "Milwaukee 53xxx" via the fallback path.
+// Milwaukee ZIP → real polygon-aligned neighborhood name. Names
+// match entries in the bundled milwaukee-neighborhoods.ts polygon
+// dataset (190 official MKE DCD neighborhoods) wherever possible so
+// the adapter can pull a real polygon centroid for each area.
+// ZIPs that straddle the city boundary (53217 Fox Point, 53220
+// Greenfield, etc.) map to the closest in-city polygon name —
+// MPD jurisdiction only extends to city portions of those ZIPs.
 const ZIP_NEIGHBORHOOD: Record<string, string> = {
-  "53202": "East Town",
-  "53203": "Downtown",
+  "53202": "Juneau Town",
+  "53203": "Kilbourn Town",
   "53204": "Walker's Point",
   "53205": "Concordia",
-  "53206": "Sherman Park North",
+  "53206": "Sherman Park",
   "53207": "Bay View",
   "53208": "Washington Park",
-  "53209": "Granville",
-  "53210": "West Park",
-  "53211": "UWM",
+  "53209": "Granville Station",
+  "53210": "Park West",
+  "53211": "Upper East Side",
   "53212": "Riverwest",
-  "53213": "Tosa East",
-  "53214": "West Side",
+  "53213": "West Town",
+  "53214": "Story Hill",
   "53215": "Lincoln Village",
-  "53216": "Sherman Park West",
-  "53217": "Fox Point",
+  "53216": "Sherman Park",
+  "53217": "Bayside",
   "53218": "Capitol Heights",
   "53219": "Jackson Park",
-  "53220": "Greenfield Adjacent",
+  "53220": "Goldmann",
   "53221": "Tippecanoe",
-  "53222": "Capitol Drive Area",
-  "53223": "Brown Deer Adjacent",
-  "53224": "Carleton Heights",
-  "53225": "Northridge",
-  "53226": "Wauwatosa Mayfair",
-  "53227": "West Allis North",
+  "53222": "Capitol Heights",
+  "53223": "Brown Deer",
+  "53224": "Granville",
+  "53225": "Northridge Lakes",
+  "53226": "Story Hill",
+  "53227": "West Allis",
   "53228": "Greenfield",
-  "53233": "Marquette",
+  "53233": "Avenues West",
 };
 
 const PROVENANCE: DataProvenance = {
@@ -124,13 +139,23 @@ interface Cache { fetchedAt: number; rows: Incident[]; areas: KnownArea[] }
 let cache: Cache | null = null;
 let lastDiscovered: { fetchedAt: number; areas: KnownArea[] } | null = null;
 
-// Static seed of all known Milwaukee ZIPs so a cold instance always has
-// areas to show, matching the Phoenix adapter's defensive pattern.
-const STATIC_MILWAUKEE_AREAS: KnownArea[] = Object.entries(ZIP_NEIGHBORHOOD).map(([zip, label]) => ({
-  slug: `mke-${zip}`,
-  label: `${label} (${zip})`,
+// Milwaukee metro centroid — last-resort fallback when a neighborhood
+// name doesn't exist in the bundled polygon set (suburbs that the
+// ZIP-to-neighborhood map points to, edge cases).
+const MILWAUKEE_METRO_CENTROID = { lat: 43.0389, lng: -87.9065 };
+
+function nbhSlug(name: string): string {
+  return `mke-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
+}
+
+// Static seed — every Milwaukee neighborhood from the polygon dataset
+// becomes an area entry. Guarantees cold instances always have the
+// full neighborhood list ready for the picker.
+const STATIC_MILWAUKEE_AREAS: KnownArea[] = milwaukeePolygons.map((p) => ({
+  slug: nbhSlug(p.name),
+  label: p.name,
   jurisdiction: "Milwaukee",
-  centroid: { lat: 43.0389, lng: -87.9065 },
+  centroid: p.centroid,
 }));
 
 async function fetchAndParse(): Promise<Cache> {
@@ -141,35 +166,37 @@ async function fetchAndParse(): Promise<Cache> {
     return [] as RawRow[];
   });
 
-  const milwaukeeCentroid = { lat: 43.0389, lng: -87.9065 };
   const rows: Incident[] = [];
-  const zipCounts = new Map<string, number>();
+  const nbhCounts = new Map<string, number>();
   for (const r of rawRows) {
     const occurred = parseDateMaybe(r.ReportedDateTime);
     if (!occurred) continue;
     const zip = (r.ZIP ?? "").trim();
     if (!/^\d{5}$/.test(zip)) continue;
-    const slug = `mke-${zip}`;
+    // Aggregate by neighborhood name (matched to bundled polygon
+    // names where possible). Unmapped ZIPs fall back to legacy
+    // "Milwaukee 53xxx" labels so the row isn't dropped.
+    const nbh = ZIP_NEIGHBORHOOD[zip] ?? `Milwaukee ${zip}`;
     const { category, description } = classifyRow(r);
     rows.push({
       id: `mke-${r.IncidentNum ?? `${rows.length}`}`,
-      area: slug,
+      area: nbh,
       occurredAt: occurred.toISOString(),
       nibrsCategory: category,
       ibrOffenseDescription: description,
       beat: null,
       blockLabel: r.Location ?? undefined,
     });
-    zipCounts.set(zip, (zipCounts.get(zip) ?? 0) + 1);
+    nbhCounts.set(nbh, (nbhCounts.get(nbh) ?? 0) + 1);
   }
 
-  const areas: KnownArea[] = Array.from(zipCounts.entries())
+  const areas: KnownArea[] = Array.from(nbhCounts.entries())
     .sort((a, b) => b[1] - a[1])
-    .map(([zip]) => ({
-      slug: `mke-${zip}`,
-      label: ZIP_NEIGHBORHOOD[zip] ?? `Milwaukee ${zip}`,
+    .map(([nbh]) => ({
+      slug: nbhSlug(nbh),
+      label: nbh,
       jurisdiction: "Milwaukee",
-      centroid: milwaukeeCentroid,
+      centroid: MKE_CENTROID[nbh] ?? MILWAUKEE_METRO_CENTROID,
     }));
 
   return { fetchedAt: Date.now(), rows, areas };
@@ -200,17 +227,29 @@ export async function getDiscoveredAreas(): Promise<KnownArea[]> {
 
 export { getDiscoveredAreas as getDiscoveredAreasMilwaukee };
 
+/// Resolve a Milwaukee area slug ("mke-bay-view") to the actual
+/// neighborhood label as stored on r.area. Legacy ZIP-style slugs
+/// ("mke-53202") map via ZIP_NEIGHBORHOOD.
+function labelForMkeSlug(slug: string): string {
+  const want = slug.replace(/^mke-/, "");
+  if (/^\d{5}$/.test(want)) {
+    return ZIP_NEIGHBORHOOD[want] ?? `Milwaukee ${want}`;
+  }
+  const hit = milwaukeePolygons.find((p) => nbhSlug(p.name) === slug);
+  return hit?.name ?? slug;
+}
+
 export const milwaukeeAdapter: CrimeDataAdapter = {
   name: "milwaukee-ckan",
 
   async getAreaStats(area: string): Promise<AreaStats | null> {
     const c = await getCached();
     if (!c) return null;
-    const incs = c.rows.filter((r) => r.area === area);
+    const label = labelForMkeSlug(area);
+    const incs = c.rows.filter((r) => r.area === label);
     if (incs.length === 0) return null;
-    const zip = area.replace(/^mke-/, "");
     return {
-      area: ZIP_NEIGHBORHOOD[zip] ?? `Milwaukee ${zip}`,
+      area: label,
       crimeRate: null,
       violentCrimeRate: null,
       propertyCrimeRate: null,
@@ -227,7 +266,8 @@ export const milwaukeeAdapter: CrimeDataAdapter = {
   async getIncidents(area: string, opts?: { limit?: number; since?: Date }) {
     const c = await getCached();
     if (!c) return [];
-    let filtered = c.rows.filter((r) => r.area === area);
+    const label = labelForMkeSlug(area);
+    let filtered = c.rows.filter((r) => r.area === label);
     if (opts?.since) {
       const cutoff = +opts.since;
       filtered = filtered.filter((r) => +new Date(r.occurredAt) >= cutoff);
@@ -239,7 +279,8 @@ export const milwaukeeAdapter: CrimeDataAdapter = {
   async getRecentReports(area: string, opts?: { limit?: number }) {
     const c = await getCached();
     if (!c) return [];
-    const filtered = c.rows.filter((r) => r.area === area);
+    const label = labelForMkeSlug(area);
+    const filtered = c.rows.filter((r) => r.area === label);
     return filtered.slice(0, opts?.limit ?? 50);
   },
 };
