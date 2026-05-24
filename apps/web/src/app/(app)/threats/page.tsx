@@ -259,9 +259,9 @@ function AwarenessTabs({
 
 /// City Awareness — always citywide. No search bar (auto-populates to
 /// the user's selected city via the global useCity store). Renders the
-/// citywide SafeZone widgets, citywide category mix, the
-/// neighborhoods-by-recent-incidents leaderboard, UptickTile, the city
-/// news feed, and the official-alerts dispatch feed.
+/// citywide SafeZone widgets, IncidentSummary + CrimeChart in the main
+/// column, and the HotspotCard / UptickTile / news / alerts stack in
+/// the sidebar.
 function CityAwareness({
   city,
   citywide,
@@ -302,29 +302,12 @@ function CityAwareness({
             citySlug={city.slug}
             cityLabel={city.label}
           />
-          {citywide && (
-            <section className="surface p-5">
-              <h2 className="font-display text-lg text-slate2-900">Neighborhoods by recent incident count</h2>
-              <p className="text-xs text-slate2-500 mt-0.5">Pick one to switch to Neighborhood Awareness for that area.</p>
-              <ol className="mt-3 space-y-2 text-sm">
-                {citywide.perArea.slice(0, 10).map((p) => {
-                  const max = Math.max(1, citywide.perArea[0]?.incidentCount ?? 1);
-                  const pct = (p.incidentCount / max) * 100;
-                  return (
-                    <li key={p.slug}>
-                      <div className="flex items-baseline justify-between">
-                        <button onClick={() => onPickNeighborhood(p.slug, p.label)} className="text-slate2-900 hover:text-bay-700 transition-colors">{p.label}</button>
-                        <span className="text-xs text-slate2-500 tabular-nums">{p.incidentCount.toLocaleString()}</span>
-                      </div>
-                      <div className="mt-1 h-1.5 rounded-full bg-sand-100 overflow-hidden">
-                        <div className="h-full bg-bay-500 transition-all duration-500" style={{ width: `${pct}%` }} />
-                      </div>
-                    </li>
-                  );
-                })}
-              </ol>
-            </section>
-          )}
+          {/* The "Neighborhoods by recent incident count" leaderboard
+              that used to live here was an exact duplicate of the
+              HotspotCard in the sidebar (same source data, same
+              top-N sort, same click-to-pick affordance). Removed in
+              the redundancy pass — keep HotspotCard as the single
+              authoritative leaderboard view. */}
           <DataProvenanceBanner provenance={citywide?.alerts[0]?.provenance ?? null} />
         </div>
         <aside className="space-y-4">
