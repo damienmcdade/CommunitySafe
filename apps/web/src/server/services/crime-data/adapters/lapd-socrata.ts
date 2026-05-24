@@ -83,6 +83,21 @@ function centroidFor(name: string): { lat: number; lng: number } | null {
   return AREA_CENTROIDS[name.toLowerCase().trim()] ?? null;
 }
 
+// LAPD publishes division names in a mix of full and abbreviated
+// forms ("Central", "N Hollywood", "West LA", "77th Street"). The
+// abbreviated ones look slapdash next to the full names. This map
+// expands the abbreviations to friendly display labels — centroid
+// lookup still works because that runs on the lowercased raw name.
+const DIVISION_DISPLAY: Record<string, string> = {
+  "n hollywood": "North Hollywood",
+  "west la":     "West Los Angeles",
+  "77th street": "77th Street",
+  "central":     "Central LA",
+};
+function displayLabelLA(raw: string): string {
+  return DIVISION_DISPLAY[raw.toLowerCase().trim()] ?? raw;
+}
+
 const PROVENANCE: DataProvenance = {
   source: "LAPD NIBRS Offenses 2024–2025 (City of Los Angeles Open Data)",
   datasetUrl: "https://data.lacity.org/Public-Safety/LAPD-NIBRS-Offenses-Dataset-2024-to-2025/y8y3-fqfu",
@@ -112,8 +127,9 @@ async function fetchLapd(): Promise<Incident[]> {
   if (!res.ok) throw new Error(`LAPD SODA ${res.status} fetching ${url}`);
   const rows = (await res.json()) as SodaRow[];
   return rows.map((r, i) => {
-    const area = r.area_name?.trim() || "Unknown";
-    const cen = centroidFor(area);
+    const rawArea = r.area_name?.trim() || "Unknown";
+    const area = displayLabelLA(rawArea);
+    const cen = centroidFor(rawArea);
     return {
       id: `la-${r.uniquenibrno ?? r.caseno ?? i}`,
       area,

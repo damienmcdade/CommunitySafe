@@ -2,7 +2,9 @@
 import Script from "next/script";
 import { useEffect, useRef } from "react";
 
-const ADSENSE_CLIENT_ID = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
+// Mirrors the default in root layout — CommunitySafe publisher ID.
+// Env var override available for staging/preview environments.
+const ADSENSE_CLIENT_ID = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID ?? "ca-pub-8731629548430880";
 
 declare global {
   interface Window {

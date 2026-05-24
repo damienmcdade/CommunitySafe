@@ -75,28 +75,33 @@ function mapToNibrs(row: BostonRow): CrimeCategory {
   return CrimeCategory.SOCIETY;
 }
 
-// BPD's 12 districts, each with a memorable neighborhood description so users
-// see "A1: Downtown / North End / Beacon Hill" rather than just "A1".
+// BPD's 12 districts, each mapped to the single most-recognized
+// neighborhood in that district's coverage area. The prior labels
+// were "A1: Downtown, North End, Beacon Hill, Chinatown" — verbose,
+// non-standard versus other cities. v10 pass simplifies to single
+// anchor names matching the Philadelphia / NOLA pattern.
 const DISTRICT_NEIGHBORHOODS: Record<string, string> = {
-  "A1":  "Downtown, North End, Beacon Hill, Chinatown",
+  "A1":  "Downtown",
   "A7":  "East Boston",
   "A15": "Charlestown",
   "B2":  "Roxbury",
   "B3":  "Mattapan",
   "C6":  "South Boston",
   "C11": "Dorchester",
-  "D4":  "South End, Back Bay, Fenway",
-  "D14": "Brighton, Allston",
-  "E5":  "West Roxbury, Roslindale",
-  "E13": "Jamaica Plain, Mission Hill",
+  "D4":  "Back Bay",
+  "D14": "Allston",
+  "E5":  "West Roxbury",
+  "E13": "Jamaica Plain",
   "E18": "Hyde Park",
 };
 
 function enrich(district: string | undefined): string {
   if (!district) return "Unknown";
   const d = district.trim().toUpperCase();
-  const nbh = DISTRICT_NEIGHBORHOODS[d];
-  return nbh ? `${d}: ${nbh}` : d;
+  // Drop the district-code prefix per v10 simplification. Fall back
+  // to "BPD District D" for unmapped codes so unknown districts
+  // remain identifiable.
+  return DISTRICT_NEIGHBORHOODS[d] ?? `BPD District ${d}`;
 }
 
 const PROVENANCE: DataProvenance = {
@@ -239,9 +244,15 @@ export async function getDiscoveredAreasBoston(): Promise<KnownArea[]> {
   return Array.from(agg.entries())
     .filter(([, e]) => e.count >= 3)
     .map(([name, e]) => {
-      const districtTag = name.split(":")[0].trim().toLowerCase();
+      // Slug from the neighborhood name itself ("Downtown" →
+      // "bos-downtown"). Prior format was "bos-a1" (district-code
+      // based) which became unreadable after v10 dropped the
+      // district prefix. Existing bookmarks to "bos-a1" still
+      // resolve via labelForBostonSlug's fallback to the old
+      // district-code lookup.
+      const nameSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
       return {
-        slug: `bos-${districtTag}`,
+        slug: `bos-${nameSlug}`,
         label: name,
         jurisdiction: "Boston",
         centroid: { lat: e.latSum / e.count, lng: e.lngSum / e.count },
@@ -252,10 +263,21 @@ export async function getDiscoveredAreasBoston(): Promise<KnownArea[]> {
 
 function labelForBostonSlug(slug: string, rows: Incident[]): string | null {
   const s = slug.toLowerCase();
-  const want = s.startsWith("bos-") ? s.slice(4).toUpperCase() : s.toUpperCase();
+  const want = s.startsWith("bos-") ? s.slice(4) : s;
+  // Modern slugs derive from the neighborhood name itself
+  // (e.g., "bos-downtown" → "downtown" → matches r.area "Downtown").
   for (const r of rows) {
-    const head = r.area.split(":")[0].trim().toUpperCase();
-    if (head === want) return r.area;
+    const candidate = r.area.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    if (candidate === want) return r.area;
+  }
+  // Legacy bookmark fallback: old slugs were district-code-based
+  // ("bos-a1" / "bos-b2"). Map district code → neighborhood name
+  // by reading DISTRICT_NEIGHBORHOODS, then resolve through the
+  // row data above.
+  const wantUpper = want.toUpperCase();
+  const legacy = DISTRICT_NEIGHBORHOODS[wantUpper];
+  if (legacy) {
+    for (const r of rows) if (r.area === legacy) return r.area;
   }
   return null;
 }

@@ -259,15 +259,15 @@ const PHOTOS: Record<string, string[]> = {
     // Shea's Buffalo Theater on Main Street
     "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Shea%27s_Buffalo_Theater%2C_Main_Street%2C_Buffalo%2C_NY.jpg/1920px-Shea%27s_Buffalo_Theater%2C_Main_Street%2C_Buffalo%2C_NY.jpg",
   ],
-  "tucson": [
-    // Tucson from Sentinel Peak
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/View_of_Tucson_from_Sentinel_Peak_2.jpg/1920px-View_of_Tucson_from_Sentinel_Peak_2.jpg",
-    // Downtown Tucson skyline
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/TucsonDowntownView1.jpg/1920px-TucsonDowntownView1.jpg",
-    // Fox Theater on Congress Street
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Fox_theater_Tucson.jpg/1920px-Fox_theater_Tucson.jpg",
-    // Tucson at the foot of the Catalina Mountains
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Northwest_Metro_Tucson_from_the_Santa_Catalina_Mountains.jpg/1920px-Northwest_Metro_Tucson_from_the_Santa_Catalina_Mountains.jpg",
+  "norfolk": [
+    // Norfolk, Virginia skyline 2016 — Wikipedia infobox photo
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Norfolk%2C_Virginia_skyline_2016.jpg/1920px-Norfolk%2C_Virginia_skyline_2016.jpg",
+    // Downtown Norfolk skyline looking toward Portsmouth across the Elizabeth River
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Skyline_of_Downtown_Norfolk_Looking_Towards_Portsmouth.jpg/1920px-Skyline_of_Downtown_Norfolk_Looking_Towards_Portsmouth.jpg",
+    // Downtown Norfolk skyline November 2021 — fresh tower additions
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Downtown_Norfolk_VA_skyline_Nov_2021.jpg/1920px-Downtown_Norfolk_VA_skyline_Nov_2021.jpg",
+    // Norfolk from Portsmouth across the Elizabeth River, 2020
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Norfolk_VA_from_Portsmouth_2020.jpg/1920px-Norfolk_VA_from_Portsmouth_2020.jpg",
   ],
   "kansas-city": [
     // Downtown Kansas City

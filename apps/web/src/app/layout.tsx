@@ -6,14 +6,12 @@ import { CityBackdrop } from "@/components/CityBackdrop";
 import { SessionBootstrap } from "@/components/SessionBootstrap";
 import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/use-theme";
 
-// Google AdSense publisher ID, e.g. "ca-pub-1234567890123456". When
-// the env var is set we inject the AdSense auto-ads script + the
-// account-verification meta tag into <head>. When unset, AdSense is
-// fully disabled — no script load, no meta tag — so non-production
-// environments don't accidentally request ads. Override per-env via
-// Vercel's environment-variables UI. Set NEXT_PUBLIC_ADSENSE_CLIENT_ID
-// to your publisher ID once AdSense has approved the property.
-const ADSENSE_CLIENT_ID = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
+// Google AdSense publisher ID. Default is the CommunitySafe account
+// (ca-pub-8731629548430880); env var override lets staging /
+// preview deploys point at a different account if needed. When the
+// resolved value is the empty string AdSense is disabled — no
+// script load, no meta tag.
+const ADSENSE_CLIENT_ID = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID ?? "ca-pub-8731629548430880";
 
 // Title template — each page sets its own `title` (e.g. "Safety Score")
 // and Next slots it into "{title} · CommunitySafe" automatically. Default is
