@@ -179,7 +179,20 @@ export default function ThreatsPage() {
 
       <AwarenessTabs value={tab} onChange={setTab} />
 
-      {tab === "city" ? (
+      {/* Both panels stay MOUNTED across in-page tab switches — only
+          visibility toggles via the `hidden` attribute. The previous
+          conditional render unmounted the inactive panel on every
+          switch, which destroyed all its internal state (CrimeChart
+          window selector, expansion toggles, AreaBrief loading state,
+          etc.). Coming back to City Awareness after picking "Last
+          90 days" on the Crime Chart was reverting it to the 30-day
+          default, which looked like a drastic score change to users
+          who didn't realize the window had silently reset.
+
+          Both panels do mount their API hooks immediately, but the
+          underlying useApi calls share an SWR cache so the second
+          panel's "first" fetch is usually instant cache-hit. */}
+      <div hidden={tab !== "city"}>
         <CityAwareness
           city={{ slug: city.slug, label: city.label }}
           citywide={citywide ?? null}
@@ -187,7 +200,8 @@ export default function ThreatsPage() {
           citywideLoading={citywideLoading}
           onPickNeighborhood={selectNeighborhood}
         />
-      ) : (
+      </div>
+      <div hidden={tab !== "neighborhood"}>
         <NeighborhoodAwareness
           city={{ slug: city.slug, label: city.label }}
           area={area}
@@ -202,7 +216,7 @@ export default function ThreatsPage() {
           locStatus={locStatus}
           pushStatus={pushStatus}
         />
-      )}
+      </div>
     </main>
   );
 }

@@ -1,7 +1,15 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useApi } from "@/lib/api-client";
 import { WheelPicker, type WheelItem } from "./WheelPicker";
+
+// localStorage key for the Crime Chart window selector. Persists the
+// user's interval choice across page navigations + tab switches so
+// returning to the chart doesn't silently reset their 90-day or
+// 365-day pick back to the default 30 days — which made the chart
+// look like the scores had drastically changed when really only
+// the time window had reverted.
+const WINDOW_STORAGE_KEY = "travelsafe.crime-chart.window.v1";
 
 interface CategoryCounts { PERSONS: number; PROPERTY: number; SOCIETY: number }
 
@@ -88,7 +96,23 @@ export function CrimeChart({
   areaSlug?: string;
   areaLabel?: string;
 }) {
-  const [windowValue, setWindowValue] = useState<string>("30");
+  // Initialize from localStorage so the user's interval choice
+  // survives tab switches AND cross-page navigation. SSR returns "30"
+  // (no localStorage on the server); the useEffect hydrates the real
+  // value on the first client commit.
+  const [windowValue, setWindowValueState] = useState<string>("30");
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(WINDOW_STORAGE_KEY);
+      if (stored && WINDOW_ITEMS.some((i) => i.value === stored)) {
+        setWindowValueState(stored);
+      }
+    } catch { /* quota / privacy mode — fall through with default */ }
+  }, []);
+  const setWindowValue = useCallback((next: string) => {
+    setWindowValueState(next);
+    try { window.localStorage.setItem(WINDOW_STORAGE_KEY, next); } catch { /* ignore */ }
+  }, []);
   const windowDays = windowValue === "all" ? null : Number(windowValue);
   const path = `/crime-data/citywide?city=${encodeURIComponent(citySlug)}${windowDays != null ? `&windowDays=${windowDays}` : ""}`;
   const { data, loading, error } = useApi<CitywideResp>(path, [path]);
