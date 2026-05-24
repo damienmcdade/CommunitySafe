@@ -20,6 +20,9 @@ import { useArea } from "@/lib/use-area";
 interface TabDef {
   href: string;
   label: string;
+  /// Optional shorter label for narrow viewports — full label otherwise
+  /// pushes 4 tabs (~800px) past a 375px phone width.
+  mobileLabel?: string;
   /// Other route prefixes that should keep this tab marked active.
   subroutes?: string[];
   /// API paths to pre-warm when the user hovers over this tab.
@@ -38,8 +41,9 @@ interface TabDef {
 // direct URLs but no longer surface in the primary nav.
 const PRIMARY: TabDef[] = [
   // City Awareness — citywide-only cards. Subroute hints preserve
-  // bookmarks from previous IA iterations.
-  { href: "/city", label: "City Awareness",
+  // bookmarks from previous IA iterations. Mobile label drops the
+  // redundant "Awareness" to fit 4 tabs at 375px.
+  { href: "/city", label: "City Awareness", mobileLabel: "City",
     subroutes: ["/now", "/threats", "/safety-score", "/trends"],
     warm: ({ citySlug }) => [
       `/api/crime-data/citywide?city=${citySlug}`,
@@ -47,20 +51,17 @@ const PRIMARY: TabDef[] = [
     ] },
   // Neighborhood Awareness — search + area cards + Personal Safety
   // sub-tab. /safety / /vigilance legacy URLs light up this tab.
-  { href: "/neighborhood", label: "Neighborhood Awareness",
+  { href: "/neighborhood", label: "Neighborhood Awareness", mobileLabel: "Area",
     subroutes: ["/safety", "/vigilance"],
     warm: ({ citySlug, areaSlug }) => areaSlug
       ? [`/api/safezone/safety-score?area=${encodeURIComponent(areaSlug)}&label=${encodeURIComponent(areaSlug)}`]
       : [`/api/geo/areas?city=${citySlug}`] },
-  // Pathfinder — Crime Map + Safe Route in one hub (renamed from
-  // Overwatch). Route stays /overwatch for bookmark stability; only
-  // the user-facing label changes.
-  { href: "/overwatch", label: "Pathfinder",
+  // Pathfinder — Crime Map + Safe Route in one hub.
+  { href: "/overwatch", label: "Pathfinder", mobileLabel: "Pathfinder",
     subroutes: ["/map", "/route", "/plan"],
     warm: ({ citySlug }) => [`/api/crime-data/citywide?city=${citySlug}`] },
-  // Connections — community feed (renamed from CommunitySafe). Route
-  // stays /community.
-  { href: "/community", label: "Connections",
+  // Connections — community feed.
+  { href: "/community", label: "Connections", mobileLabel: "Connect",
     subroutes: ["/act"] },
 ];
 
@@ -109,14 +110,10 @@ export function TabNav() {
               <li key={t.href}>
                 <Link
                   href={t.href}
-                  className={`inline-flex items-center gap-1.5 px-4 py-2 text-sm rounded-md transition-all whitespace-nowrap ${
+                  aria-label={t.label}
+                  title={t.label}
+                  className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 text-sm rounded-md transition-all whitespace-nowrap ${
                     active
-                      // Solid bay pill for the active tab — high enough
-                      // contrast against the white-ish nav bar that users
-                      // can tell at a glance which tab they're on. The
-                      // prior sand-50 background read as basically the
-                      // same color as the nav strip and was effectively
-                      // invisible.
                       ? "bg-bay-500 text-white font-semibold shadow-card"
                       : "text-slate2-700 hover:text-bay-700 hover:bg-sand-100/80"
                   }`}
@@ -124,7 +121,12 @@ export function TabNav() {
                   onMouseEnter={onPreload}
                   onFocus={onPreload}
                 >
-                  {t.label}
+                  {/* Short label on mobile, full label on sm+ — long
+                      labels like "Neighborhood Awareness" would push
+                      4 tabs past a 375px viewport. Title attribute
+                      surfaces the full label on hover for desktop. */}
+                  <span className="sm:hidden">{t.mobileLabel ?? t.label}</span>
+                  <span className="hidden sm:inline">{t.label}</span>
                 </Link>
               </li>
             );

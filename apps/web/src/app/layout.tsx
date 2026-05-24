@@ -1,9 +1,19 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import Script from "next/script";
 import { CityBackdrop } from "@/components/CityBackdrop";
 import { SessionBootstrap } from "@/components/SessionBootstrap";
 import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/use-theme";
+
+// Google AdSense publisher ID, e.g. "ca-pub-1234567890123456". When
+// the env var is set we inject the AdSense auto-ads script + the
+// account-verification meta tag into <head>. When unset, AdSense is
+// fully disabled — no script load, no meta tag — so non-production
+// environments don't accidentally request ads. Override per-env via
+// Vercel's environment-variables UI. Set NEXT_PUBLIC_ADSENSE_CLIENT_ID
+// to your publisher ID once AdSense has approved the property.
+const ADSENSE_CLIENT_ID = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
 
 // Title template — each page sets its own `title` (e.g. "Safety Score")
 // and Next slots it into "{title} · CommunitySafe" automatically. Default is
@@ -57,6 +67,13 @@ export const metadata: Metadata = {
     title: "CommunitySafe",
     statusBarStyle: "default",
   },
+  // AdSense account-verification meta tag. Google reads
+  // <meta name="google-adsense-account" content="ca-pub-..."> at the
+  // domain root to confirm site ownership. Only emitted when the env
+  // var is configured.
+  other: ADSENSE_CLIENT_ID
+    ? { "google-adsense-account": ADSENSE_CLIENT_ID }
+    : undefined,
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -69,6 +86,19 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             on <html> stops React from complaining about the class
             mismatch this script intentionally introduces. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
+        {/* Google AdSense auto-ads loader. Conditional on the env var
+            being set so non-production deploys don't request ads.
+            strategy="afterInteractive" loads after the page is
+            interactive — keeps Largest Contentful Paint clean. */}
+        {ADSENSE_CLIENT_ID && (
+          <Script
+            id="adsense-auto-ads"
+            async
+            strategy="afterInteractive"
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT_ID}`}
+            crossOrigin="anonymous"
+          />
+        )}
       </head>
       <body>
         {/* CityBackdrop sits at z:0 (its own stacking context via position:fixed).

@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { api, useApi } from "@/lib/api-client";
 import { useArea } from "@/lib/use-area";
 import { useDocumentTitle } from "@/lib/use-document-title";
@@ -11,11 +10,8 @@ import { LocationSearch } from "@/components/LocationSearch";
 import { AreaInsightsPanel } from "@/components/AreaInsightsPanel";
 import { TrustBadge } from "@/components/TrustBadge";
 import { LiveActivityBadge } from "@/components/LiveActivityBadge";
-import { RecentIncidentsCards } from "@/components/RecentIncidentsCards";
 import { CommunitySignalsPanel } from "@/components/CommunitySignalsPanel";
 import { useCity } from "@/lib/use-city";
-
-const REGISTRY_URL = process.env.NEXT_PUBLIC_SEX_OFFENDER_REGISTRY_URL || "https://www.meganslaw.ca.gov/";
 
 interface Area { slug: string; label: string; jurisdiction: string }
 interface AreaStats { area: string; crimeRate: number | null; riskLevel: 1|2|3|4|5; year?: number; provenance: ProvenanceLike }
