@@ -25,31 +25,34 @@ const SEVERITY_CLASS: Record<OfficialAlert["severity"], string> = {
 };
 
 export function OfficialAlertsPanel() {
-  // City scopes both the NWS state-area pull and the USGS earthquake
-  // radius. Without it the route falls back to the legacy CA/San
-  // Diego defaults, which gave non-SD users an empty card.
+  // City scopes the NWS state-area pull so we surface weather alerts
+  // for the user's selected city. The /official-alerts route also
+  // returns USGS earthquakes for the city centroid; we filter to NWS
+  // only here because the card is now scoped to weather specifically
+  // (the user asked to rename + tighten this card to weather-only
+  // updates from official weather agencies).
   const { city } = useCity();
   const { data, error } = useApi<Resp>(`/official-alerts?city=${encodeURIComponent(city.slug)}`, [city.slug]);
-  const alerts = data?.alerts ?? [];
+  const alerts = (data?.alerts ?? []).filter((a) => a.source === "National Weather Service");
 
   return (
     <section className="surface p-6 min-h-[180px]">
       <header className="flex items-center justify-between">
-        <h2 className="font-display text-lg text-slate2-900">From official sources</h2>
-        <span className="text-xs text-slate2-500">{(data?.sources ?? ["—"]).join(", ")}</span>
+        <h2 className="font-display text-lg text-slate2-900">Weather</h2>
+        <span className="text-xs text-slate2-500">National Weather Service</span>
       </header>
       <p className="mt-1 text-xs text-slate2-500">
-        {data?.disclaimer ?? "Independent of TravelSafe community posts."}
+        Active NWS alerts for {city.label} — watches, warnings, and advisories from the official US weather agency. Independent of TravelSafe community posts.
       </p>
       {error && !data && (
         <p className="mt-4 text-sm text-dusk-700">
-          Couldn&apos;t reach the official-alerts feed right now. Try again in a moment.
+          Couldn&apos;t reach the National Weather Service right now. Try again in a moment.
         </p>
       )}
       <ul className="mt-4 space-y-3">
         {!error && alerts.length === 0 && (
           <li className="text-sm text-slate2-500 surface-muted p-3">
-            No active official alerts right now. Quiet is good news.
+            No active NWS weather alerts for {city.label} right now. Quiet is good news.
           </li>
         )}
         {alerts.slice(0, 6).map((a) => (
@@ -61,7 +64,7 @@ export function OfficialAlertsPanel() {
               <span className={`text-xs px-2 py-0.5 rounded-full ${SEVERITY_CLASS[a.severity]}`}>{a.severity}</span>
             </div>
             <div className="text-xs text-slate2-500 mt-1">
-              {a.source} · effective {new Date(a.effective).toLocaleString()}
+              effective {new Date(a.effective).toLocaleString()}
               {a.expires ? ` · until ${new Date(a.expires).toLocaleString()}` : ""}
             </div>
           </li>

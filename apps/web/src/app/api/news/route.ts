@@ -30,10 +30,19 @@ export const GET = wrap(async (req: NextRequest) => {
     ? `${denormalize(area)} ${cityLabel} crime OR safety OR police`
     : `${cityLabel} crime OR safety OR police`;
 
-  const items = await getNews(q);
+  // Time window for the Google News search (`when:Nd` operator).
+  // Defaults to 30 days for the Neighborhood Awareness card; values
+  // are clamped server-side in getNews().
+  const windowDaysRaw = req.nextUrl.searchParams.get("windowDays");
+  const windowDays = windowDaysRaw && Number.isFinite(Number(windowDaysRaw))
+    ? Number(windowDaysRaw)
+    : 30;
+
+  const items = await getNews(q, windowDays);
   return NextResponse.json({
-    source: `Google News (${cityLabel} safety query)`,
+    source: `Google News (${cityLabel} safety query, last ${windowDays}d)`,
     query: q,
+    windowDays,
     items,
     disclaimer: "Headlines aggregated from Google News. Click through to read the original article at the source.",
   });

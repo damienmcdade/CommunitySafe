@@ -57,7 +57,7 @@ function mapToNibrs(row: PghRow): CrimeCategory {
 
 const PROVENANCE: DataProvenance = {
   source: "Pittsburgh Bureau of Police Monthly Criminal Activity (Western Pennsylvania Regional Data Center, CKAN)",
-  datasetUrl: "https://data.wprdc.org/dataset/monthly-criminal-activity",
+  datasetUrl: "https://data.wprdc.org/dataset/monthly-criminal-activity-dashboard",
   recency: "Refreshed monthly by PBP via WPRDC; latest extract typically lags ~30 days",
   granularity: "neighborhood",
   disclaimer:

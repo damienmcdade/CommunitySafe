@@ -119,12 +119,19 @@ function dedupeNews(items: NewsItem[]): NewsItem[] {
   return out;
 }
 
-export async function getNews(query: string = DEFAULT_QUERY): Promise<NewsItem[]> {
+export async function getNews(query: string = DEFAULT_QUERY, windowDays: number = 7): Promise<NewsItem[]> {
   const now = Date.now();
-  if (cache && now - cache.fetchedAt < CACHE_TTL_MS && cache.query === query) return cache.items;
+  // Cache key includes windowDays — pulling a 30d window and a 7d
+  // window for the same query produce different result sets.
+  const cacheKey = `${query}::${windowDays}`;
+  if (cache && now - cache.fetchedAt < CACHE_TTL_MS && cache.query === cacheKey) return cache.items;
   try {
     const url = new URL("https://news.google.com/rss/search");
-    url.searchParams.set("q", `${query} when:7d`);
+    // Google News `when:` operator accepts h (hours), d (days), m (months),
+    // y (years). We pass days directly — `when:30d` etc. — and clamp to
+    // a sane range so a typo in the UI can't request infinite history.
+    const days = Math.max(1, Math.min(365, Math.round(windowDays)));
+    url.searchParams.set("q", `${query} when:${days}d`);
     url.searchParams.set("hl", "en-US");
     url.searchParams.set("gl", "US");
     url.searchParams.set("ceid", "US:en");
@@ -137,7 +144,7 @@ export async function getNews(query: string = DEFAULT_QUERY): Promise<NewsItem[]
     if (!res.ok) return cache?.items ?? [];
     const xml = await res.text();
     const items = dedupeNews(parseGoogleNewsRss(xml));
-    cache = { fetchedAt: now, query, items };
+    cache = { fetchedAt: now, query: cacheKey, items };
     return items;
   } catch {
     return cache?.items ?? [];

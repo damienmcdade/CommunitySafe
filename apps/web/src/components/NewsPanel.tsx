@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useApi } from "@/lib/api-client";
 import { useCity } from "@/lib/use-city";
 import { relativeTime } from "@/lib/sse";
@@ -14,6 +14,19 @@ interface NewsItem {
 interface Resp { source: string; query: string; items: NewsItem[]; disclaimer: string }
 
 const STORAGE_KEY = "travelsafe.news.sources.v1";
+const WINDOW_STORAGE_KEY = "travelsafe.news.window.v1";
+
+// Time-window choices for the Google News `when:Nd` operator. 30
+// days is the default per product requirement; other options give
+// users a sliding range from "very recent" to "this entire season".
+const NEWS_WINDOWS: Array<{ value: number; label: string }> = [
+  { value: 7,   label: "Last 7 days" },
+  { value: 14,  label: "Last 14 days" },
+  { value: 30,  label: "Last 30 days" },
+  { value: 60,  label: "Last 60 days" },
+  { value: 90,  label: "Last 90 days" },
+  { value: 180, label: "Last 6 months" },
+];
 
 function readPrefs(): { hidden: string[] } {
   if (typeof window === "undefined") return { hidden: [] };
@@ -40,10 +53,28 @@ const DEFAULT_VISIBLE = 5;
 
 export function NewsPanel({ areaSlug }: { areaSlug?: string }) {
   const { city } = useCity();
+  // Time-window state, hydrated from localStorage so the user's pick
+  // survives tab switches + cross-page navigation. Default 30d per
+  // product requirement. SSR returns 30; client useEffect overwrites
+  // with stored value on first commit.
+  const [windowDays, setWindowDaysState] = useState<number>(30);
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(WINDOW_STORAGE_KEY);
+      const parsed = stored ? Number(stored) : NaN;
+      if (Number.isFinite(parsed) && NEWS_WINDOWS.some((w) => w.value === parsed)) {
+        setWindowDaysState(parsed);
+      }
+    } catch { /* ignore */ }
+  }, []);
+  const setWindowDays = useCallback((next: number) => {
+    setWindowDaysState(next);
+    try { window.localStorage.setItem(WINDOW_STORAGE_KEY, String(next)); } catch { /* ignore */ }
+  }, []);
   const path = areaSlug
-    ? `/news?area=${encodeURIComponent(areaSlug)}&city=${city.slug}`
-    : `/news?city=${city.slug}`;
-  const { data, loading, error } = useApi<Resp>(path, [areaSlug, city.slug]);
+    ? `/news?area=${encodeURIComponent(areaSlug)}&city=${city.slug}&windowDays=${windowDays}`
+    : `/news?city=${city.slug}&windowDays=${windowDays}`;
+  const { data, loading, error } = useApi<Resp>(path, [areaSlug, city.slug, windowDays]);
   const items = data?.items ?? [];
 
   const [hidden, setHidden] = useState<Set<string>>(() => new Set());
@@ -96,8 +127,26 @@ export function NewsPanel({ areaSlug }: { areaSlug?: string }) {
           {showPicker ? "Hide source picker" : `Pick sources${hidden.size ? ` (${hidden.size} hidden)` : ""}`}
         </button>
       </header>
-      <p className="mt-1 text-xs text-slate2-500">
-        Headlines for {city.label}, past 7 days. Duplicates are merged server-side. Click any headline to read the article at its original source.
+      {/* Time-window selector. Surfaced inline (not buried in
+          settings) because the requirement was for the user to pick
+          how far back the articles go right next to the headline
+          list. Persists via localStorage so the choice survives
+          tab + page navigation. */}
+      <div className="mt-2 flex items-center gap-2 text-xs">
+        <label htmlFor="news-window" className="text-slate2-500 shrink-0">Time range:</label>
+        <select
+          id="news-window"
+          value={windowDays}
+          onChange={(e) => setWindowDays(Number(e.target.value))}
+          className="surface-muted border-0 rounded-md px-2 py-1 text-slate2-900 text-xs cursor-pointer hover:bg-bay-50 focus:outline-none focus:ring-2 focus:ring-bay-500"
+        >
+          {NEWS_WINDOWS.map((w) => (
+            <option key={w.value} value={w.value}>{w.label}</option>
+          ))}
+        </select>
+      </div>
+      <p className="mt-2 text-xs text-slate2-500">
+        Headlines {areaSlug ? "for this neighborhood" : `for ${city.label}`}, {NEWS_WINDOWS.find((w) => w.value === windowDays)?.label.toLowerCase() ?? `past ${windowDays} days`}. Duplicates merged server-side. Click any headline to read the article at its original source.
       </p>
 
       {showPicker && (

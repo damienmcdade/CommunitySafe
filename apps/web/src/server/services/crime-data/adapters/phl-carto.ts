@@ -93,7 +93,7 @@ function enrich(dc_dist: string | null | undefined): string {
 
 const PROVENANCE: DataProvenance = {
   source: "Philadelphia Crime Incidents Part 1 & Part 2 (OpenDataPhilly, CARTO SQL)",
-  datasetUrl: "https://www.opendataphilly.org/dataset/crime-incidents",
+  datasetUrl: "https://opendataphilly.org/datasets/crime-incidents/",
   recency: "Refreshed daily by the Philadelphia Police Department",
   granularity: "beat",
   disclaimer:
