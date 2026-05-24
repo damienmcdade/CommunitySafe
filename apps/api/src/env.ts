@@ -45,9 +45,15 @@ const Env = z.object({
   CHECKIN_WORKER_INTERVAL_SECONDS: z.coerce.number().default(30),
   CHECKIN_GRACE_SECONDS: z.coerce.number().default(120),
 
-  // Vercel AI Gateway (composer coach). Optional — when unset, the composer
-  // gracefully falls back to local pre-vetter rules only.
-  AI_GATEWAY_API_KEY: z.string().optional(),
+  // AI provider keys — same fallback chain as apps/web. Set any one
+  // and the AI services pick the highest-priority configured provider
+  // (Groq > Gemini > Vercel AI Gateway).
+  GROQ_API_KEY:                 z.string().optional(),
+  GROQAPI:                      z.string().optional(),
+  GOOGLE_GENERATIVE_AI_API_KEY: z.string().optional(),
+  GEMINI_API_KEY:               z.string().optional(),
+  GOOGLE_API_KEY:               z.string().optional(),
+  AI_GATEWAY_API_KEY:           z.string().optional(),
 
   // Redis (Railway plugin). Optional — when unset, services that use it
   // (AI explainer cache, future per-instance shared state) fall back to

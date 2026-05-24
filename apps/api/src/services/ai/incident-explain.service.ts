@@ -1,5 +1,5 @@
-import { env } from "../../env.js";
 import { getRedis } from "../../lib/redis.js";
+import { aiConfigured, getAIModel } from "./provider.js";
 
 // Per-incident "what does this mean?" explainer. Mirrors the apps/web
 // implementation but with a Redis-backed cache so the explanations
@@ -81,7 +81,7 @@ async function cachePut(key: string, explanation: string): Promise<void> {
 }
 
 export async function explainIncident(rawDesc: string): Promise<IncidentExplain> {
-  if (!env.AI_GATEWAY_API_KEY) {
+  if (!aiConfigured()) {
     return { explanation: null, cached: false, aiConfigured: false };
   }
   const key = normalize(rawDesc);
@@ -94,9 +94,14 @@ export async function explainIncident(rawDesc: string): Promise<IncidentExplain>
   }
 
   try {
+    const model = await getAIModel();
+    if (!model) {
+      return { explanation: null, cached: false, aiConfigured: false };
+    }
     const { generateText } = await import("ai");
     const result = await generateText({
-      model: "anthropic/claude-haiku-4-5",
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      model: model as any,
       system: SYSTEM_PROMPT,
       prompt: `Incident description: "${rawDesc}"`,
       maxOutputTokens: 120,
