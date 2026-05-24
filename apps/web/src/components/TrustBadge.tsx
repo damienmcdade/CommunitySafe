@@ -38,7 +38,7 @@ export function TrustBadge({ level }: { level: TrustLevelName }) {
   return (
     <span
       title={t.title}
-      className={`text-[10px] uppercase tracking-wider font-medium px-1.5 py-0.5 rounded-full ring-1 ${t.cls}`}
+      className={`text-[11px] uppercase tracking-wider font-medium px-1.5 py-0.5 rounded-full ring-1 ${t.cls}`}
     >
       {t.label}
     </span>

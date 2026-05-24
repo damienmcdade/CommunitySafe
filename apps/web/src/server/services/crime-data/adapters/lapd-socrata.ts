@@ -16,7 +16,7 @@ import type { KnownArea } from "../neighborhoods";
 // Part I/II heuristic — accuracy improves as a side effect.
 //
 // IMPORTANT: The dataset publishes incident metadata only.
-// TravelSafe's spec forbids displaying or storing victim/suspect
+// CommunitySafe's spec forbids displaying or storing victim/suspect
 // demographic data; we just don't request those columns.
 
 const BASE = "https://data.lacity.org/resource/y8y3-fqfu.json";
@@ -90,7 +90,7 @@ const PROVENANCE: DataProvenance = {
   granularity: "neighborhood",
   disclaimer:
     "Incidents are reported by the Los Angeles Police Department and aggregated to " +
-    "LAPD patrol division — not live, not street-level. TravelSafe does not track " +
+    "LAPD patrol division — not live, not street-level. CommunitySafe does not track " +
     "individuals and intentionally ignores victim/suspect-demographic columns " +
     "published by LAPD.",
 };
@@ -106,7 +106,7 @@ async function fetchLapd(): Promise<Incident[]> {
   const res = await fetch(url, {
     headers: {
       Accept: "application/json",
-      "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)",
+      "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)",
     },
   });
   if (!res.ok) throw new Error(`LAPD SODA ${res.status} fetching ${url}`);

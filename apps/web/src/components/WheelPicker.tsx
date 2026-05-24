@@ -246,7 +246,7 @@ export function WheelPicker({ items, value, onChange, height = 196, rowHeight = 
                     words from overflowing the wheel column. */}
                 <div className="break-words whitespace-normal">{item.label}</div>
                 {item.detail && (
-                  <div className="text-[10px] uppercase tracking-wider text-slate2-500 break-words whitespace-normal">{item.detail}</div>
+                  <div className="text-[11px] uppercase tracking-wider text-slate2-500 break-words whitespace-normal">{item.detail}</div>
                 )}
               </button>
             </li>

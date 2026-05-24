@@ -110,7 +110,7 @@ export default function CommunityPage() {
 
       <aside role="note" className="surface-muted px-4 py-3 text-xs text-slate2-700 leading-snug">
         Posts here are user-submitted observations, not professional safety advice and not a substitute for 911.
-        Reports are area-level; TravelSafe never identifies, tracks, or geolocates individual people.
+        Reports are area-level; CommunitySafe never identifies, tracks, or geolocates individual people.
         In an emergency, call 911.
       </aside>
 

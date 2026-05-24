@@ -1,7 +1,7 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useCity, STATES, citiesInState, CITIES, type CityInfo } from "@/lib/use-city";
-import { WheelPicker, type WheelItem } from "./WheelPicker";
+import { useEffect, useRef, useState } from "react";
+import { useCity, STATES, citiesInState } from "@/lib/use-city";
+import { WheelCityAreaPicker } from "./WheelCityAreaPicker";
 
 // Shared selector-pill styling. Used by both CitySelector and the
 // StateSelector below so the two controls are visually identical
@@ -77,7 +77,7 @@ export function CitySelector() {
           <path d="M8 1a5 5 0 0 0-5 5c0 3.5 5 9 5 9s5-5.5 5-9a5 5 0 0 0-5-5zm0 7a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/>
         </svg>
         <span className="flex items-baseline gap-1.5">
-          <span className="text-[10px] uppercase tracking-wider text-slate2-500">City</span>
+          <span className="text-[11px] uppercase tracking-wider text-slate2-500">City</span>
           <span className="font-semibold">{city.label}</span>
         </span>
         <svg viewBox="0 0 16 16" className="w-3.5 h-3.5 text-slate2-500" fill="none" stroke="currentColor" aria-hidden>
@@ -88,255 +88,29 @@ export function CitySelector() {
       {open && (
         <div
           role="dialog"
-          aria-label="Change city"
-          className="absolute right-0 mt-2 w-[22rem] surface p-3 z-30 animate-pop-in"
+          aria-label="Change city and neighborhood"
+          // Wider than the prior 22rem dropdown so two wheels fit
+          // comfortably side-by-side on desktop; collapses to
+          // viewport-1rem on mobile so it never overflows.
+          className="absolute right-0 mt-2 w-[28rem] max-w-[calc(100vw-1rem)] surface p-3 z-30 animate-pop-in"
           onClick={(e) => e.stopPropagation()}
         >
-          <CitySearchCombobox currentSlug={city.slug} onPick={pick} />
-          <BrowseByStateDisclosure currentCity={city} onPick={pick} />
+          <p className="px-1 pb-2 text-[11px] uppercase tracking-wider text-slate2-500">
+            Pick a city + neighborhood
+          </p>
+          {/* Wheel picker stays open across wheel changes — the user
+              commits via the in-picker button which closes the dropdown
+              via the onCommit callback. Replaces the prior search +
+              browse-by-state UX which closed the dropdown immediately
+              on city pick (forcing the user back out before they could
+              pick a neighborhood). */}
+          <WheelCityAreaPicker compact onCommit={() => setOpen(false)} />
         </div>
       )}
     </div>
   );
 }
 
-/// Search-first combobox. Filters CITIES by label substring. Arrow keys
-/// move focus, Enter commits the focused match. Disabled (coming-soon)
-/// cities render greyed-out and are not selectable. Auto-focuses on
-/// open so the user can start typing immediately.
-function CitySearchCombobox({
-  currentSlug,
-  onPick,
-}: {
-  currentSlug: string;
-  onPick: (slug: string) => void;
-}) {
-  const [q, setQ] = useState("");
-  const [focusIdx, setFocusIdx] = useState(0);
-  const inputRef = useRef<HTMLInputElement | null>(null);
-
-  useEffect(() => { inputRef.current?.focus(); }, []);
-
-  const matches = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    const all = [...CITIES].sort((a, b) => a.label.localeCompare(b.label));
-    if (!needle) return all;
-    return all.filter((c) =>
-      c.label.toLowerCase().includes(needle) ||
-      c.stateLabel.toLowerCase().includes(needle) ||
-      c.state.toLowerCase() === needle,
-    );
-  }, [q]);
-
-  // Keep focus index inside the matches range.
-  useEffect(() => { setFocusIdx(0); }, [q]);
-
-  function commit(c: CityInfo) {
-    if (c.status !== "live") return;
-    onPick(c.slug);
-  }
-
-  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setFocusIdx((i) => Math.min(matches.length - 1, i + 1));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setFocusIdx((i) => Math.max(0, i - 1));
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      const m = matches[focusIdx];
-      if (m) commit(m);
-    }
-  }
-
-  // Stable ids for WAI-ARIA combobox linkage. Single instance per
-  // CitySelector so a constant id works.
-  const listboxId = "city-quick-search-listbox";
-  const optionId = (slug: string) => `city-quick-search-opt-${slug}`;
-  const activeOption = matches[focusIdx];
-  return (
-    <div>
-      <p className="px-1 pt-1 pb-2 text-[10px] uppercase tracking-wider text-slate2-500">
-        Jump to a city
-      </p>
-      <input
-        ref={inputRef}
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        onKeyDown={onKeyDown}
-        placeholder={`Search ${CITIES.length} cities…`}
-        className="input text-sm"
-        autoComplete="off"
-        role="combobox"
-        aria-autocomplete="list"
-        aria-expanded
-        aria-controls={listboxId}
-        aria-activedescendant={activeOption ? optionId(activeOption.slug) : undefined}
-        aria-label="Search cities"
-      />
-      <ul
-        id={listboxId}
-        className="mt-2 max-h-72 overflow-auto rounded-lg border border-sand-200 divide-y divide-sand-100"
-        role="listbox"
-        aria-label="Cities"
-      >
-        {matches.length === 0 && (
-          <li className="px-3 py-3 text-xs text-slate2-500">
-            No city matches &ldquo;{q}&rdquo;. Try a state name or abbreviation.
-          </li>
-        )}
-        {matches.map((c, i) => {
-          const isCurrent = c.slug === currentSlug;
-          const isLive = c.status === "live";
-          return (
-            <li key={c.slug}>
-              <button
-                type="button"
-                id={optionId(c.slug)}
-                onMouseEnter={() => setFocusIdx(i)}
-                onMouseDown={(e) => { e.preventDefault(); commit(c); }}
-                disabled={!isLive}
-                className={`w-full flex items-baseline justify-between gap-2 px-3 py-2 text-sm text-left transition-colors ${
-                  !isLive ? "text-slate2-500 cursor-not-allowed bg-sand-50/40" :
-                  i === focusIdx ? "bg-bay-100 text-slate2-900" :
-                  isCurrent ? "bg-bay-50 text-slate2-900" :
-                  "hover:bg-sand-100 text-slate2-900"
-                }`}
-                role="option"
-                aria-selected={i === focusIdx}
-                aria-disabled={!isLive}
-              >
-                <span className="truncate">
-                  {c.label}
-                  {isCurrent && <span className="ml-1.5 text-[10px] text-bay-700">· current</span>}
-                  {!isLive && <span className="ml-1.5 text-[10px]">· coming soon</span>}
-                </span>
-                <span className="text-[10px] uppercase tracking-wider text-slate2-500 shrink-0">{c.state}</span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
-}
-
-/// Collapsible disclosure that exposes the original two-wheel browse
-/// UX. Default-closed because search beats wheels for most users on
-/// a 30-city list.
-function BrowseByStateDisclosure({
-  currentCity,
-  onPick,
-}: {
-  currentCity: CityInfo;
-  onPick: (slug: string) => void;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const [pendingState, setPendingState] = useState<string>(currentCity.state);
-  const [pendingCity, setPendingCity]   = useState<string>(currentCity.slug);
-
-  useEffect(() => {
-    setPendingState(currentCity.state);
-    setPendingCity(currentCity.slug);
-  }, [currentCity.state, currentCity.slug]);
-
-  const pendingIsLive = useMemo(
-    () => CITIES.find((c) => c.slug === pendingCity)?.status === "live",
-    [pendingCity],
-  );
-
-  const stateItems: WheelItem[] = useMemo(
-    () => STATES.map((s) => ({
-      value: s.abbr,
-      label: s.label,
-      detail: `${s.cities} ${s.cities === 1 ? "city" : "cities"}`,
-    })),
-    [],
-  );
-
-  const cityItems: WheelItem[] = useMemo(
-    () => citiesInState(pendingState).map((c) => ({
-      value: c.slug,
-      label: c.label,
-      detail: c.status === "live" ? c.source ?? "Official data" : "Coming soon",
-      disabled: c.status !== "live",
-    })),
-    [pendingState],
-  );
-
-  // When the state changes, default the pending city to the first LIVE
-  // one in that state so the user isn't stuck on a disabled row.
-  useEffect(() => {
-    const live = citiesInState(pendingState).find((c) => c.status === "live");
-    if (live && !cityItems.some((i) => i.value === pendingCity && !i.disabled)) {
-      setPendingCity(live.slug);
-    }
-  }, [pendingState, cityItems, pendingCity]);
-
-  return (
-    <div className="mt-3 pt-3 border-t border-sand-200">
-      <button
-        type="button"
-        onClick={() => setExpanded((x) => !x)}
-        className="w-full flex items-center justify-between px-1 py-1 text-xs text-slate2-700 hover:text-bay-700 transition-colors"
-        aria-expanded={expanded}
-      >
-        <span>{expanded ? "− Hide" : "+ Browse by state"}</span>
-        <span className="text-[10px] text-slate2-500">
-          {STATES.length} states · {CITIES.length} cities
-        </span>
-      </button>
-
-      {expanded && (
-        <div className="mt-2 animate-pop-in">
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <div className="text-[10px] uppercase tracking-wider text-slate2-500 mb-1 text-center">State</div>
-              <WheelPicker
-                items={stateItems}
-                value={pendingState}
-                onChange={setPendingState}
-                ariaLabel="State"
-                height={196}
-                rowHeight={36}
-                searchable
-                searchPlaceholder="State"
-              />
-            </div>
-            <div>
-              <div className="text-[10px] uppercase tracking-wider text-slate2-500 mb-1 text-center">City</div>
-              <WheelPicker
-                items={cityItems}
-                value={pendingCity}
-                onChange={setPendingCity}
-                ariaLabel="City"
-                height={196}
-                rowHeight={36}
-                searchable
-                searchPlaceholder="City"
-              />
-            </div>
-          </div>
-          <div className="mt-3 flex items-center justify-between gap-2">
-            <p className="text-[10px] text-slate2-500 max-w-[60%]">
-              {pendingIsLive
-                ? "Greyed cities are on the roadmap; their data feed isn't wired up yet."
-                : "This city is on the roadmap — its police data feed isn't wired up yet."}
-            </p>
-            <button
-              onClick={() => onPick(pendingCity)}
-              disabled={!pendingIsLive}
-              className="btn-primary text-xs px-3 py-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {pendingIsLive ? "Use this city" : "Coming soon"}
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 /// State selector — sibling pill to CitySelector, identical visual
 /// treatment. Clicking opens a state list (with city counts); picking
@@ -395,7 +169,7 @@ export function StateSelector() {
           <path d="M3 2v12h1.5V9l3.5 1.2c.5.2 1 0 1.3-.4l2.2-3.2c.3-.5.1-1.2-.5-1.4L7.5 3.8V2H3zm1.5 1.5h1.5v1.7l3.7 1.4-1.6 2.4L4.5 8V3.5z"/>
         </svg>
         <span className="flex items-baseline gap-1.5">
-          <span className="text-[10px] uppercase tracking-wider text-slate2-500">State</span>
+          <span className="text-[11px] uppercase tracking-wider text-slate2-500">State</span>
           <span className="font-semibold">{city.state}</span>
         </span>
         <svg viewBox="0 0 16 16" className="w-3.5 h-3.5 text-slate2-500" fill="none" stroke="currentColor" aria-hidden>
@@ -410,7 +184,7 @@ export function StateSelector() {
           className="absolute right-0 mt-2 w-[16rem] surface p-2 z-30 animate-pop-in"
           onClick={(e) => e.stopPropagation()}
         >
-          <p className="px-2 pt-1 pb-2 text-[10px] uppercase tracking-wider text-slate2-500">
+          <p className="px-2 pt-1 pb-2 text-[11px] uppercase tracking-wider text-slate2-500">
             Jump to a state
           </p>
           <ul role="listbox" aria-label="States" className="max-h-72 overflow-auto divide-y divide-sand-100 rounded-lg border border-sand-200">
@@ -429,9 +203,9 @@ export function StateSelector() {
                   >
                     <span className="truncate">
                       {s.label}
-                      {isCurrent && <span className="ml-1.5 text-[10px] text-bay-700">· current</span>}
+                      {isCurrent && <span className="ml-1.5 text-[11px] text-bay-700">· current</span>}
                     </span>
-                    <span className="text-[10px] uppercase tracking-wider text-slate2-500 shrink-0">
+                    <span className="text-[11px] uppercase tracking-wider text-slate2-500 shrink-0">
                       {s.cities} {s.cities === 1 ? "city" : "cities"}
                     </span>
                   </button>

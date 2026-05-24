@@ -26,7 +26,7 @@ interface WatchResp {
   disclaimer: string;
 }
 
-// Color-tag accents per card group — matches the rest of TravelSafe's palette.
+// Color-tag accents per card group — matches the rest of CommunitySafe's palette.
 const GROUP_TAG: Record<WatchCard["group"], { label: string; tone: string; ring: string }> = {
   "official":  { label: "Official",  tone: "text-bay-700",  ring: "ring-bay-200" },
   "reporting": { label: "Reporting", tone: "text-coral-700", ring: "ring-coral-200" },
@@ -186,7 +186,7 @@ export default function NeighborhoodWatchPage() {
                       <article className={`surface p-5 h-full bg-gradient-to-br from-white to-sand-50 ring-1 ${tag.ring} hover:shadow-glow-bay transition-all animate-rise-in`}>
                         <header className="flex items-baseline justify-between gap-2">
                           <h3 className="font-display text-base text-slate2-900">{c.title}</h3>
-                          <span className={`text-[10px] uppercase tracking-wider font-medium ${tag.tone}`}>{tag.label}</span>
+                          <span className={`text-[11px] uppercase tracking-wider font-medium ${tag.tone}`}>{tag.label}</span>
                         </header>
                         <p className="mt-2 text-sm text-slate2-700 leading-snug whitespace-pre-wrap">{c.body}</p>
                         <a
@@ -219,7 +219,7 @@ export default function NeighborhoodWatchPage() {
           <div>
             <h2 className="font-display text-lg text-slate2-900">Pick a different {city.label} neighborhood</h2>
             <p className="text-xs text-slate2-500 mt-0.5">
-              {cityAreas.length} supported neighborhood{cityAreas.length === 1 ? "" : "s"}. The wheel only shows neighborhoods TravelSafe tracks for {city.label}.
+              {cityAreas.length} supported neighborhood{cityAreas.length === 1 ? "" : "s"}. The wheel only shows neighborhoods CommunitySafe tracks for {city.label}.
             </p>
           </div>
           <button

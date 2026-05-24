@@ -207,7 +207,7 @@ export function CrimeMixCard({ areaSlug, jurisdictionSlug, title }: { areaSlug?:
                 <div className="mt-1 h-2.5 rounded-full bg-sand-100 overflow-hidden">
                   <div className="h-full transition-all duration-700 ease-spring group-hover:saturate-150" style={{ width: `${pct}%`, background: barBg }} />
                 </div>
-                <div className="mt-0.5 text-[10px] text-slate2-500">Last reported {relativeTime(s.lastOccurredAt)}</div>
+                <div className="mt-0.5 text-[11px] text-slate2-500">Last reported {relativeTime(s.lastOccurredAt)}</div>
               </li>
             );
           })}
@@ -241,7 +241,7 @@ function OffenseInfoButton({ offenseName }: { offenseName: string }) {
         aria-label={`About ${offenseName}`}
         aria-expanded={open}
         onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
-        className="w-4 h-4 inline-flex items-center justify-center rounded-full ring-1 ring-slate2-300 text-[10px] font-semibold text-slate2-500 hover:bg-bay-50 hover:text-bay-700 hover:ring-bay-300 transition-colors"
+        className="w-4 h-4 inline-flex items-center justify-center rounded-full ring-1 ring-slate2-300 text-[11px] font-semibold text-slate2-500 hover:bg-bay-50 hover:text-bay-700 hover:ring-bay-300 transition-colors"
       >
         i
       </button>
@@ -265,7 +265,7 @@ function OffenseInfoButton({ offenseName }: { offenseName: string }) {
           >
             <p className="font-medium text-slate2-900">{info.label}</p>
             <p className="mt-1 text-slate2-700">{info.description}</p>
-            <p className="mt-2 text-[10px] text-slate2-500">
+            <p className="mt-2 text-[11px] text-slate2-500">
               Reported as &ldquo;{offenseName}&rdquo; by the city&apos;s police feed.
             </p>
           </div>

@@ -192,7 +192,7 @@ export function CrimeChart({
         </div>
 
         <div className="rounded-xl bg-sand-50 ring-1 ring-sand-200 p-2">
-          <p className="text-[10px] uppercase tracking-wider text-slate2-500 px-1.5 pb-1">Time interval</p>
+          <p className="text-[11px] uppercase tracking-wider text-slate2-500 px-1.5 pb-1">Time interval</p>
           <WheelPicker
             items={WINDOW_ITEMS}
             value={windowValue}
@@ -215,7 +215,7 @@ export function CrimeChart({
             const tone = COLORS[k];
             return (
               <div key={k} className="surface-muted p-3 rounded-lg space-y-1.5">
-                <span className={`inline-block text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full ${tone.chip}`}>
+                <span className={`inline-block text-[11px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full ${tone.chip}`}>
                   {tone.label}
                 </span>
                 <p className="text-slate2-900 font-medium leading-snug">{x.headline}</p>

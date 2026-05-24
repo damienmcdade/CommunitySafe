@@ -18,7 +18,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <header className="bg-white/80 backdrop-blur border-b border-sand-200 sticky top-0 z-30">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <Link href="/" className="font-display text-xl text-slate2-900 transition-colors hover:text-bay-700">
-            <span className="bg-gradient-to-r from-bay-700 to-coral-500 bg-clip-text text-transparent">Travel</span>Safe
+            <span className="bg-gradient-to-r from-bay-700 to-coral-500 bg-clip-text text-transparent">Community</span>Safe
           </Link>
           <div className="flex items-center gap-2 text-xs text-slate2-500">
             <ThemeToggle align="right" size="sm" />
@@ -52,11 +52,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <footer className="mt-12 border-t border-sand-200 bg-white/60 backdrop-blur">
         <div className="max-w-5xl mx-auto px-4 py-6 flex flex-wrap items-center justify-between gap-3 text-xs text-slate2-500">
           <p>
-            TravelSafe surfaces official city police-incident data and the FBI Crime Data Explorer 2025 national rate.
+            CommunitySafe surfaces official city police-incident data and the FBI Crime Data Explorer 2025 national rate.
             Historical reporting only — not a substitute for emergency services.
           </p>
-          <nav aria-label="Legal" className="flex gap-3">
+          <nav aria-label="Legal" className="flex gap-3 flex-wrap">
             <Link href="/coverage" className="text-bay-700 hover:underline">Coverage</Link>
+            <Link href="/watch" className="text-bay-700 hover:underline">Watch</Link>
+            <Link href="/cities" className="text-bay-700 hover:underline">Cities</Link>
+            <Link href="/settings/privacy" className="text-bay-700 hover:underline">Settings</Link>
             <Link href="/methodology" className="text-bay-700 hover:underline">Methodology</Link>
             <Link href="/privacy" className="text-bay-700 hover:underline">Privacy</Link>
             <Link href="/terms" className="text-bay-700 hover:underline">Terms</Link>

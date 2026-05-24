@@ -50,7 +50,7 @@ const PROVENANCE: DataProvenance = {
   granularity: "neighborhood",
   disclaimer:
     "Incidents are reported by the Baton Rouge Police Department, with neighborhood " +
-    "and NIBRS classification published per-row by BRPD. TravelSafe does not request " +
+    "and NIBRS classification published per-row by BRPD. CommunitySafe does not request " +
     "or display the suspect / victim demographic columns that other LA datasets sometimes carry.",
 };
 
@@ -66,7 +66,7 @@ async function fetchBr(): Promise<Incident[]> {
   const select = "incident_number,charge_id,report_date,offense_description,statute_category,crime_against,neighborhood,district,zone,latitude,longitude";
   const u = `${BASE}?$limit=${ROW_LIMIT}&$select=${select}&$order=report_date%20DESC&$where=neighborhood%20IS%20NOT%20NULL`;
   const res = await fetch(u, {
-    headers: { Accept: "application/json", "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
+    headers: { Accept: "application/json", "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)" },
   });
   if (!res.ok) throw new Error(`BR Socrata ${res.status}`);
   const rows = (await res.json()) as BrRow[];

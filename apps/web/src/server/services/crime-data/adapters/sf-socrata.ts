@@ -51,7 +51,7 @@ const PROVENANCE: DataProvenance = {
   granularity: "neighborhood",
   disclaimer:
     "Incidents are reported by the San Francisco Police Department and aggregated " +
-    "to analysis neighborhood. Not live, not street-level. TravelSafe does not " +
+    "to analysis neighborhood. Not live, not street-level. CommunitySafe does not " +
     "track individuals.",
 };
 
@@ -64,7 +64,7 @@ async function fetchSF(): Promise<Incident[]> {
   // by a tiny sample that made every busy area show the same number.
   url.searchParams.set("$limit", "50000");
   const res = await fetch(url, {
-    headers: { Accept: "application/json", "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
+    headers: { Accept: "application/json", "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)" },
   });
   if (!res.ok) throw new Error(`SFPD ${res.status} ${url}`);
   const rows = (await res.json()) as SodaRow[];

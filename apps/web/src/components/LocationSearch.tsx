@@ -209,18 +209,18 @@ export function LocationSearch({
                 >
                   <span>
                     <span className="font-medium">{s.label}</span>
-                    {!inCity && <span className="ml-2 text-[10px] uppercase tracking-wider text-coral-700">{s.jurisdiction}</span>}
+                    {!inCity && <span className="ml-2 text-[11px] uppercase tracking-wider text-coral-700">{s.jurisdiction}</span>}
                   </span>
                   {inCity ? (
-                    <span className="text-[10px] text-slate2-500">in {city.label}</span>
+                    <span className="text-[11px] text-slate2-500">in {city.label}</span>
                   ) : (
-                    <span className="text-[10px] text-slate2-500">different city</span>
+                    <span className="text-[11px] text-slate2-500">different city</span>
                   )}
                 </button>
               </li>
             );
           })}
-          <li className="px-3 py-2 text-[10px] text-slate2-500 border-t border-sand-200">
+          <li className="px-3 py-2 text-[11px] text-slate2-500 border-t border-sand-200">
             Press Enter to search the API for an exact match. Esc to close.
           </li>
         </ul>

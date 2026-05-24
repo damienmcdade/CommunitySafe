@@ -78,7 +78,7 @@ const PROVENANCE: DataProvenance = {
   granularity: "neighborhood",
   disclaimer:
     "Incidents are reported by the Milwaukee Police Department under WIBR, aggregated to " +
-    "ZIP-level neighborhood groupings. Not live, not street-level. TravelSafe does not track individuals.",
+    "ZIP-level neighborhood groupings. Not live, not street-level. CommunitySafe does not track individuals.",
 };
 
 // Each row may have multiple offense flags set. Pick the highest-

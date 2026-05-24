@@ -45,7 +45,7 @@ const PROVENANCE: DataProvenance = {
   disclaimer:
     "Incidents are reported by the Seattle Police Department and aggregated " +
     "to SPD's neighborhood reporting areas — not live, not street-level. " +
-    "TravelSafe does not track individuals.",
+    "CommunitySafe does not track individuals.",
 };
 
 function titleCase(s: string): string {
@@ -58,7 +58,7 @@ async function fetchSeattle(): Promise<Incident[]> {
   url.searchParams.set("$order", "offense_date DESC");
   url.searchParams.set("$limit", "50000");
   const res = await fetch(url, {
-    headers: { Accept: "application/json", "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
+    headers: { Accept: "application/json", "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)" },
   });
   if (!res.ok) throw new Error(`Seattle SODA ${res.status} ${url}`);
   const rows = (await res.json()) as SodaRow[];

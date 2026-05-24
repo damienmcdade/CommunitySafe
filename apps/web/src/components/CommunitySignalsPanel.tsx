@@ -27,7 +27,7 @@ export function CommunitySignalsPanel({ areaSlug }: { areaSlug: string }) {
     <section className="surface p-5 min-h-[180px] flex flex-col">
       <header className="flex items-baseline justify-between flex-wrap gap-1">
         <h2 className="font-display text-lg text-slate2-900">Community signals</h2>
-        {data?.source && <span className="text-[10px] uppercase tracking-wider text-slate2-500">{data.source}</span>}
+        {data?.source && <span className="text-[11px] uppercase tracking-wider text-slate2-500">{data.source}</span>}
       </header>
       <p className="mt-1 text-xs text-slate2-500">
         Recent thread titles from the city&apos;s main subreddit mentioning this area. Click through to read at the source — Reddit users may post unverified claims, treat as community-reported not official.
@@ -55,7 +55,7 @@ export function CommunitySignalsPanel({ areaSlug }: { areaSlug: string }) {
                 {s.excerpt && (
                   <span className="mt-1 block text-xs text-slate2-700 line-clamp-2">{s.excerpt}</span>
                 )}
-                <span className="mt-1 block text-[10px] text-slate2-500">
+                <span className="mt-1 block text-[11px] text-slate2-500">
                   r/{s.subreddit} · {relativeTime(s.postedAt)} · {s.score.toLocaleString()} pts · {s.comments} comments
                 </span>
               </a>

@@ -84,7 +84,7 @@ const PROVENANCE: DataProvenance = {
   granularity: "neighborhood",
   disclaimer:
     "These are Cleveland Police Calls for Service (dispatched calls) rather than " +
-    "closed NIBRS reports. TravelSafe filters out administrative dispatches " +
+    "closed NIBRS reports. CommunitySafe filters out administrative dispatches " +
     "(traffic stops, alarms, follow-ups, community-engagement entries) and keeps " +
     "only rows that represent a real reported persons/property/society offense. " +
     "Some incidents may later be reclassified or unfounded by CDP investigators.",
@@ -100,7 +100,7 @@ async function fetchPage(offset: number): Promise<CleRow[]> {
   url.searchParams.set("resultRecordCount", String(PAGE_SIZE));
   url.searchParams.set("f", "json");
   const res = await fetch(url, {
-    headers: { Accept: "application/json", "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
+    headers: { Accept: "application/json", "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)" },
   });
   if (!res.ok) throw new Error(`Cleveland ArcGIS ${res.status} offset=${offset}`);
   const body = await res.json() as { features?: Array<{ attributes: CleRow }> };

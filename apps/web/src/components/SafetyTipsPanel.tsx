@@ -80,7 +80,7 @@ function Section({ title, subtitle, tips, initial = 6 }: { title: string; subtit
           <h3 className="font-display text-lg text-slate2-900">{title}</h3>
           <p className="text-xs text-slate2-500 mt-0.5">{subtitle}</p>
         </div>
-        <span className="text-[10px] uppercase tracking-wider text-slate2-500">{tips.length} card{tips.length === 1 ? "" : "s"}</span>
+        <span className="text-[11px] uppercase tracking-wider text-slate2-500">{tips.length} card{tips.length === 1 ? "" : "s"}</span>
       </header>
       <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {visible.map((t) => (

@@ -206,7 +206,7 @@ function ScoreReport({ score, accent, categoryFilter }: { score: ScoreResp; acce
   return (
     <section className="space-y-3">
       {accent === "compare" && (
-        <span className="inline-block text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full bg-bay-100 text-bay-700">
+        <span className="inline-block text-[11px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full bg-bay-100 text-bay-700">
           Comparison
         </span>
       )}
@@ -230,7 +230,7 @@ function ScoreReport({ score, accent, categoryFilter }: { score: ScoreResp; acce
               badge (default state). */}
           {score.dataSourceType === "cfs" && (
             <span
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-bay-50 border border-bay-200 text-bay-700 text-[10px] uppercase tracking-wider font-medium"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-bay-50 border border-bay-200 text-bay-700 text-[11px] uppercase tracking-wider font-medium"
               title={`This city publishes calls-for-service rather than closed NIBRS reports. Rates are calibrated ×${score.cfsScale ?? 1.0} to approximate NIBRS-equivalent volumes (CFS is structurally 2–3× inflated because each crime spawns multiple dispatches and many dispatches are unfounded).`}
             >
               CFS-calibrated × {(score.cfsScale ?? 1).toFixed(2)}

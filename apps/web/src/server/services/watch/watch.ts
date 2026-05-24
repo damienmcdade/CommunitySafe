@@ -98,7 +98,7 @@ export async function getWatchForArea(areaSlug: string, areaLabel: string): Prom
       body:
         `For ongoing concerns that are not active emergencies, call ${ne.line}. ` +
         `Use 911 only for crimes in progress or situations that require an immediate ` +
-        `response. TravelSafe does not contact police on your behalf — the call ` +
+        `response. CommunitySafe does not contact police on your behalf — the call ` +
         `comes from you and goes directly to ${city.label}'s own dispatch.`,
       source: ne.label,
       sourceUrl: ne.url,
@@ -148,7 +148,7 @@ export async function getWatchForArea(areaSlug: string, areaLabel: string): Prom
       id: "area-brief",
       title: `Tailored briefing for ${areaLabel}`,
       body: aiBrief.trim(),
-      source: "TravelSafe AI · grounded in the same official feed",
+      source: "CommunitySafe AI · grounded in the same official feed",
       sourceUrl: stats?.provenance.datasetUrl ?? "about:blank",
       group: "ai",
     });
@@ -198,7 +198,7 @@ export async function getWatchForArea(areaSlug: string, areaLabel: string): Prom
     disclaimer:
       "Every card on this tab is grounded in an official public source — " +
       `${city.label}'s police department resource page, that department's verified ` +
-      "non-emergency line, the same crime feed that powers the rest of TravelSafe, " +
+      "non-emergency line, the same crime feed that powers the rest of CommunitySafe, " +
       "or U.S. DOJ Community Policing guidance. None of this is personal advice.",
   };
 }

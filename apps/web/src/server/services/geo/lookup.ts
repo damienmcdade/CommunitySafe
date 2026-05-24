@@ -41,7 +41,7 @@ async function nominatimGeocode(query: string): Promise<{ lat: number; lng: numb
   url.searchParams.set("bounded", "1");
   try {
     const res = await fetch(url, {
-      headers: { "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
+      headers: { "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)" },
     });
     if (!res.ok) return null;
     const arr = (await res.json()) as Array<{ lat: string; lon: string }>;

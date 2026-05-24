@@ -9,7 +9,7 @@ export const runtime = "edge";
 export const revalidate = 3600;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const alt = "TravelSafe city safety overview";
+export const alt = "CommunitySafe city safety overview";
 
 export default async function CityOgImage({ params }: { params: { city: string } }) {
   const city = cityBySlug(params.city);
@@ -34,7 +34,7 @@ export default async function CityOgImage({ params }: { params: { city: string }
         }}
       >
         <div style={{ fontSize: 28, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.85 }}>
-          TravelSafe · Safety overview
+          CommunitySafe · Safety overview
         </div>
         <div style={{ display: "flex", flexDirection: "column", flex: 1, justifyContent: "center" }}>
           <div style={{ fontSize: 96, fontWeight: 700, lineHeight: 1.05 }}>{label}</div>

@@ -95,7 +95,7 @@ export function IncidentSummaryCard({
           <h3 className="mt-0.5 font-display text-lg text-slate2-900">{contextLabel}</h3>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full ring-1 ${sev.chip}`}>
+          <span className={`text-[11px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full ring-1 ${sev.chip}`}>
             {sev.label}
           </span>
           <TrendArrow trend={data.trend} changePct={data.changePct} />

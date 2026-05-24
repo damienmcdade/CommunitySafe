@@ -53,7 +53,7 @@ const PROVENANCE: DataProvenance = {
   granularity: "neighborhood",
   disclaimer:
     "These are BPD dispatched calls for service rather than closed NIBRS reports. " +
-    "TravelSafe keeps only rows BPD has already labeled as Violent / Property / " +
+    "CommunitySafe keeps only rows BPD has already labeled as Violent / Property / " +
     "Society crimes — administrative categories (traffic, mental-health, " +
     "community-assistance) are filtered out at ingest. Some incidents may later " +
     "be reclassified or unfounded by BPD investigators.",
@@ -71,7 +71,7 @@ async function fetchPage(offset: number): Promise<BoiseRow[]> {
   url.searchParams.set("resultRecordCount", String(PAGE_SIZE));
   url.searchParams.set("f", "json");
   const res = await fetch(url, {
-    headers: { Accept: "application/json", "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
+    headers: { Accept: "application/json", "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)" },
   });
   if (!res.ok) throw new Error(`Boise ArcGIS ${res.status} offset=${offset}`);
   const body = await res.json() as { features?: Array<{ attributes: BoiseRow }> };

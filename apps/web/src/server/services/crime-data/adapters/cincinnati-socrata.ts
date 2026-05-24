@@ -71,7 +71,7 @@ const PROVENANCE: DataProvenance = {
   granularity: "neighborhood",
   disclaimer:
     "Incidents are reported by the Cincinnati Police Department and aggregated to " +
-    "CPD's named neighborhoods. TravelSafe does NOT request or display any " +
+    "CPD's named neighborhoods. CommunitySafe does NOT request or display any " +
     "victim / suspect demographic columns — only neighborhood, offense, date, and " +
     "coordinates.",
 };
@@ -93,7 +93,7 @@ async function fetchCin(): Promise<Incident[]> {
   const select = "incident_no,stars_category,type,datefrom,datereported,cpd_neighborhood,latitude_x,longitude_x";
   const u = `${BASE}?$limit=${ROW_LIMIT}&$select=${select}&$order=datefrom%20DESC&$where=datefrom%20IS%20NOT%20NULL%20AND%20cpd_neighborhood%20IS%20NOT%20NULL`;
   const res = await fetch(u, {
-    headers: { Accept: "application/json", "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
+    headers: { Accept: "application/json", "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)" },
   });
   if (!res.ok) throw new Error(`Cincinnati Socrata ${res.status}`);
   const rows = (await res.json()) as CinRow[];

@@ -81,7 +81,7 @@ async function fetchPage(offset: number): Promise<SpRow[]> {
   url.searchParams.set("resultRecordCount", String(PAGE_SIZE));
   url.searchParams.set("f", "json");
   const res = await fetch(url, {
-    headers: { Accept: "application/json", "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
+    headers: { Accept: "application/json", "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)" },
   });
   if (!res.ok) throw new Error(`Saint Paul ArcGIS ${res.status} offset=${offset}`);
   const body = await res.json() as { features?: Array<{ attributes: SpRow }> };

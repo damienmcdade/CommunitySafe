@@ -70,7 +70,7 @@ const PROVENANCE: DataProvenance = {
     "to one of ~50 named Norfolk neighborhoods (the city's published " +
     "Civic League boundaries). Block-level addresses only; per-incident " +
     "lat/lng is not published — discovery uses the city centroid as a " +
-    "placeholder. TravelSafe does not request demographic columns.",
+    "placeholder. CommunitySafe does not request demographic columns.",
 };
 
 function safeIso(raw: string | null | undefined): string | null {
@@ -89,7 +89,7 @@ async function fetchNorfolk(): Promise<Incident[]> {
   const select = "inci_id,offense,streetno,street,date_occu,hour_occu,tract,zone,district,reportarea,dow1,neighborhd";
   const u = `${BASE}?$limit=${ROW_LIMIT}&$select=${select}&$order=date_occu%20DESC&$where=date_occu%20IS%20NOT%20NULL%20AND%20neighborhd%20IS%20NOT%20NULL`;
   const res = await fetch(u, {
-    headers: { Accept: "application/json", "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
+    headers: { Accept: "application/json", "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)" },
   });
   if (!res.ok) throw new Error(`Norfolk Socrata ${res.status}`);
   const rows = (await res.json()) as NorRow[];

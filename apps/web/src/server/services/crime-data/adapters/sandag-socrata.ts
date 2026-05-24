@@ -28,7 +28,7 @@ const PROVENANCE: DataProvenance = {
   granularity: "jurisdiction",
   disclaimer:
     "Crime-rate figures are jurisdiction-level annual aggregates published by SANDAG. " +
-    "TravelSafe does not track individuals or street-level incidents.",
+    "CommunitySafe does not track individuals or street-level incidents.",
 };
 
 function bucketRisk(rate: number | null): 1 | 2 | 3 | 4 | 5 {

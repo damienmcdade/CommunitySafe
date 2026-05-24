@@ -55,7 +55,7 @@ export async function getNwsAlerts(state: string | null, cityLabel: string | nul
     const res = await fetch(path, {
       headers: {
         Accept: "application/geo+json",
-        "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)",
+        "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)",
       },
     });
     if (!res.ok) return hit?.alerts ?? [];

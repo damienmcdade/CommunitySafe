@@ -2,7 +2,7 @@ import "server-only";
 import { prisma } from "../lib/prisma";
 import { HttpError } from "../lib/http";
 
-// GDPR / CCPA fulfilment for TravelSafe accounts. Two operations:
+// GDPR / CCPA fulfilment for CommunitySafe accounts. Two operations:
 //
 //   exportAccount(userId)
 //       Gathers every record the database holds about the user and
@@ -59,7 +59,7 @@ export async function exportAccount(userId: string) {
     exportedAt: new Date().toISOString(),
     user,
     note:
-      "This export contains every record TravelSafe stores about your account. " +
+      "This export contains every record CommunitySafe stores about your account. " +
       "If you also want this data removed, call POST /api/account/delete (or use " +
       "the Delete Account control in Personal Safety settings).",
   };

@@ -121,12 +121,17 @@ html.dark .leaflet-control-zoom a:hover {
 }
 
 /* Dark-mode polish for inline SVG charts. The hex fills are baked into
-   bar/text elements (CrimeChart, ScoreReport, NationalAverageCard);
-   :where() lets us retarget by raw fill attribute without forcing
-   every component to read theme state. Background bars use
-   #e9eef3 (light sand) and text labels use #475569 (slate-700 hex). */
+   bar/text elements (CrimeChart, ScoreReport, NationalAverageCard,
+   BlockScoreWidget, BaselineTrendChart, CityScoreCard);
+   attribute selectors let us retarget by raw fill/stroke attribute
+   without forcing every component to read theme state. */
 html.dark svg rect[fill="#e9eef3"] { fill: #2A3445; }
 html.dark svg text[fill="#475569"] { fill: #C9D2DD; }
+html.dark svg text[fill="#64748b"] { fill: #B0BCC9; }
+html.dark svg rect[fill="#94a3b8"] { fill: #6F7E8E; }
+html.dark svg circle[stroke="#e9eef3"],
+html.dark svg path[stroke="#e9eef3"],
+html.dark svg line[stroke="#e9eef3"]   { stroke: #2A3445; }
 
 /* Section header with gradient title underline --------------------------- */
 .section-title {

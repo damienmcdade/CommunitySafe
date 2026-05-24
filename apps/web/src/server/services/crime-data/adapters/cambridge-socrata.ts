@@ -81,7 +81,7 @@ async function fetchCambridge(): Promise<Incident[]> {
   const select = "file_number,date_of_report,crime,reporting_area,neighborhood,reporting_area_lat,reporting_area_lon,location";
   const u = `${BASE}?$limit=${ROW_LIMIT}&$select=${select}&$order=date_of_report%20DESC&$where=neighborhood%20IS%20NOT%20NULL`;
   const res = await fetch(u, {
-    headers: { Accept: "application/json", "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
+    headers: { Accept: "application/json", "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)" },
   });
   if (!res.ok) throw new Error(`Cambridge Socrata ${res.status}`);
   const rows = (await res.json()) as CamRow[];

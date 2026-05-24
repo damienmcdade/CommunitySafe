@@ -118,7 +118,7 @@ export const GET = wrap(async (req: NextRequest) => {
       throw new HttpError(
         404,
         "outside_coverage",
-        "Your location is outside the cities TravelSafe currently covers. Pick a city manually from the wheel to browse its data.",
+        "Your location is outside the cities CommunitySafe currently covers. Pick a city manually from the wheel to browse its data.",
       );
     }
     return NextResponse.json({

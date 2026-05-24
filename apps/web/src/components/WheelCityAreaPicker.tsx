@@ -15,7 +15,20 @@ interface AreasResp { areas: AreaRow[]; stale?: boolean }
 /// wheel changes the selected city, the right wheel scopes to that
 /// city's supported neighborhoods. Picking commits to the global
 /// useCity / useArea stores so the rest of the app stays in sync.
-export function WheelCityAreaPicker() {
+///
+/// `onCommit` (optional) — fires AFTER the global stores are
+/// updated. Header dropdowns use this to close themselves so the
+/// commit flow feels intentional.
+///
+/// `compact` (optional) — stacks the two wheels vertically and
+/// trims spacing for tight surfaces like the header dropdown.
+export function WheelCityAreaPicker({
+  onCommit,
+  compact = false,
+}: {
+  onCommit?: () => void;
+  compact?: boolean;
+} = {}) {
   const { city, setCity } = useCity();
   const { area, setArea } = useArea(city.slug);
 
@@ -84,7 +97,77 @@ export function WheelCityAreaPicker() {
         setArea({ slug: picked.slug, label: picked.label, jurisdiction: picked.jurisdiction });
       }
     }
+    onCommit?.();
   }
+
+  // Compact mode is for the header dropdown — drop the framing
+  // <section>, tighten gaps, smaller wheels. Default mode is for
+  // in-page placement on Neighborhood Awareness.
+  const wheelHeight = compact ? 180 : 220;
+  const wheelRow    = compact ? 36  : 40;
+  // Stack vertically on narrow viewports always (sm:grid-cols-2),
+  // and stack in compact mode too if the dropdown is on a phone.
+  const gridCls = compact
+    ? "grid grid-cols-1 sm:grid-cols-2 gap-2"
+    : "grid grid-cols-1 sm:grid-cols-2 gap-3";
+
+  const body = (
+    <>
+      <div className={gridCls}>
+        <div>
+          <div className="text-[11px] uppercase tracking-wider text-slate2-500 mb-1 text-center">City</div>
+          <WheelPicker
+            items={cityItems}
+            value={pendingCity}
+            onChange={setPendingCity}
+            ariaLabel="City"
+            height={wheelHeight}
+            rowHeight={wheelRow}
+            searchable
+            searchPlaceholder="City"
+          />
+        </div>
+        <div>
+          <div className="text-[11px] uppercase tracking-wider text-slate2-500 mb-1 text-center">Neighborhood</div>
+          {areasLoading && areaItems.length === 0 ? (
+            <div style={{ height: wheelHeight }} className="flex items-center justify-center text-xs text-slate2-500 animate-pulse">
+              Loading {pendingCityInfo.label} neighborhoods…
+            </div>
+          ) : areaItems.length === 0 ? (
+            <div style={{ height: wheelHeight }} className="flex items-center justify-center text-xs text-slate2-500">
+              No neighborhoods loaded for {pendingCityInfo.label}.
+            </div>
+          ) : (
+            <WheelPicker
+              items={areaItems}
+              value={pendingArea ?? areaItems[0]?.value ?? ""}
+              onChange={setPendingArea}
+              ariaLabel="Neighborhood"
+              height={wheelHeight}
+              rowHeight={wheelRow}
+              searchable
+              searchPlaceholder="Neighborhood"
+            />
+          )}
+        </div>
+      </div>
+
+      <div className={`mt-3 flex items-center justify-between gap-2 flex-wrap ${compact ? "text-[11px]" : ""}`}>
+        <p className="text-[11px] text-slate2-500">
+          Scroll freely — commits only when you tap the button.
+        </p>
+        <button
+          onClick={commit}
+          disabled={!dirty || !pendingArea}
+          className="btn-primary text-sm px-3 py-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Use this selection
+        </button>
+      </div>
+    </>
+  );
+
+  if (compact) return <div>{body}</div>;
 
   return (
     <section className="surface p-4 sm:p-5">
@@ -96,58 +179,7 @@ export function WheelCityAreaPicker() {
           </p>
         </div>
       </header>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <div className="text-[10px] uppercase tracking-wider text-slate2-500 mb-1 text-center">City</div>
-          <WheelPicker
-            items={cityItems}
-            value={pendingCity}
-            onChange={setPendingCity}
-            ariaLabel="City"
-            height={220}
-            rowHeight={40}
-            searchable
-            searchPlaceholder="City"
-          />
-        </div>
-        <div>
-          <div className="text-[10px] uppercase tracking-wider text-slate2-500 mb-1 text-center">Neighborhood</div>
-          {areasLoading && areaItems.length === 0 ? (
-            <div className="h-[220px] flex items-center justify-center text-xs text-slate2-500 animate-pulse">
-              Loading {pendingCityInfo.label} neighborhoods…
-            </div>
-          ) : areaItems.length === 0 ? (
-            <div className="h-[220px] flex items-center justify-center text-xs text-slate2-500">
-              No neighborhoods loaded for {pendingCityInfo.label}.
-            </div>
-          ) : (
-            <WheelPicker
-              items={areaItems}
-              value={pendingArea ?? areaItems[0]?.value ?? ""}
-              onChange={setPendingArea}
-              ariaLabel="Neighborhood"
-              height={220}
-              rowHeight={40}
-              searchable
-              searchPlaceholder="Neighborhood"
-            />
-          )}
-        </div>
-      </div>
-
-      <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
-        <p className="text-[10px] text-slate2-500">
-          Wheels commit only when you tap the button — scroll freely without disturbing the page.
-        </p>
-        <button
-          onClick={commit}
-          disabled={!dirty || !pendingArea}
-          className="btn-primary text-sm px-3 py-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          Use this selection
-        </button>
-      </div>
+      {body}
     </section>
   );
 }

@@ -166,7 +166,7 @@ function ConfidenceBadge({
         aria-label={`Explain ${label} confidence rating`}
         aria-expanded={open}
         onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
-        className={`text-[10px] uppercase tracking-wider font-medium px-1.5 py-0.5 rounded-full ring-1 ${cls} hover:opacity-90 transition-opacity cursor-pointer`}
+        className={`text-[11px] uppercase tracking-wider font-medium px-1.5 py-0.5 rounded-full ring-1 ${cls} hover:opacity-90 transition-opacity cursor-pointer`}
         title={title}
       >
         {label}
@@ -188,7 +188,7 @@ function ConfidenceBadge({
           >
             <p className="font-medium text-slate2-900">{label} confidence</p>
             <p className="mt-1 text-slate2-700">{title}</p>
-            <p className="mt-2 text-[10px] text-slate2-500 leading-snug">
+            <p className="mt-2 text-[11px] text-slate2-500 leading-snug">
               Confidence combines source credibility, report age, and clustering with peer incidents in the same category within 24 hours. A fresh report stays &ldquo;developing&rdquo; until either 2+ same-category peers corroborate it or 2 hours pass.
             </p>
             <ConfidenceLevelGuide active={confidence} />
@@ -273,7 +273,7 @@ function IncidentRow({
           disabled={loading}
           aria-label={`Explain "${description}"`}
           aria-expanded={open}
-          className="text-[10px] uppercase tracking-wider text-slate2-500 hover:text-bay-700 underline-offset-2 hover:underline whitespace-nowrap disabled:opacity-50 disabled:cursor-wait shrink-0"
+          className="text-[11px] uppercase tracking-wider text-slate2-500 hover:text-bay-700 underline-offset-2 hover:underline whitespace-nowrap disabled:opacity-50 disabled:cursor-wait shrink-0"
         >
           {loading ? "Loading…" : open ? "Hide" : "Explain"}
         </button>
@@ -286,7 +286,7 @@ function IncidentRow({
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="mt-1.5 text-[10px] uppercase tracking-wider text-bay-700 hover:underline"
+            className="mt-1.5 text-[11px] uppercase tracking-wider text-bay-700 hover:underline"
           >
             Close
           </button>

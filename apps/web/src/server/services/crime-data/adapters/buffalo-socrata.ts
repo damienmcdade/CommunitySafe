@@ -68,7 +68,7 @@ async function fetchBuffalo(): Promise<Incident[]> {
   const select = "case_number,incident_datetime,incident_type_primary,parent_incident_type,address_1,city,zip_code,neighborhood,council_district,police_district,census_tract,latitude,longitude";
   const u = `${BASE}?$limit=${ROW_LIMIT}&$select=${select}&$order=incident_datetime%20DESC&$where=neighborhood%20IS%20NOT%20NULL%20AND%20latitude%20IS%20NOT%20NULL`;
   const res = await fetch(u, {
-    headers: { Accept: "application/json", "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
+    headers: { Accept: "application/json", "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)" },
   });
   if (!res.ok) throw new Error(`Buffalo Socrata ${res.status}`);
   const rows = (await res.json()) as BufRow[];

@@ -193,7 +193,7 @@ export default function SafeRoutePage() {
           Pick the <span className="bg-title-stripe bg-clip-text text-transparent bg-[length:200%_100%] animate-gradient-x">statistically safer route</span> through {city.label}
         </h1>
         <p className="mt-2 text-slate2-700 max-w-2xl">
-          Select a starting neighborhood and a destination neighborhood — both auto-fill from the same {city.label} neighborhoods TravelSafe tracks elsewhere. We then pull up to three route alternatives from OpenStreetMap&apos;s routing engine, score each by the recent crime exposure of the neighborhoods it crosses (using the same official police feed that powers the Crime Map), and rank them safest first.
+          Select a starting neighborhood and a destination neighborhood — both auto-fill from the same {city.label} neighborhoods CommunitySafe tracks elsewhere. We then pull up to three route alternatives from OpenStreetMap&apos;s routing engine, score each by the recent crime exposure of the neighborhoods it crosses (using the same official police feed that powers the Crime Map), and rank them safest first.
         </p>
       </header>
 
@@ -205,7 +205,7 @@ export default function SafeRoutePage() {
       <aside className="surface-muted p-4 text-sm text-slate2-700 leading-snug">
         <strong className="text-slate2-900">Neighborhood-to-neighborhood only.</strong>{" "}
         Safe Route does not accept street addresses, ZIP codes, or landmarks.
-        Both endpoints must be {city.label} neighborhoods supported by TravelSafe.
+        Both endpoints must be {city.label} neighborhoods supported by CommunitySafe.
         The resulting polyline runs centroid-to-centroid through {city.label}&apos;s
         actual street network, then the exposure score reflects the historical
         police-feed activity of the neighborhoods that polyline crosses — not a

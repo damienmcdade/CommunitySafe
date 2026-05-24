@@ -53,7 +53,7 @@ const PROVENANCE: DataProvenance = {
   disclaimer:
     "Incidents are reported by the Denver Police Department and aggregated " +
     "to Denver's 78 statistical neighborhoods — not live, not street-level. " +
-    "TravelSafe does not track individuals.",
+    "CommunitySafe does not track individuals.",
 };
 
 /// Turn "five-points" into "Five Points" for display. The polygon file uses
@@ -72,7 +72,7 @@ async function fetchPage(offset: number): Promise<DenverRow[]> {
   url.searchParams.set("resultRecordCount", String(PAGE_SIZE));
   url.searchParams.set("f", "json");
   const res = await fetch(url, {
-    headers: { Accept: "application/json", "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
+    headers: { Accept: "application/json", "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)" },
   });
   if (!res.ok) throw new Error(`Denver ArcGIS ${res.status} offset=${offset}`);
   const body = await res.json() as { features?: Array<{ attributes: DenverRow }> };

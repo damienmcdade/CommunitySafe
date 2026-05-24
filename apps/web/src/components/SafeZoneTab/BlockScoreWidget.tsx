@@ -109,15 +109,15 @@ export function BlockScoreWidget({ score, loading, unavailable, contextLabel }: 
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center select-none">
-            <span className="text-[10px] uppercase tracking-wider text-slate2-500">Safety Index</span>
+            <span className="text-[11px] uppercase tracking-wider text-slate2-500">Safety Index</span>
             <span className="font-display text-4xl text-slate2-900 leading-none">{score.score}</span>
-            <span className="text-[10px] text-slate2-500 mt-0.5">out of 100</span>
+            <span className="text-[11px] text-slate2-500 mt-0.5">out of 100</span>
           </div>
         </div>
 
         <div className="flex-1 min-w-[14rem]">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className={`inline-block text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full ring-1 ${style.chip} ${style.tone}`}>
+            <span className={`inline-block text-[11px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full ring-1 ${style.chip} ${style.tone}`}>
               {style.label}
             </span>
             <DataFreshnessBadge asOf={score.asOf} sourceLabel={score.benchmark.label} size="sm" />

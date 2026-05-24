@@ -89,7 +89,7 @@ export function TimeOfDayCard({
           );
         })}
       </div>
-      <div className="mt-1 flex justify-between text-[10px] text-slate2-500 tabular-nums">
+      <div className="mt-1 flex justify-between text-[11px] text-slate2-500 tabular-nums">
         <span>12 AM</span>
         <span>6 AM</span>
         <span>Noon</span>

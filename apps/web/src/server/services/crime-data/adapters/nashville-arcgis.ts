@@ -110,7 +110,7 @@ const PROVENANCE: DataProvenance = {
   granularity: "neighborhood",
   disclaimer:
     "Incidents are reported by Metro Nashville Police Department and " +
-    "aggregated to MNPD's 9 named precincts. TravelSafe explicitly excludes " +
+    "aggregated to MNPD's 9 named precincts. CommunitySafe explicitly excludes " +
     "the victim demographic columns (race, ethnicity, gender, age range) " +
     "published by MNPD from every request — they never reach our server.",
 };
@@ -126,7 +126,7 @@ async function fetchPage(offset: number): Promise<NashRow[]> {
   url.searchParams.set("resultRecordCount", String(PAGE_SIZE));
   url.searchParams.set("f", "json");
   const res = await fetch(url, {
-    headers: { Accept: "application/json", "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
+    headers: { Accept: "application/json", "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)" },
   });
   if (!res.ok) throw new Error(`Nashville ArcGIS ${res.status} offset=${offset}`);
   const body = await res.json() as { features?: Array<{ attributes: NashRow }> };

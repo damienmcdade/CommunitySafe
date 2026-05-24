@@ -87,7 +87,7 @@ const PROVENANCE: DataProvenance = {
   granularity: "neighborhood",
   disclaimer:
     "Incidents are reported by the Dallas Police Department and geocoded by " +
-    "TravelSafe to a named neighborhood using city-published polygons. TravelSafe " +
+    "CommunitySafe to a named neighborhood using city-published polygons. CommunitySafe " +
     "explicitly excludes the suspect / complainant demographic columns published " +
     "by DPD from every request.",
 };
@@ -103,7 +103,7 @@ async function fetchDallas(): Promise<Incident[]> {
   const select = "incidentnum,servnumid,offincident,date1,division,sector,beat,nibrs_crime,nibrs_crime_category,nibrs_crimeagainst,geocoded_column";
   const u = `${BASE}?$limit=${ROW_LIMIT}&$select=${select}&$order=date1%20DESC&$where=date1%20IS%20NOT%20NULL%20AND%20geocoded_column%20IS%20NOT%20NULL`;
   const res = await fetch(u, {
-    headers: { Accept: "application/json", "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
+    headers: { Accept: "application/json", "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)" },
   });
   if (!res.ok) throw new Error(`Dallas Socrata ${res.status}`);
   const rows = (await res.json()) as DallasRow[];

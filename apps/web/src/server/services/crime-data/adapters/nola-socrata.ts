@@ -123,7 +123,7 @@ const PROVENANCE: DataProvenance = {
   disclaimer:
     "Calls dispatched to the New Orleans Police Department, geocoded to one " +
     "of New Orleans' 73 named neighborhoods. Includes non-crime dispatches " +
-    "(welfare checks, business checks). TravelSafe does NOT read NOPD's " +
+    "(welfare checks, business checks). CommunitySafe does NOT read NOPD's " +
     "historical incident dataset (qtcu-97s9) because that dataset includes " +
     "offender/victim demographic columns we never display.",
 };
@@ -140,7 +140,7 @@ async function fetchNola(): Promise<Incident[]> {
   const select = "nopd_item,type_,typetext,priority,policedistrict,beat,block_address,timecreate,location,disposition,dispositiontext";
   const u = `${BASE}?$limit=${ROW_LIMIT}&$select=${select}&$order=timecreate%20DESC&$where=location%20IS%20NOT%20NULL`;
   const res = await fetch(u, {
-    headers: { Accept: "application/json", "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
+    headers: { Accept: "application/json", "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)" },
   });
   if (!res.ok) throw new Error(`NOLA Socrata ${res.status}`);
   const rows = (await res.json()) as NolaRow[];

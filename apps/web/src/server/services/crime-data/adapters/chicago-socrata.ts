@@ -82,7 +82,7 @@ const PROVENANCE: DataProvenance = {
   granularity: "neighborhood",
   disclaimer:
     "Incidents are reported by the Chicago Police Department and aggregated " +
-    "to Chicago's 77 Community Areas — not live, not street-level. TravelSafe " +
+    "to Chicago's 77 Community Areas — not live, not street-level. CommunitySafe " +
     "does not track individuals.",
 };
 
@@ -94,7 +94,7 @@ async function fetchChicago(): Promise<{ rows: Incident[]; areaByNum: Map<number
   url.searchParams.set("$order", "date DESC");
   url.searchParams.set("$limit", "50000");
   const res = await fetch(url, {
-    headers: { Accept: "application/json", "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
+    headers: { Accept: "application/json", "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)" },
   });
   if (!res.ok) throw new Error(`Chicago SODA ${res.status} ${url}`);
   const sodaRows = (await res.json()) as SodaRow[];

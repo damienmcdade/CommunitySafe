@@ -135,7 +135,7 @@ const PROVENANCE: DataProvenance = {
   granularity: "neighborhood",
   disclaimer:
     "Incidents are reported by the Kansas City MO Police Department. " +
-    "TravelSafe explicitly excludes the victim/suspect demographic columns " +
+    "CommunitySafe explicitly excludes the victim/suspect demographic columns " +
     "(race, sex) published by KCPD from every request — they never reach our " +
     "server. Geocoded through 145 named Kansas City neighborhoods (blackmad/" +
     "neighborhoods) since KCPD's `area` field has only 6 patrol divisions.",
@@ -158,7 +158,7 @@ async function fetchKansasCityYear(datasetId: string): Promise<KcRow[]> {
   const select = "report,report_date,from_date,offense,ibrs,beat,address,city,zipcode,rep_dist,area,location";
   const u = `https://data.kcmo.org/resource/${datasetId}.json?$limit=${ROW_LIMIT}&$select=${select}&$order=report_date%20DESC&$where=location%20IS%20NOT%20NULL`;
   const res = await fetch(u, {
-    headers: { Accept: "application/json", "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
+    headers: { Accept: "application/json", "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)" },
   });
   if (!res.ok) throw new Error(`Kansas City Socrata ${datasetId} ${res.status}`);
   return (await res.json()) as KcRow[];

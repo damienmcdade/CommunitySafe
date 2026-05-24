@@ -13,7 +13,7 @@
 /// Why integer (rounded): per-100k rates aggregated over a 30-day
 /// window typically run from single digits to low thousands. Decimal
 /// precision is noise at that scale — and the FBI national-rate
-/// references TravelSafe compares against are also published as
+/// references CommunitySafe compares against are also published as
 /// integers.
 export function formatRatePer100k(n: number | null | undefined): string {
   if (n == null || !Number.isFinite(n)) return "—";

@@ -55,7 +55,7 @@ const PROVENANCE: DataProvenance = {
     "Incidents are reported by the New York City Police Department and " +
     "aggregated by NYPD precinct, then surfaced under each precinct's " +
     "primary-coverage neighborhood (per nyc.gov/site/nypd) — not live, " +
-    "not street-level. TravelSafe does not track individuals and " +
+    "not street-level. CommunitySafe does not track individuals and " +
     "intentionally ignores victim-demographic columns published by NYPD.",
 };
 
@@ -176,7 +176,7 @@ async function fetchNypd(): Promise<Incident[]> {
   url.searchParams.set("$order", "cmplnt_fr_dt DESC");
   url.searchParams.set("$limit", "50000");
   const res = await fetch(url, {
-    headers: { Accept: "application/json", "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
+    headers: { Accept: "application/json", "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)" },
   });
   if (!res.ok) throw new Error(`NYPD SODA ${res.status} ${url}`);
   const rows = (await res.json()) as SodaRow[];

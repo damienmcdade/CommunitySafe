@@ -53,7 +53,7 @@ export function IncidentCard({ incident }: { incident: IncidentCardItem }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <h3 className="text-slate2-900 font-medium leading-snug">{incident.ibrOffenseDescription}</h3>
-            <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0 ${t.chip}`}>{t.label}</span>
+            <span className={`text-[11px] uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0 ${t.chip}`}>{t.label}</span>
           </div>
           <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-slate2-500">
             <div><dt className="inline text-slate2-700">When · </dt><dd className="inline">{when}</dd></div>

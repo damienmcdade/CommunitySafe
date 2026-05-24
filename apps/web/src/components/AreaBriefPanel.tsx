@@ -39,7 +39,7 @@ export function AreaBriefPanel({
       <section className="surface p-5 bg-gradient-to-br from-white via-white to-coral-200/20">
         <header className="flex items-baseline justify-between flex-wrap gap-1">
           <h2 className="font-display text-lg text-slate2-900">AI Summary</h2>
-          <span className="text-[10px] uppercase tracking-wider text-slate2-500">AI · grounded in the data</span>
+          <span className="text-[11px] uppercase tracking-wider text-slate2-500">AI · grounded in the data</span>
         </header>
         <div className="mt-3 text-sm text-slate2-900 leading-relaxed whitespace-pre-wrap">{body}</div>
         {sourceUrl && (
@@ -57,7 +57,7 @@ export function AreaBriefPanel({
     <section className="surface p-5 bg-gradient-to-br from-white via-white to-coral-200/20">
       <header className="flex items-baseline justify-between flex-wrap gap-1">
         <h2 className="font-display text-lg text-slate2-900">AI Summary</h2>
-        <span className="text-[10px] uppercase tracking-wider text-slate2-500">AI · grounded in the data</span>
+        <span className="text-[11px] uppercase tracking-wider text-slate2-500">AI · grounded in the data</span>
       </header>
       {loading && (
         <div className="mt-3 space-y-2">
@@ -72,7 +72,7 @@ export function AreaBriefPanel({
       {!loading && !error && data?.brief && (
         <>
           <div className="mt-3 text-sm text-slate2-900 leading-relaxed whitespace-pre-wrap">{data.brief}</div>
-          <p className="mt-3 text-[10px] text-slate2-500 italic">{data.disclaimer}</p>
+          <p className="mt-3 text-[11px] text-slate2-500 italic">{data.disclaimer}</p>
         </>
       )}
       {!loading && !error && data && !data.brief && (

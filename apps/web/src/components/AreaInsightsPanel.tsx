@@ -74,5 +74,5 @@ function DeltaPill({ value }: { value: number }) {
     pct <= -25 ? "bg-sage-200 text-sage-700" :
     "bg-sand-100 text-slate2-700";
   const sign = pct > 0 ? "+" : "";
-  return <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${cls}`}>{sign}{pct}% vs baseline</span>;
+  return <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${cls}`}>{sign}{pct}% vs baseline</span>;
 }

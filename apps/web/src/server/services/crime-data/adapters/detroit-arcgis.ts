@@ -50,7 +50,7 @@ const PROVENANCE: DataProvenance = {
   granularity: "neighborhood",
   disclaimer:
     "Incidents are reported by the Detroit Police Department and aggregated " +
-    "to Detroit's named neighborhoods — not live, not street-level. TravelSafe " +
+    "to Detroit's named neighborhoods — not live, not street-level. CommunitySafe " +
     "does not track individuals.",
 };
 
@@ -64,7 +64,7 @@ async function fetchPage(offset: number): Promise<DetroitRow[]> {
   url.searchParams.set("resultRecordCount", String(PAGE_SIZE));
   url.searchParams.set("f", "json");
   const res = await fetch(url, {
-    headers: { Accept: "application/json", "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
+    headers: { Accept: "application/json", "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)" },
   });
   if (!res.ok) throw new Error(`Detroit ArcGIS ${res.status} offset=${offset}`);
   const body = await res.json() as { features?: Array<{ attributes: DetroitRow }> };

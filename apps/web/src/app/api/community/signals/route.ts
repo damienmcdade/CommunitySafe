@@ -17,7 +17,7 @@ export const GET = wrap(async (req: NextRequest) => {
     signals,
     disclaimer:
       "Signals are recent thread titles from the city's main subreddit, filtered to the selected neighborhood. " +
-      "TravelSafe does not endorse, moderate, or re-host the threads — click through to read them at the source. " +
+      "CommunitySafe does not endorse, moderate, or re-host the threads — click through to read them at the source. " +
       "Reddit users may post unverified claims; treat each as community-reported, not official.",
   });
 });

@@ -97,7 +97,7 @@ function CityScoreCard({ score, loading, accent }: { score: ScoreResp | null; lo
   return (
     <section className="space-y-3">
       {accent === "compare" && (
-        <span className="inline-block text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full bg-bay-100 text-bay-700">
+        <span className="inline-block text-[11px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full bg-bay-100 text-bay-700">
           Comparison
         </span>
       )}
@@ -273,7 +273,7 @@ function CityCombobox({ excludeSlug, value, onPick }: { excludeSlug: string; val
                 aria-selected={i === focusIdx}
               >
                 <span className="truncate">{c.label}</span>
-                <span className="text-[10px] uppercase tracking-wider text-slate2-500 shrink-0">{c.state}</span>
+                <span className="text-[11px] uppercase tracking-wider text-slate2-500 shrink-0">{c.state}</span>
               </button>
             </li>
           ))}

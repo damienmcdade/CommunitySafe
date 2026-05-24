@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import { api, useAnonymousAuth, useApi } from "@/lib/api-client";
 import { requestLocation } from "@/lib/geolocation";
 import { SafetyTipsPanel } from "@/components/SafetyTipsPanel";
-import { LocationSearch } from "@/components/LocationSearch";
 import { useCity } from "@/lib/use-city";
 import { useArea } from "@/lib/use-area";
 import { useDocumentTitle } from "@/lib/use-document-title";
@@ -33,9 +32,11 @@ interface Area { slug: string; label: string; jurisdiction: string }
 export default function PersonalSafetyPage() {
   const { city } = useCity();
   // Globally-shared neighborhood selection — Personal Safety follows the
-  // same area the user picked elsewhere so safety tips track without a
-  // second selection.
-  const { area, setArea } = useArea(city.slug);
+  // same area the user picked elsewhere (Neighborhood Awareness wheel
+  // picker, City Awareness hotspot click, header city pill, or "Use
+  // my location"). No inline picker here — single area selector per
+  // session lives in one canonical place.
+  const { area } = useArea(city.slug);
   useDocumentTitle(`Personal Safety · ${area?.label ?? city.label}`);
 
   const [showDisclaimer, setShowDisclaimer] = useState(false);
@@ -55,7 +56,7 @@ export default function PersonalSafetyPage() {
         <div className="surface p-5 border-amber2-500/40">
           <h2 className="font-display text-lg text-slate2-900">Before you use this tab</h2>
           <p className="mt-2 text-sm text-slate2-700">
-            TravelSafe&apos;s personal-safety tools may fail due to network, device, or service issues
+            CommunitySafe&apos;s personal-safety tools may fail due to network, device, or service issues
             and are <strong>not a substitute for 911 or professional emergency services</strong>.
             The application does not contact emergency services on your behalf. In an emergency, call 911.
           </p>
@@ -70,11 +71,8 @@ export default function PersonalSafetyPage() {
       <section className="surface p-5">
         <h2 className="font-display text-lg text-slate2-900">Tailor safety tips to your area</h2>
         <p className="mt-1 text-xs text-slate2-500">
-          Tips below are matched to the offenses most commonly reported in {area ? area.label : city.label}. Switch the city in the header to change region, or search a specific neighborhood here.
+          Tips below are matched to the offenses most commonly reported in {area ? area.label : city.label}. To switch region, use the city + neighborhood selector in the header.
         </p>
-        <div className="mt-3">
-          <LocationSearch current={area} onResolved={setArea} />
-        </div>
       </section>
 
       <SafetyTipsPanel
@@ -92,7 +90,7 @@ export default function PersonalSafetyPage() {
       <section className="surface p-5 border-amber2-500/30">
         <h2 className="font-display text-lg text-slate2-900">Official registries</h2>
         <p className="mt-1 text-sm text-slate2-700">
-          For sex-offender information, TravelSafe links to the official public registry. We do not re-host or display individuals here.
+          For sex-offender information, CommunitySafe links to the official public registry. We do not re-host or display individuals here.
         </p>
         <a href={REGISTRY_URL} target="_blank" rel="noreferrer" className="mt-3 inline-block underline text-slate2-900 hover:text-bay-700 transition-colors">
           Open Megan&apos;s Law (California) →
@@ -205,7 +203,7 @@ function AccountPanel() {
       <section className="surface p-6" role="status" aria-live="polite">
         <h2 className="font-display text-xl text-slate2-900">Account deleted</h2>
         <p className="mt-2 text-sm text-slate2-700">
-          Your account and all associated data have been removed from TravelSafe&apos;s servers. Returning to home…
+          Your account and all associated data have been removed from CommunitySafe&apos;s servers. Returning to home…
         </p>
       </section>
     );
@@ -215,7 +213,7 @@ function AccountPanel() {
     <section className="surface p-6">
       <h2 className="font-display text-xl text-slate2-900">Your account &amp; data</h2>
       <p className="mt-1 text-sm text-slate2-700">
-        TravelSafe stores a session for your device so check-ins, contacts, and posts can be associated with you. Below are the controls the <a href="/privacy" className="text-bay-700 hover:underline">privacy policy</a> describes.
+        CommunitySafe stores a session for your device so check-ins, contacts, and posts can be associated with you. Below are the controls the <a href="/privacy" className="text-bay-700 hover:underline">privacy policy</a> describes.
       </p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -306,7 +304,7 @@ function EmergencyPanel() {
       <h2 className="font-display text-xl text-slate2-900">In an emergency</h2>
       <p className="mt-2 text-slate2-700">
         Call {EMERGENCY_DIAL} directly. The button below opens your device&apos;s dialer —
-        it does not route through TravelSafe&apos;s servers and works even if the app backend is down.
+        it does not route through CommunitySafe&apos;s servers and works even if the app backend is down.
       </p>
       <a
         href={`tel:${EMERGENCY_DIAL}`}

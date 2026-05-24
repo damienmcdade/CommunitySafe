@@ -232,6 +232,12 @@ model Post {
 
   reportCount     Int        @default(0)
 
+  // Soft-delete column. Set instead of hard-deleting so the
+  // moderator audit trail (PostReviewAction, PostReport) stays
+  // intact. Adapters that surface posts to users filter where
+  // deletedAt IS NULL. Finding #5 in docs/schema-review.md.
+  deletedAt       DateTime?
+
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 
@@ -250,6 +256,8 @@ model Post {
   @@index([areaId, status])
   @@index([authorId, status])
   @@index([status, createdAt])
+  // Moderator queue sorts flagged posts by reportCount DESC. Finding #6.
+  @@index([status, reportCount])
 }
 
 model PostComment {
@@ -424,6 +432,12 @@ model SuspensionEvent {
 model PushSubscription {
   id        String   @id @default(cuid())
   userId    String
+  // Endpoint storage stays as the default Postgres TEXT type.
+  // Finding #8 in docs/schema-review.md suggested capping at
+  // VARCHAR(2048) for planner stats, but the ALTER COLUMN required
+  // --accept-data-loss (despite all real-world FCM/APNs endpoints
+  // fitting in ~1KB). Keeping the safer default; revisit if the
+  // planner stats actually start mattering.
   endpoint  String   @unique
   p256dh    String
   auth      String

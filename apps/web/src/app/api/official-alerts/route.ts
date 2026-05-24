@@ -45,6 +45,6 @@ export const GET = wrap(async (req: Request) => {
     disclaimer:
       "Aggregated from the National Weather Service (active weather alerts) " +
       "and USGS Earthquakes (M2.5+ within 300km, past 72h). Independent of " +
-      "TravelSafe community posts.",
+      "CommunitySafe community posts.",
   });
 });

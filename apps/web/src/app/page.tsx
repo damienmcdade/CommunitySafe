@@ -18,13 +18,13 @@ export default function WelcomePage() {
           <div className="max-w-2xl rounded-2xl bg-slate2-900/55 backdrop-blur-md p-6 sm:p-8 shadow-card-lift border border-white/10">
             <p className="text-bay-200 text-sm tracking-wide uppercase animate-fade-in">Area-level safety · San Diego · Los Angeles · San Francisco</p>
             <h1 className="mt-2 font-display text-5xl sm:text-6xl text-white animate-rise-in">
-              <span className="bg-gradient-to-r from-white to-coral-200 bg-clip-text text-transparent">Travel</span>Safe
+              <span className="bg-gradient-to-r from-white to-coral-200 bg-clip-text text-transparent">Community</span>Safe
             </h1>
             <p className="mt-4 text-sand-100 text-lg animate-rise-in">
               Calm, neighborhood-level safety context for major California cities. The application draws on official police data and moderated community reports, without surveillance, profiling, or alarmism.
             </p>
             <div className="mt-8 flex flex-wrap gap-3 animate-rise-in">
-              <Link href="/now" className="btn-coral text-base px-6 py-3">Explore TravelSafe →</Link>
+              <Link href="/now" className="btn-coral text-base px-6 py-3">Explore CommunitySafe →</Link>
               <Link href="/map" className="btn-secondary text-base px-6 py-3 !bg-white/10 !border-white/30 !text-white hover:!bg-white/20">
                 Open the Crime Map
               </Link>
@@ -80,7 +80,7 @@ function Pillar({ tone, label, title, body }: { tone: "bay" | "sage" | "coral"; 
   const accent = tone === "bay" ? "text-bay-700 bg-bay-200" : tone === "sage" ? "text-sage-700 bg-sage-200" : "text-coral-700 bg-coral-200";
   return (
     <article className="surface p-6 animate-rise-in">
-      <span className={`inline-block text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full ${accent}`}>{label}</span>
+      <span className={`inline-block text-[11px] uppercase tracking-wider px-2 py-0.5 rounded-full ${accent}`}>{label}</span>
       <h3 className="mt-3 font-display text-lg text-slate2-900">{title}</h3>
       <p className="mt-2 text-sm text-slate2-700">{body}</p>
     </article>

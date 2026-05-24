@@ -87,7 +87,7 @@ const PROVENANCE: DataProvenance = {
   disclaimer:
     "Incidents are reported by the Oakland Police Department, with neighborhood " +
     "assigned by point-in-polygon geocoding against Oakland's 131 named neighborhoods. " +
-    "Not live, not street-level. TravelSafe does not track individuals.",
+    "Not live, not street-level. CommunitySafe does not track individuals.",
 };
 
 function safeIso(raw: string | null | undefined): string {
@@ -101,7 +101,7 @@ async function fetchOakland(): Promise<Incident[]> {
   // datetime so we get the freshest slice.
   const u = `${BASE}?$limit=${ROW_LIMIT}&$order=datetime%20DESC&$where=location_1%20IS%20NOT%20NULL`;
   const res = await fetch(u, {
-    headers: { Accept: "application/json", "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
+    headers: { Accept: "application/json", "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)" },
   });
   if (!res.ok) throw new Error(`Oakland Socrata ${res.status}`);
   const rows = (await res.json()) as OakRow[];

@@ -98,7 +98,7 @@ const PROVENANCE: DataProvenance = {
   granularity: "beat",
   disclaimer:
     "Incidents are reported by the Philadelphia Police Department and " +
-    "aggregated to PPD's 21 districts — not live, not street-level. TravelSafe " +
+    "aggregated to PPD's 21 districts — not live, not street-level. CommunitySafe " +
     "does not track individuals.",
 };
 
@@ -108,7 +108,7 @@ async function fetchPhl(): Promise<Incident[]> {
   const res = await fetch(url, {
     headers: {
       Accept: "application/json",
-      "User-Agent": "Mozilla/5.0 TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)",
+      "User-Agent": "Mozilla/5.0 CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)",
     },
   });
   if (!res.ok) throw new Error(`PHL CARTO ${res.status}`);

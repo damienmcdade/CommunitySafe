@@ -149,7 +149,7 @@ function TrendReport({ trend, accent, sectionHeadingLevel = 2 }: { trend: TrendR
   return (
     <section className="space-y-3">
       {accent === "compare" && (
-        <span className="inline-block text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full bg-bay-100 text-bay-700">
+        <span className="inline-block text-[11px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full bg-bay-100 text-bay-700">
           Comparison
         </span>
       )}

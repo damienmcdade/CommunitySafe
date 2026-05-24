@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description: `Recent police-feed safety data for ${area.label} in ${city.label}, compared to the FBI Crime Data Explorer 2025 national average. Updated hourly.`,
     alternates: { canonical: `/cities/${citySlug}/${areaSlug}` },
     openGraph: {
-      title: `${area.label}, ${city.label} · Safety overview · TravelSafe`,
+      title: `${area.label}, ${city.label} · Safety overview · CommunitySafe`,
       description: `${area.label}'s Safety Index, recent reports, and FBI national comparison — sourced from the official ${city.label} police open-data feed.`,
       type: "article",
     },
@@ -162,7 +162,7 @@ export default async function NeighborhoodLandingPage({ params }: Props) {
               already been scaled; the badge keeps the methodology
               transparent on the SEO page just like in the app. */}
           {score.dataSourceType === "cfs" && (
-            <p className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-bay-50 border border-bay-200 text-bay-700 text-[10px] uppercase tracking-wider font-medium">
+            <p className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-bay-50 border border-bay-200 text-bay-700 text-[11px] uppercase tracking-wider font-medium">
               CFS-calibrated × {(score.cfsScale ?? 1).toFixed(2)}
             </p>
           )}
@@ -213,7 +213,7 @@ export default async function NeighborhoodLandingPage({ params }: Props) {
 
       <p className="surface-muted p-3 text-xs text-slate2-700 leading-snug" role="note">
         <strong className="text-slate2-900">How to read this:</strong>{" "}
-        TravelSafe summarizes publicly published police reports. Scores reflect historical reporting only — not
+        CommunitySafe summarizes publicly published police reports. Scores reflect historical reporting only — not
         predictions of future risk, and not a substitute for professional safety advice. Should not be used as the sole
         basis for housing, lending, insurance, or hiring decisions. See{" "}
         <Link href="/methodology" className="text-bay-700 hover:underline">/methodology</Link>{" "}

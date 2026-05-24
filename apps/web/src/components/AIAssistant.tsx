@@ -9,7 +9,7 @@ interface Message {
 const STORAGE_KEY = "travelsafe.assistant.v1";
 const INTRO: Message = {
   role: "assistant",
-  content: "Hi — I can answer questions about the US cities and counties TravelSafe tracks, their neighborhoods, and how they compare to the FBI national averages. Try \"what's the safest neighborhood in San Diego?\" or \"how does Chicago compare to Boston?\"",
+  content: "Hi — I can answer questions about the US cities and counties CommunitySafe tracks, their neighborhoods, and how they compare to the FBI national averages. Try \"what's the safest neighborhood in San Diego?\" or \"how does Chicago compare to Boston?\"",
 };
 
 /// Floating AI safety guide. Bottom-right pill on every app tab; click to
@@ -107,7 +107,7 @@ export function AIAssistant() {
   const QUICK_PROMPTS = [
     "What's the safest neighborhood in San Diego?",
     "How does Chicago compare to the national average?",
-    "Which cities does TravelSafe support?",
+    "Which cities does CommunitySafe support?",
   ];
 
   async function send(promptOverride?: string) {
@@ -175,13 +175,13 @@ export function AIAssistant() {
       <button
         ref={launcherRef}
         onClick={() => setOpen((o) => !o)}
-        aria-label={open ? "Close TravelSafe assistant" : "Open TravelSafe assistant"}
+        aria-label={open ? "Close CommunitySafe assistant" : "Open CommunitySafe assistant"}
         aria-expanded={open}
         aria-controls="travelsafe-assistant-panel"
         className="fixed bottom-5 right-5 z-[1500] flex items-center gap-2 px-4 py-2.5 rounded-full bg-slate2-900 text-white shadow-card-lift hover:shadow-glow-bay hover:-translate-y-0.5 active:scale-[0.97] transition-all"
       >
         <span className="inline-block w-1.5 h-1.5 rounded-full bg-bay-400 animate-pulse" />
-        <span className="text-sm font-medium">{open ? "Close" : "Ask TravelSafe"}</span>
+        <span className="text-sm font-medium">{open ? "Close" : "Ask CommunitySafe"}</span>
       </button>
 
       {open && (
@@ -195,15 +195,15 @@ export function AIAssistant() {
           ref={panelRef}
           id="travelsafe-assistant-panel"
           role="dialog"
-          aria-label="TravelSafe assistant"
+          aria-label="CommunitySafe assistant"
           aria-modal="false"
           onKeyDown={onPanelKeyDown}
           className="fixed top-5 right-5 z-[1500] w-[min(24rem,calc(100vw-2.5rem))] max-h-[min(34rem,calc(100vh-2.5rem))] flex flex-col surface bg-white animate-pop-in"
         >
           <header className="flex items-center justify-between gap-2 px-4 py-3 border-b border-sand-200">
             <div>
-              <h2 className="font-display text-sm text-slate2-900">TravelSafe assistant</h2>
-              <p className="text-[10px] uppercase tracking-wider text-slate2-500">Official data only · no personal advice</p>
+              <h2 className="font-display text-sm text-slate2-900">CommunitySafe assistant</h2>
+              <p className="text-[11px] uppercase tracking-wider text-slate2-500">Official data only · no personal advice</p>
             </div>
             <button
               onClick={clear}
@@ -272,7 +272,7 @@ export function AIAssistant() {
                 {busy ? "…" : "Send"}
               </button>
             </div>
-            <p className="mt-2 text-[10px] text-slate2-500">
+            <p className="mt-2 text-[11px] text-slate2-500">
               Answers come from the same official police feeds + FBI Crime Data Explorer 2025 data the rest of the app uses. No web search, no personal data.
             </p>
           </footer>
