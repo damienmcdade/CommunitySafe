@@ -48,6 +48,12 @@ const Env = z.object({
   // Vercel AI Gateway (composer coach). Optional — when unset, the composer
   // gracefully falls back to local pre-vetter rules only.
   AI_GATEWAY_API_KEY: z.string().optional(),
+
+  // Redis (Railway plugin). Optional — when unset, services that use it
+  // (AI explainer cache, future per-instance shared state) fall back to
+  // process-local stores. Set automatically by Railway when the Redis
+  // plugin is attached.
+  REDIS_URL: z.string().url().optional(),
 });
 
 const parsed = Env.parse(process.env);

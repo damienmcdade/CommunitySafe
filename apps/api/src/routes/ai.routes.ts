@@ -2,8 +2,23 @@ import { Router } from "express";
 import { z } from "zod";
 import { writeLimiter } from "../middleware/rate-limit.js";
 import { streamComposeFeedback } from "../services/ai/compose-feedback.js";
+import { explainIncident } from "../services/ai/incident-explain.service.js";
 
 export const aiRouter = Router();
+
+const explainBody = z.object({
+  description: z.string().min(1).max(400),
+});
+
+aiRouter.post("/incident-explain", writeLimiter, async (req, res, next) => {
+  try {
+    const { description } = explainBody.parse(req.body);
+    const out = await explainIncident(description);
+    res.json(out);
+  } catch (err) {
+    next(err);
+  }
+});
 
 const composeBody = z.object({
   what:  z.string().min(1).max(800),
