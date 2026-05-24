@@ -91,7 +91,7 @@ export function IncidentSummaryCard({
     <section className="surface p-5 space-y-3">
       <header className="flex items-baseline justify-between flex-wrap gap-2">
         <div>
-          <p className="text-xs uppercase tracking-wider text-slate2-500">Recent activity · last {data.windowDays}d</p>
+          <p className="text-xs uppercase tracking-wider text-slate2-500">AI Summary</p>
           <h3 className="mt-0.5 font-display text-lg text-slate2-900">{contextLabel}</h3>
         </div>
         <div className="flex items-center gap-2">

@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import type { BaselinePoint, ThreatConfidence, ThreatItem } from "./types";
 import { api } from "@/lib/api-client";
+import { snapToSupported, useTimeWindow, type WindowValue } from "@/lib/use-time-window";
 
 export interface ThreatFeedProps {
   /// Chronological sanitized incidents for the cached window, newest first.
@@ -52,30 +53,39 @@ const CONFIDENCE_BADGE: Record<ThreatConfidence, { label: string; cls: string; t
   },
 };
 
-// Default visible rows. The previous FEED_CAP of 12 made the panel
-// dominate the analytics column and threw off the column-height
-// balance with the right-side news/alerts. Users who want the full
-// recent window can expand via the disclosure below.
-const DEFAULT_VISIBLE = 5;
-const HARD_CAP = 50;
+// Cap how many we'll ever render in a single scroll container — the
+// adapter can return thousands of rows for a large window and DOM
+// node count matters. 200 is well past the visual scroll budget
+// users tolerate (~30 days of activity in a busy area is typically
+// 50-150 incidents).
+const HARD_CAP = 200;
 
-/// Stateless presentation widget. Renders a chronological list of sanitized
-/// dispatches; if the list is empty for the active window, falls back to
-/// the analytical baseline chart instead of an empty textual line.
-export function ThreatFeed({ threats, baseline, windowDays, contextLabel, source, loading }: ThreatFeedProps) {
-  const [expanded, setExpanded] = useState(false);
+// Window presets the in-card selector exposes. Tied to the shared
+// useTimeWindow store so picking a window here drives every other
+// window-aware card (CrimeChart, TrendPanel) too.
+const WINDOW_PRESETS: ReadonlyArray<WindowValue> = [7, 14, 30, 90];
+
+/// Stateless presentation widget. Renders a chronological list of
+/// sanitized dispatches in a scrollable container. Default ~5 rows
+/// visible; remaining rows scroll within the panel so users see the
+/// whole window without the panel monopolizing the page.
+export function ThreatFeed({ threats, windowDays, contextLabel, source, loading }: ThreatFeedProps) {
+  // In-card time-interval picker — uses the same shared store that
+  // drives CrimeChart and TrendPanel so picking here propagates
+  // app-wide. Snapped to ThreatFeed's preset list (which is also
+  // TrendPanel's) so users can switch between 7 / 14 / 30 / 90 days.
+  const { value: rawWindow, setValue: setSharedWindow } = useTimeWindow();
+  const snapped = snapToSupported(rawWindow, WINDOW_PRESETS);
+  const selectedWindow = typeof snapped === "number" ? snapped : 30;
+
   if (loading && threats.length === 0) return <ThreatFeedSkeleton />;
-  // Hard cap on what we'll ever render — even when expanded — so the
-  // page can't blow up if an adapter returns thousands of rows.
   const eligible = threats.slice(0, HARD_CAP);
-  const visible = expanded ? eligible : eligible.slice(0, DEFAULT_VISIBLE);
-  const hiddenCount = eligible.length - visible.length;
 
   return (
     <section className="surface p-5">
       <header className="flex items-baseline justify-between flex-wrap gap-2">
         <div>
-          <h3 className="font-display text-lg text-slate2-900">Local activity — last {windowDays} days</h3>
+          <h3 className="font-display text-lg text-slate2-900">Local Activity</h3>
           <p className="text-xs text-slate2-500 mt-0.5">{contextLabel}</p>
         </div>
         <span className="text-xs text-slate2-500 tabular-nums">
@@ -83,33 +93,50 @@ export function ThreatFeed({ threats, baseline, windowDays, contextLabel, source
         </span>
       </header>
 
-      {visible.length === 0 ? (
+      {/* In-card window selector — pick how much activity to populate.
+          Bay-pill matches the rest of the system; writes go to the
+          shared useTimeWindow store so the parent useSafeZoneData
+          hook re-fetches with the new windowDays. */}
+      <div className="mt-3 flex items-center gap-1.5 text-xs" role="radiogroup" aria-label="Local Activity window">
+        <span className="text-slate2-500 uppercase tracking-wider text-[11px] mr-1">Window:</span>
+        {WINDOW_PRESETS.map((p) => {
+          const days = typeof p === "number" ? p : 30;
+          const active = days === selectedWindow;
+          return (
+            <button
+              key={String(p)}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => setSharedWindow(p)}
+              className={`px-2 py-1 rounded-md transition-colors ${
+                active
+                  ? "bg-bay-500 text-white font-semibold"
+                  : "text-slate2-700 hover:bg-bay-100"
+              }`}
+            >
+              {days}d
+            </button>
+          );
+        })}
+      </div>
+
+      {eligible.length === 0 ? (
         <div className="mt-4">
           <p className="text-sm text-slate2-700">
             No reported dispatches in the past {windowDays} days.
           </p>
         </div>
       ) : (
-        <>
-          <ol className="mt-3 space-y-1.5">
-            {visible.map((t) => {
-              const badge = CONFIDENCE_BADGE[t.confidence];
-              return <IncidentRow key={t.id} description={t.description} categoryDot={CAT_DOT[t.category]} badge={badge} confidence={t.confidence} />;
-            })}
-          </ol>
-          {(hiddenCount > 0 || expanded) && (
-            <button
-              type="button"
-              onClick={() => setExpanded((e) => !e)}
-              aria-expanded={expanded}
-              className="mt-3 text-xs text-bay-700 hover:underline"
-            >
-              {expanded
-                ? `Show fewer (back to ${DEFAULT_VISIBLE})`
-                : `Show ${hiddenCount} more ${hiddenCount === 1 ? "dispatch" : "dispatches"}${threats.length > HARD_CAP ? ` (of ${threats.length} total)` : ""}`}
-            </button>
-          )}
-        </>
+        <ol
+          className="mt-3 max-h-72 overflow-y-auto pr-1 space-y-1.5 [scrollbar-width:thin]"
+          aria-label={`${eligible.length} dispatches over last ${windowDays} days, scroll to see more`}
+        >
+          {eligible.map((t) => {
+            const badge = CONFIDENCE_BADGE[t.confidence];
+            return <IncidentRow key={t.id} description={t.description} categoryDot={CAT_DOT[t.category]} badge={badge} confidence={t.confidence} />;
+          })}
+        </ol>
       )}
 
       <p className="mt-4 text-[11px] text-slate2-500">
@@ -262,6 +289,16 @@ function IncidentRow({
     }
   }
 
+  // Bug fix: the header button always called load(), which inside the
+  // open state would short-circuit but still call setOpen(true) —
+  // making the "Hide" label visually present but functionally
+  // useless. Now the button toggles: when open, it closes; when
+  // closed, it loads (which opens after the response).
+  function toggle() {
+    if (open) { setOpen(false); return; }
+    void load();
+  }
+
   return (
     <li className="text-sm text-slate2-700">
       <div className="flex items-start gap-2 flex-wrap sm:flex-nowrap">
@@ -269,9 +306,9 @@ function IncidentRow({
         <span className="flex-1 min-w-0">{description}</span>
         <button
           type="button"
-          onClick={load}
+          onClick={toggle}
           disabled={loading}
-          aria-label={`Explain "${description}"`}
+          aria-label={open ? `Hide explanation for "${description}"` : `Explain "${description}"`}
           aria-expanded={open}
           className="text-[11px] uppercase tracking-wider text-slate2-500 hover:text-bay-700 underline-offset-2 hover:underline whitespace-nowrap disabled:opacity-50 disabled:cursor-wait shrink-0"
         >

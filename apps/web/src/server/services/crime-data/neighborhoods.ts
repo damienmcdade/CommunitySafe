@@ -17,7 +17,11 @@ export interface KnownArea {
 const FALLBACK_AREAS: KnownArea[] = [
   { slug: "pacific-beach",  label: "Pacific Beach",  jurisdiction: "San Diego", centroid: { lat: 32.7997, lng: -117.2358 } },
   { slug: "hillcrest",      label: "Hillcrest",      jurisdiction: "San Diego", centroid: { lat: 32.7484, lng: -117.1641 } },
-  { slug: "downtown-sd",    label: "Downtown",       jurisdiction: "San Diego", centroid: { lat: 32.7157, lng: -117.1611 } },
+  // "downtown-sd" hardcoded entry removed: SDPD's "Core-Columbia"
+  // beat (auto-discovered) is now relabeled to "Downtown" via the
+  // sdpd-nibrs adapter's AREA_LABEL_REMAP. Keeping a second
+  // "Downtown" entry here would produce a duplicate row in the
+  // neighborhood list.
   { slug: "la-jolla",       label: "La Jolla",       jurisdiction: "San Diego", centroid: { lat: 32.8328, lng: -117.2713 } },
   { slug: "mission-valley", label: "Mission Valley", jurisdiction: "San Diego", centroid: { lat: 32.7707, lng: -117.1521 } },
   { slug: "mira-mesa",      label: "Mira Mesa",      jurisdiction: "San Diego", centroid: { lat: 32.9170, lng: -117.1450 } },

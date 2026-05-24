@@ -5,7 +5,6 @@ import { useArea } from "@/lib/use-area";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { DataProvenanceBanner, type ProvenanceLike } from "@/components/DataProvenanceBanner";
 import { LiveActivityBadge } from "@/components/LiveActivityBadge";
-import { CrimeChart } from "@/components/CrimeChart";
 import { IncidentSummaryCard } from "@/components/IncidentSummaryCard";
 import { HotspotCard } from "@/components/HotspotCard";
 import { NewsPanel } from "@/components/NewsPanel";
@@ -26,6 +25,20 @@ interface Citywide { city: string; totalIncidents: number; alerts: Alert[]; perA
 /// user-selected city only. Citywide signals; no per-neighborhood
 /// drill-down. Clicking a hotspot in the leaderboard jumps over to
 /// Neighborhood Awareness with that area pre-selected.
+///
+/// Card order per the v9 directive:
+///   1. Safety Index            (BlockScore)
+///   2. City Letter Score       (CityScoreCard — grade + violent/property bars)
+///   3. Recent Upticks          (UptickTile)
+///   4. Local Activity          (ThreatFeed, with in-card window picker)
+///   5. AI Summary              (IncidentSummaryCard)
+///   6. Hotspots                (HotspotCard)
+///   7. Weather + News          (OfficialAlertsPanel + NewsPanel)
+///   8. ALL disclaimer banners  (DataProvenanceBanner, last)
+///
+/// CrimeChart removed from City Awareness — its area-breakdown function
+/// is duplicated by CityScoreCard's per-category bars + HotspotCard's
+/// per-neighborhood activity counts.
 export default function CityAwarenessPage() {
   const { city } = useCity();
   const { setArea } = useArea(city.slug);
@@ -39,9 +52,6 @@ export default function CityAwarenessPage() {
   );
 
   function selectNeighborhood(slug: string, label: string) {
-    // Setting the global area and routing — Neighborhood Awareness
-    // reads from the same global store so the user lands there with
-    // the right area already focused.
     setArea({ slug, label, jurisdiction: city.label });
     window.location.href = "/neighborhood";
   }
@@ -68,66 +78,81 @@ export default function CityAwarenessPage() {
         </div>
       )}
 
-      <CitywideSafeZoneSection city={{ slug: city.slug, label: city.label }} />
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <IncidentSummaryCard
-          citySlug={city.slug}
-          contextLabel={`${city.label} (citywide)`}
-        />
-        <HotspotCard
-          citySlug={city.slug}
-          cityLabel={city.label}
-          onPickArea={selectNeighborhood}
-        />
-      </div>
-
-      <CrimeChart mode="city" citySlug={city.slug} cityLabel={city.label} />
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <NewsPanel />
-        <OfficialAlertsPanel />
-      </div>
-
-      <UptickTile />
-      <DataProvenanceBanner provenance={citywide?.alerts[0]?.provenance ?? null} />
-
-      {/* Citywide Safety Score — always city-scoped via CityScoreCard,
-          which only renders the grade + per-category bars vs FBI
-          national. Previously this slot embedded the full
-          SafetyScorePage which carried the neighborhood drill-down
-          picker, FBI category chips, compare overlay, and an
-          area-aware TrendPanel — all of which leaked
-          neighborhood-specific UI onto a city-only tab. Per v6
-          directive: every neighborhood-scoped surface was stripped
-          from /city; CityScoreCard is the clean replacement. */}
+      {/* 1. Safety Index + 2. City Letter Score — stacked top of page. */}
+      <SafetyIndex city={{ slug: city.slug, label: city.label }} />
       <CityScoreCard citySlug={city.slug} cityLabel={city.label} />
+
+      {/* 3. Recent Upticks above Local Activity. */}
+      <UptickTile />
+
+      {/* 4. Local Activity (ThreatFeed) — scrollable, has its own
+             in-card window picker driven by the shared useTimeWindow
+             store. */}
+      <LocalActivity city={{ slug: city.slug, label: city.label }} />
+
+      {/* 5. AI Summary card (renamed IncidentSummaryCard heading). */}
+      <IncidentSummaryCard
+        citySlug={city.slug}
+        contextLabel={`${city.label} (citywide)`}
+      />
+
+      {/* 6. Hotspots — click a row to focus that neighborhood. */}
+      <HotspotCard
+        citySlug={city.slug}
+        cityLabel={city.label}
+        onPickArea={selectNeighborhood}
+      />
+
+      {/* 7. Weather + News — paired two-column row. */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <OfficialAlertsPanel />
+        <NewsPanel />
+      </div>
+
+      {/* 8. ALL informational source banner disclaimers anchored to the
+             bottom of the page per v9 directive. DataProvenanceBanner
+             is the per-source citation; the global DataDisclaimer
+             (mounted at the (app) shell footer) follows below this
+             page automatically. */}
+      <DataProvenanceBanner provenance={citywide?.alerts[0]?.provenance ?? null} />
     </main>
   );
 }
 
-function CitywideSafeZoneSection({ city }: { city: { slug: string; label: string } }) {
+/// Just the BlockScore — split out of the prior CitywideSafeZoneSection
+/// because the v9 layout interleaves CityScoreCard between Safety
+/// Index and Local Activity.
+function SafetyIndex({ city }: { city: { slug: string; label: string } }) {
+  const data = useSafeZoneData({
+    city: { slug: city.slug, label: city.label },
+    area: null,
+  });
+  return (
+    <BlockScoreWidget
+      score={data.blockScore}
+      loading={data.loading}
+      unavailable={!data.loading && !data.blockScore}
+      contextLabel={`${city.label} (citywide)`}
+    />
+  );
+}
+
+/// Just the ThreatFeed — same data hook as SafetyIndex; the SWR cache
+/// shares the underlying fetch so this isn't a duplicate request.
+function LocalActivity({ city }: { city: { slug: string; label: string } }) {
   const data = useSafeZoneData({
     city: { slug: city.slug, label: city.label },
     area: null,
   });
   const sourceLabel = `${city.label} official police open-data feed`;
   return (
-    <div className="space-y-3">
-      <BlockScoreWidget
-        score={data.blockScore}
-        loading={data.loading}
-        unavailable={!data.loading && !data.blockScore}
-        contextLabel={`${city.label} (citywide)`}
-      />
-      <ThreatFeed
-        threats={data.threats}
-        baseline={data.baseline}
-        windowDays={data.windowDays}
-        contextLabel={`${city.label} citywide`}
-        source={{ label: sourceLabel, url: "https://cde.ucr.cjis.gov/LATEST/webapp/#/pages/explorer/crime/crime-trend" }}
-        loading={data.loading}
-      />
-    </div>
+    <ThreatFeed
+      threats={data.threats}
+      baseline={data.baseline}
+      windowDays={data.windowDays}
+      contextLabel={`${city.label} citywide`}
+      source={{ label: sourceLabel, url: "https://cde.ucr.cjis.gov/LATEST/webapp/#/pages/explorer/crime/crime-trend" }}
+      loading={data.loading}
+    />
   );
 }
