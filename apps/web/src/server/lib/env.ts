@@ -76,6 +76,12 @@ const Env = z.object({
 
   // Moderator allowlist (comma-separated emails)
   MODERATOR_EMAILS: z.string().default(""),
+
+  // Railway API base. When set, the Vercel-side AI explainer (and any
+  // other route migrated in route-parity Phase 2) proxies upstream to
+  // Railway so they hit the shared Redis cache instead of the per-
+  // function-instance LRU. Server-only — never exposed to the client.
+  API_BASE_URL: z.string().url().optional(),
 });
 
 type ParsedEnv = z.infer<typeof Env>;
