@@ -7,8 +7,19 @@ import type { KnownArea } from "../neighborhoods";
 // This is an ESRI Feature Server, not a Socrata SODA endpoint. Pagination is
 // resultOffset / resultRecordCount, dates are epoch-ms ints, and responses
 // wrap each row in { attributes, geometry } instead of returning bare rows.
-// The service maxRecordCount is 2000, so we paginate in parallel to get a
-// meaningful citywide sample without burning a long round-trip.
+//
+// UPSTREAM OUTAGE (probed 2026-05-24): every public Denver crime endpoint
+// now returns "Token Required" (HTTP 499) or 403 Forbidden:
+//   - FeatureServer/324/query     → 499 GWM_0003 Token Required
+//   - hub.arcgis.com data download → 403 Forbidden
+//   - www.denvergov.org CSV path   → 301 redirect to the Hub (then 500)
+// The dataset still exists (linked from
+// https://opendata-geospatialdenver.hub.arcgis.com) but is no longer
+// publicly readable. We try the request anyway and fall back to an
+// empty list — the Coverage page surfaces this as "warming up". To
+// restore Denver coverage, contact Denver Open Data for an API token
+// and wire it into env DENVER_ARCGIS_TOKEN.
+//
 // Doc: https://services1.arcgis.com/zdB7qR0BtYrg0Xpl/arcgis/rest/services/ODC_CRIME_OFFENSES_P/FeatureServer
 
 const BASE = "https://services1.arcgis.com/zdB7qR0BtYrg0Xpl/arcgis/rest/services/ODC_CRIME_OFFENSES_P/FeatureServer/324/query";
@@ -71,11 +82,24 @@ async function fetchPage(offset: number): Promise<DenverRow[]> {
   url.searchParams.set("resultOffset", String(offset));
   url.searchParams.set("resultRecordCount", String(PAGE_SIZE));
   url.searchParams.set("f", "json");
+  // Pass an ArcGIS token if one's configured. As of May 2026 Denver's
+  // crime FeatureServer requires auth (returns 499 GWM_0003 without
+  // a token); when DENVER_ARCGIS_TOKEN is unset every call 499s and
+  // the adapter returns empty.
+  if (process.env.DENVER_ARCGIS_TOKEN) {
+    url.searchParams.set("token", process.env.DENVER_ARCGIS_TOKEN);
+  }
   const res = await fetch(url, {
     headers: { Accept: "application/json", "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)" },
   });
   if (!res.ok) throw new Error(`Denver ArcGIS ${res.status} offset=${offset}`);
-  const body = await res.json() as { features?: Array<{ attributes: DenverRow }> };
+  const body = await res.json() as { features?: Array<{ attributes: DenverRow }>; error?: { code?: number; message?: string } };
+  if (body.error) {
+    // ArcGIS returns HTTP 200 with an embedded error envelope for
+    // 499 Token Required, so the !res.ok check above doesn't catch
+    // it. Surface clearly so /coverage can show the auth state.
+    throw new Error(`Denver ArcGIS embedded error ${body.error.code}: ${body.error.message}`);
+  }
   return (body.features ?? []).map((f) => f.attributes);
 }
 

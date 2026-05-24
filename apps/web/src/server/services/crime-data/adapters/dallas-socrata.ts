@@ -98,6 +98,18 @@ function safeIso(raw: string | null | undefined): string {
   return Number.isNaN(d.getTime()) ? new Date(0).toISOString() : d.toISOString();
 }
 
+// Per-word title-case for DPD division names that arrive ALLCAPS
+// ("SOUTH CENTRAL", "NORTHEAST", "NORTH CENTRAL"). Handles hyphens
+// and apostrophes the same way the Norfolk title-caser does so
+// names like "O'Connell" / "Park-View" capitalize cleanly.
+function titleCaseDivision(raw: string): string {
+  return raw
+    .toLowerCase()
+    .split(/\s+/)
+    .map((w) => w.replace(/(^|[-'])([a-z])/g, (_, sep: string, ch: string) => sep + ch.toUpperCase()))
+    .join(" ");
+}
+
 async function fetchDallas(): Promise<Incident[]> {
   // EXPLICIT $select — never request demographic columns.
   const select = "incidentnum,servnumid,offincident,date1,division,sector,beat,nibrs_crime,nibrs_crime_category,nibrs_crimeagainst,geocoded_column";
@@ -112,7 +124,13 @@ async function fetchDallas(): Promise<Incident[]> {
     const lng = Number(r.geocoded_column?.longitude);
     let area = "Unknown";
     if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
-      area = geocodeDallas(lng, lat) ?? (r.division ? `${r.division[0]}${r.division.slice(1).toLowerCase()} Dallas` : "Unknown");
+      // Fallback when point-in-polygon misses: DPD division name +
+      // "Dallas". Divisions arrive ALLCAPS ("CENTRAL", "SOUTH CENTRAL",
+      // "NORTHEAST"). The prior `r.division[0] + r.division.slice(1).
+      // toLowerCase()` only capitalized the FIRST char, so "SOUTH
+      // CENTRAL" became "South central Dallas" with a stranded lower-
+      // case "c". Per-word title-case fixes it: "South Central Dallas".
+      area = geocodeDallas(lng, lat) ?? (r.division ? `${titleCaseDivision(r.division)} Dallas` : "Unknown");
     }
     return {
       id: `dal-${r.servnumid ?? r.incidentnum ?? i}`,
