@@ -44,13 +44,16 @@ export interface CoverageResponse {
 /// Edge-cached at the route layer for 5 minutes so repeat dashboard
 /// hits are instant.
 ///
-/// Per-city timeout (PER_CITY_TIMEOUT_MS) prevents a single
-/// slow-loading adapter from blowing past Vercel's 60s function
-/// budget and 504-ing the whole dashboard. A city that times out
-/// is reported as "warming-up" with zero neighborhoods; the
-/// downstream cache pull eventually completes and the next coverage
-/// request gets the real count.
-const PER_CITY_TIMEOUT_MS = 12_000;
+/// Per-city timeout prevents a single slow-loading adapter from
+/// blowing past Vercel's 60s function budget. Because Promise.all
+/// runs the per-city probes in parallel, the overall wall-clock
+/// is bounded by the SLOWEST single city, not the sum — so each
+/// city's timeout can be a significant fraction of the function
+/// budget without risking a 504. 30s gives high-volume cold-cache
+/// adapters (Charlotte and Cleveland's bumped 60-page fetches in
+/// particular) enough room to land their first pull without
+/// degrading to "warming-up" on the public dashboard.
+const PER_CITY_TIMEOUT_MS = 30_000;
 
 function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
   return new Promise<T>((resolve) => {
