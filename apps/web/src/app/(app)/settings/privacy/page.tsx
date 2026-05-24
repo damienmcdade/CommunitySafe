@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useDocumentTitle } from "@/lib/use-document-title";
+import { useTheme, type Theme } from "@/lib/use-theme";
 
 // Local-state inventory the page can clear on demand. Every key
 // that survives a tab/page navigation lives in this list — if a new
@@ -159,6 +160,11 @@ export default function PrivacyDashboardPage() {
         </dl>
       </section>
 
+      <LocationControls />
+
+      <AppearanceControls />
+
+      {/* "What we don't collect" closes the page after the controls. */}
       <section className="surface p-6 space-y-3 text-sm text-slate2-700">
         <h2 className="font-display text-xl text-slate2-900">What we don&apos;t collect</h2>
         <ul className="list-disc pl-5 space-y-1.5">
@@ -173,5 +179,146 @@ export default function PrivacyDashboardPage() {
         </p>
       </section>
     </main>
+  );
+}
+
+const PERSIST_AREA_KEY = "travelsafe.location.persistArea";
+const PERSIST_CITY_KEY = "travelsafe.location.persistCity";
+
+/// Granular controls for what TravelSafe is allowed to remember about
+/// your location across sessions. Browser permission state itself is
+/// surfaced above — these toggles control what we DO with a grant.
+///
+/// Defaults: both ON (matches prior behavior, no breaking change).
+/// Switching OFF clears the stored value AND prevents future writes
+/// for the rest of the session; the underlying useArea / useCity
+/// hooks fall back to in-memory state.
+function LocationControls() {
+  const [persistArea, setPersistAreaState] = useState<boolean>(true);
+  const [persistCity, setPersistCityState] = useState<boolean>(true);
+
+  useEffect(() => {
+    try {
+      const a = window.localStorage.getItem(PERSIST_AREA_KEY);
+      const c = window.localStorage.getItem(PERSIST_CITY_KEY);
+      // "false" string is the only off signal — anything else (including
+      // null / never-set) means default ON.
+      if (a === "false") setPersistAreaState(false);
+      if (c === "false") setPersistCityState(false);
+    } catch { /* ignore */ }
+  }, []);
+
+  function setPersistArea(next: boolean) {
+    setPersistAreaState(next);
+    try {
+      window.localStorage.setItem(PERSIST_AREA_KEY, String(next));
+      if (!next) {
+        window.localStorage.removeItem("travelsafe.area.v1");
+      }
+    } catch { /* ignore */ }
+  }
+
+  function setPersistCity(next: boolean) {
+    setPersistCityState(next);
+    try {
+      window.localStorage.setItem(PERSIST_CITY_KEY, String(next));
+      if (!next) {
+        window.localStorage.removeItem("travelsafe.city.v1");
+      }
+    } catch { /* ignore */ }
+  }
+
+  return (
+    <section className="surface p-6 space-y-3">
+      <h2 className="font-display text-xl text-slate2-900">Location controls</h2>
+      <p className="text-sm text-slate2-700">
+        TravelSafe never tracks your live location. These switches control whether your <em>chosen</em> city and neighborhood are remembered between visits, or whether each session starts fresh.
+      </p>
+      <ul className="mt-3 divide-y divide-sand-200">
+        <li className="py-3 flex items-baseline justify-between gap-3 text-sm">
+          <div className="flex-1 min-w-0">
+            <p className="text-slate2-900">Remember my city across sessions</p>
+            <p className="text-xs text-slate2-500 mt-0.5">
+              When off, the city header resets to the default on each visit. You can still pick a city — it just won&apos;t be remembered.
+            </p>
+          </div>
+          <ToggleSwitch checked={persistCity} onChange={setPersistCity} label="Remember city" />
+        </li>
+        <li className="py-3 flex items-baseline justify-between gap-3 text-sm">
+          <div className="flex-1 min-w-0">
+            <p className="text-slate2-900">Remember my neighborhood across sessions</p>
+            <p className="text-xs text-slate2-500 mt-0.5">
+              When off, your neighborhood pick clears at the end of every browser session. Useful if you share this device or want a clean slate on each visit.
+            </p>
+          </div>
+          <ToggleSwitch checked={persistArea} onChange={setPersistArea} label="Remember neighborhood" />
+        </li>
+      </ul>
+      <p className="text-[11px] text-slate2-500 pt-1">
+        Turning either off immediately clears the stored value. To revoke a browser-level geolocation grant entirely, use your browser&apos;s site-settings for this domain.
+      </p>
+    </section>
+  );
+}
+
+/// Appearance — theme picker (light / dark / system). Stored in
+/// localStorage; pre-paint script in the root layout applies the
+/// effective class before React hydrates so dark-mode users don't
+/// see a light-mode flash on cold loads.
+function AppearanceControls() {
+  const { theme, setTheme, effective } = useTheme();
+  const options: Array<{ id: Theme; label: string; sublabel: string }> = [
+    { id: "light",  label: "Light",  sublabel: "Calm, light palette (default in 2024)" },
+    { id: "dark",   label: "Dark",   sublabel: "Easier on the eyes after sundown" },
+    { id: "system", label: "System", sublabel: "Follow your device's theme automatically" },
+  ];
+  return (
+    <section className="surface p-6 space-y-3">
+      <h2 className="font-display text-xl text-slate2-900">Appearance</h2>
+      <p className="text-sm text-slate2-700">
+        Choose how TravelSafe looks. &ldquo;System&rdquo; follows your device&apos;s light/dark preference and updates live when you change it.
+      </p>
+      <div role="radiogroup" aria-label="App theme" className="mt-3 flex flex-wrap gap-1 text-sm">
+        {options.map((o) => (
+          <button
+            key={o.id}
+            type="button"
+            role="radio"
+            aria-checked={theme === o.id}
+            onClick={() => setTheme(o.id)}
+            title={o.sublabel}
+            className={`px-3 py-1.5 rounded-md transition-colors font-medium ${
+              theme === o.id ? "bg-bay-500 text-white" : "text-slate2-700 hover:bg-bay-100"
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+      <p className="text-[11px] text-slate2-500 pt-1">
+        Currently rendering: <strong className="text-slate2-700">{effective}</strong> mode.
+      </p>
+    </section>
+  );
+}
+
+function ToggleSwitch({ checked, onChange, label }: { checked: boolean; onChange: (next: boolean) => void; label: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${
+        checked ? "bg-bay-500" : "bg-sand-300"
+      }`}
+    >
+      <span
+        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+          checked ? "translate-x-6" : "translate-x-1"
+        }`}
+      />
+    </button>
   );
 }

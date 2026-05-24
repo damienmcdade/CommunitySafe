@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import type { BaselinePoint, ThreatConfidence, ThreatItem } from "./types";
 import { BaselineTrendChart } from "./BaselineTrendChart";
+import { api } from "@/lib/api-client";
 
 export interface ThreatFeedProps {
   /// Chronological sanitized incidents for the cached window, newest first.
@@ -97,13 +98,7 @@ export function ThreatFeed({ threats, baseline, windowDays, contextLabel, source
           <ol className="mt-3 space-y-1.5">
             {visible.map((t) => {
               const badge = CONFIDENCE_BADGE[t.confidence];
-              return (
-                <li key={t.id} className="flex items-start gap-2 text-sm text-slate2-700">
-                  <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${CAT_DOT[t.category]}`} aria-hidden />
-                  <span className="flex-1">{t.description}</span>
-                  <ConfidenceBadge confidence={t.confidence} label={badge.label} cls={badge.cls} title={badge.title} />
-                </li>
-              );
+              return <IncidentRow key={t.id} description={t.description} categoryDot={CAT_DOT[t.category]} badge={badge} confidence={t.confidence} />;
             })}
           </ol>
           {(hiddenCount > 0 || expanded) && (
@@ -224,5 +219,83 @@ function ConfidenceLevelGuide({ active }: { active: ThreatConfidence }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+/// One incident row + its inline "Explain" expansion. Click the
+/// Explain link to fetch a plain-language definition of the offense
+/// category. Strictly opt-in (one LLM call per click), and the server
+/// caches by description so repeat clicks across rows with the same
+/// offense — and across users — are free after the first.
+function IncidentRow({
+  description,
+  categoryDot,
+  badge,
+  confidence,
+}: {
+  description: string;
+  categoryDot: string;
+  badge: { label: string; cls: string; title: string };
+  confidence: ThreatConfidence;
+}) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [explanation, setExplanation] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function load() {
+    if (explanation != null || loading) {
+      setOpen(true);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const r = await api<{ explanation: string | null; aiConfigured: boolean }>(
+        `/ai/incident-explain?desc=${encodeURIComponent(description)}`,
+      );
+      if (!r.aiConfigured) setError("AI is not configured for this deployment.");
+      else if (!r.explanation) setError("No explanation available.");
+      else setExplanation(r.explanation);
+      setOpen(true);
+    } catch (e) {
+      setError((e as Error).message || "Couldn't explain this offense right now.");
+      setOpen(true);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <li className="text-sm text-slate2-700">
+      <div className="flex items-start gap-2 flex-wrap sm:flex-nowrap">
+        <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${categoryDot}`} aria-hidden />
+        <span className="flex-1 min-w-0">{description}</span>
+        <button
+          type="button"
+          onClick={load}
+          disabled={loading}
+          aria-label={`Explain "${description}"`}
+          aria-expanded={open}
+          className="text-[10px] uppercase tracking-wider text-slate2-500 hover:text-bay-700 underline-offset-2 hover:underline whitespace-nowrap disabled:opacity-50 disabled:cursor-wait shrink-0"
+        >
+          {loading ? "Loading…" : open ? "Hide" : "Explain"}
+        </button>
+        <ConfidenceBadge confidence={confidence} label={badge.label} cls={badge.cls} title={badge.title} />
+      </div>
+      {open && (
+        <div className="mt-1.5 ml-4 surface-muted p-2.5 text-xs text-slate2-700 leading-snug">
+          {explanation && <p>{explanation}</p>}
+          {error && <p className="text-amber2-700">{error}</p>}
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="mt-1.5 text-[10px] uppercase tracking-wider text-bay-700 hover:underline"
+          >
+            Close
+          </button>
+        </div>
+      )}
+    </li>
   );
 }

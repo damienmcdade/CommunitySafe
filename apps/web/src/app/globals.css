@@ -6,12 +6,24 @@
   color-scheme: light;
 }
 
+html.dark {
+  color-scheme: dark;
+}
+
 html {
   /* Fallback fill, painted behind everything. Stays sand-colored before the
      CityBackdrop loads, on reduced-motion users, and if every photo fails. */
   background-color: theme("colors.sand.50");
   color: theme("colors.slate2.900");
   min-height: 100%;
+}
+
+html.dark {
+  /* Dark-mode base. The CityBackdrop is also dimmed at the component
+     level so this color rarely shows through directly — it's the
+     hard fallback color while images load. */
+  background-color: #0E1620;
+  color: #E7ECF1;
 }
 
 body {
@@ -25,6 +37,7 @@ body {
 }
 
 ::selection { background: theme("colors.bay.200"); color: theme("colors.slate2.900"); }
+html.dark ::selection { background: theme("colors.bay.700"); color: #E7ECF1; }
 
 /* Reusable surfaces ------------------------------------------------------- */
 .surface {
@@ -39,6 +52,39 @@ body {
 .surface-bay {
   @apply bg-panel-bay border border-bay-200 rounded-xl shadow-card;
 }
+
+/* Dark-mode surface overrides. Keep the same rounded/border-treatment
+   but flip backgrounds + border tints into the dark palette. Text
+   color is inherited from html.dark so nested elements that use the
+   light slate2-* utilities still read correctly on these backgrounds
+   (they're light-grey on light cards in light mode; on dark cards the
+   color stays dark — visible enough but the per-component dark:text-*
+   pass refines this incrementally). */
+html.dark .surface {
+  background-image: linear-gradient(180deg, #1A2330 0%, #131A24 100%);
+  border-color: #2A3445;
+  color: #E7ECF1;
+}
+html.dark .surface-muted {
+  background-color: #1A2330;
+  border-color: #2A3445;
+  color: #E7ECF1;
+}
+html.dark .surface-bay {
+  background-image: linear-gradient(180deg, #142231 0%, #0E1620 100%);
+  border-color: theme("colors.bay.700");
+  color: #E7ECF1;
+}
+html.dark .page-hero {
+  background-image: linear-gradient(135deg, #0E1620 0%, #142231 60%, #1F2937 100%);
+  border-color: #2A3445;
+  color: #E7ECF1;
+}
+/* Dark mode shouldn't lighten text on dark cards via the light-mode
+   slate2 utilities. The most common offenders get a dark override. */
+html.dark .text-slate2-900 { color: #E7ECF1; }
+html.dark .text-slate2-700 { color: #C9D2DD; }
+html.dark .text-slate2-500 { color: #8A95A4; }
 
 /* Section header with gradient title underline --------------------------- */
 .section-title {

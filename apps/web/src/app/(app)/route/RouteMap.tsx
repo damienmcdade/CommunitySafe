@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { MapContainer, TileLayer, Polyline, CircleMarker, Tooltip, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import type { RouteAlt } from "./page";
+import { RouteHeatLayer } from "./RouteHeatLayer";
 
 interface Props {
   from: { lat: number; lng: number };
@@ -10,6 +11,13 @@ interface Props {
   routes: RouteAlt[];
   selectedIdx: number;
   ratingStrokes: Record<RouteAlt["rating"], { stroke: string }>;
+  /// Optional density points for the heat overlay. Each entry is
+  /// [lat, lng, weight]. When omitted, no overlay renders. Page-level
+  /// toggle (`heatVisible`) controls visibility — passing the points
+  /// without `heatVisible=true` is a no-op so the data can be fetched
+  /// ahead of the user clicking the toggle.
+  heatPoints?: Array<[number, number, number]>;
+  heatVisible?: boolean;
 }
 
 function FitBounds({ from, to, routes }: Pick<Props, "from" | "to" | "routes">) {
@@ -40,7 +48,7 @@ function FitBounds({ from, to, routes }: Pick<Props, "from" | "to" | "routes">) 
   return null;
 }
 
-export default function RouteMap({ from, to, routes, selectedIdx, ratingStrokes }: Props) {
+export default function RouteMap({ from, to, routes, selectedIdx, ratingStrokes, heatPoints, heatVisible }: Props) {
   return (
     <div className="surface overflow-hidden ring-1 ring-bay-200">
       <MapContainer center={[from.lat, from.lng]} zoom={13} scrollWheelZoom className="h-[55vh] min-h-[420px] w-full">
@@ -74,6 +82,10 @@ export default function RouteMap({ from, to, routes, selectedIdx, ratingStrokes 
         <CircleMarker center={[to.lat, to.lng]} radius={7} pathOptions={{ color: "#0E4F73", fillColor: "#FFFFFF", fillOpacity: 1, weight: 2 }}>
           <Tooltip permanent direction="top" offset={[0, -10]}>To</Tooltip>
         </CircleMarker>
+
+        {heatPoints && heatPoints.length > 0 && (
+          <RouteHeatLayer points={heatPoints} visible={!!heatVisible} />
+        )}
 
         <FitBounds from={from} to={to} routes={routes} />
       </MapContainer>

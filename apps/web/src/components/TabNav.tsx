@@ -152,7 +152,7 @@ export function TabNav() {
             {drawerOpen && (
               <div
                 role="menu"
-                className="absolute right-0 top-full mt-1 z-30 surface shadow-card-lift p-1 min-w-[12rem]"
+                className="absolute right-0 top-full mt-1 z-30 surface shadow-card-lift p-1 min-w-[12rem] max-w-[calc(100vw-1rem)]"
               >
                 {DRAWER.map((t) => {
                   const active = isTabActive(t, pathname);

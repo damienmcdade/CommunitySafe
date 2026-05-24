@@ -1,6 +1,7 @@
 "use client";
 import { useApi } from "@/lib/api-client";
 import { useCity } from "@/lib/use-city";
+import { formatRatePer100k, formatRatePer100kProse, formatDeltaPct } from "@/lib/format";
 
 // City-vs-national comparison card. Reads from /api/safezone/safety-score
 // which is the SAME endpoint the citywide Safety Index uses. That gives
@@ -96,19 +97,19 @@ function CompareRow({ label, cityLabel, local, national, deltaPct }: { label: st
       <div className="flex items-baseline justify-between">
         <span className="text-sm font-medium text-slate2-900">{label}</span>
         <span className={`text-xs font-medium ${deltaTone}`}>
-          {`${deltaPct > 0 ? "+" : ""}${deltaPct.toFixed(0)}% vs national`}
+          {formatDeltaPct(deltaPct)} vs national
         </span>
       </div>
-      <svg viewBox="0 0 200 56" className="mt-2 w-full h-14" role="img" aria-label={`${label}: ${cityLabel} ${local.toFixed(0)} per 100k, national ${national.toFixed(0)} per 100k`}>
+      <svg viewBox="0 0 200 56" className="mt-2 w-full h-14" role="img" aria-label={`${label}: ${cityLabel} ${formatRatePer100kProse(local)}, national ${formatRatePer100kProse(national)}`}>
         <text x="0" y="11" className="fill-slate2-700" style={{ fontSize: 6 }}>{cityLabel}</text>
         <rect x="0"  y="14" width="200" height="8" rx="2" className="fill-sand-100" />
         <rect x="0"  y="14" width={(localPct * 200) / 100} height="8" rx="2" className={cityBarClass} />
-        <text x="200" y="11" textAnchor="end" className="fill-slate2-700" style={{ fontSize: 6 }}>{local.toFixed(0)} / 100k</text>
+        <text x="200" y="11" textAnchor="end" className="fill-slate2-700" style={{ fontSize: 6 }}>{formatRatePer100k(local)}</text>
 
         <text x="0" y="38" className="fill-slate2-700" style={{ fontSize: 6 }}>National avg</text>
         <rect x="0"  y="41" width="200" height="8" rx="2" className="fill-sand-100" />
         <rect x="0"  y="41" width={(nationalPct * 200) / 100} height="8" rx="2" className="fill-slate2-400" />
-        <text x="200" y="38" textAnchor="end" className="fill-slate2-700" style={{ fontSize: 6 }}>{national.toLocaleString()} / 100k</text>
+        <text x="200" y="38" textAnchor="end" className="fill-slate2-700" style={{ fontSize: 6 }}>{formatRatePer100k(national)}</text>
       </svg>
     </div>
   );

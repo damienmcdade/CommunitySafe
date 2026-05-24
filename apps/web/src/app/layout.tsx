@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { CityBackdrop } from "@/components/CityBackdrop";
 import { SessionBootstrap } from "@/components/SessionBootstrap";
+import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/use-theme";
 
 // Title template — each page sets its own `title` (e.g. "Safety Score")
 // and Next slots it into "{title} · TravelSafe" automatically. Default is
@@ -60,7 +61,15 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Pre-paint theme bootstrap — sets the dark class on <html>
+            from localStorage BEFORE React hydrates so users on dark
+            theme don't see a light-mode flash. suppressHydrationWarning
+            on <html> stops React from complaining about the class
+            mismatch this script intentionally introduces. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
+      </head>
       <body>
         {/* CityBackdrop sits at z:0 (its own stacking context via position:fixed).
             All page content is wrapped in `relative z-10` so it paints above the

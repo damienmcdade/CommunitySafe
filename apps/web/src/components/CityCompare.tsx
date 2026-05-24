@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CITIES } from "@/lib/use-city";
+import { formatRatePer100k, formatDeltaPct } from "@/lib/format";
 
 interface ScoreRow {
   category: "PERSONS" | "PROPERTY";
@@ -139,10 +140,10 @@ function CityScoreCard({ score, loading, accent }: { score: ScoreResp | null; lo
             <li key={r.category} className="surface-muted p-3">
               <p className="text-xs uppercase tracking-wider text-slate2-500">{CAT_LABEL[r.category]}</p>
               <p className="mt-1 text-slate2-900 tabular-nums">
-                <strong>{r.localPer100k.toLocaleString()}</strong> / 100k local
+                <strong>{formatRatePer100k(r.localPer100k)}</strong> local
               </p>
               <p className={`text-xs tabular-nums ${above ? "text-coral-700" : below ? "text-sage-700" : "text-slate2-500"}`}>
-                vs FBI {r.nationalPer100k.toLocaleString()} / 100k national ({r.deltaPct > 0 ? "+" : ""}{r.deltaPct}%)
+                vs FBI {formatRatePer100k(r.nationalPer100k)} national ({formatDeltaPct(r.deltaPct)})
               </p>
             </li>
           );

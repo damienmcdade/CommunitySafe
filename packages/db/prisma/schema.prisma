@@ -40,6 +40,17 @@ model User {
   suspendedUntil    DateTime?
   permanentlyBanned Boolean   @default(false)
 
+  // Trusted-contributor system. Derived from verified-post count + low
+  // rejection rate, and promotable by a moderator. The badge surfaces
+  // next to the author name in community feeds so readers can weigh
+  // a NEW contributor's claim against a TRUSTED contributor's. We do
+  // NOT use these levels for ranking or visibility — every verified
+  // post is shown to the same audience; the badge is informational
+  // only. trustVerifiedAt is set on first promotion to TRUSTED; cleared
+  // on suspension and recomputed thereafter.
+  trustLevel        TrustLevel @default(NEW)
+  trustVerifiedAt   DateTime?
+
   alertPreference   AlertPreference?
   trustedContacts   TrustedContact[]
   posts             Post[]            @relation("PostAuthor")
@@ -77,6 +88,17 @@ enum CrimeCategory {
 enum NotificationFrequency {
   DIGEST_DAILY
   REAL_TIME
+}
+
+/// Contributor trust level shown as a badge next to author names in
+/// community feeds. NOT used for visibility/ranking — informational only.
+/// Promotions happen via the trust-recompute job (or moderator override
+/// to TRUSTED / MODERATOR).
+enum TrustLevel {
+  NEW         // <3 verified posts, default for new accounts
+  REGULAR     // 3+ verified posts, low rejection rate (auto-promoted)
+  TRUSTED     // 10+ verified, very low rejection rate, manual or auto promotion
+  MODERATOR   // can verify/reject posts
 }
 
 model AlertPreference {

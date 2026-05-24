@@ -5,6 +5,7 @@ import { useCity } from "@/lib/use-city";
 import { useArea } from "@/lib/use-area";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { WheelPicker, type WheelItem } from "@/components/WheelPicker";
+import { AreaBriefPanel } from "@/components/AreaBriefPanel";
 
 interface Area { slug: string; label: string; jurisdiction: string }
 interface WatchCard {
@@ -168,6 +169,17 @@ export default function NeighborhoodWatchPage() {
             <>
               <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {watch.cards.map((c) => {
+                  // AI brief cards render through the canonical
+                  // AreaBriefPanel styling so the "In plain English"
+                  // section looks the same here and on /now (single
+                  // source of truth post-redundancy-audit).
+                  if (c.group === "ai") {
+                    return (
+                      <li key={c.id} className="md:col-span-2">
+                        <AreaBriefPanel body={c.body} sourceUrl={c.sourceUrl} />
+                      </li>
+                    );
+                  }
                   const tag = GROUP_TAG[c.group] ?? DEFAULT_TAG;
                   return (
                     <li key={c.id}>

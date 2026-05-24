@@ -121,11 +121,37 @@ export default function SafeRoutePage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<RouteResp | null>(null);
   const [selectedIdx, setSelectedIdx] = useState(0);
+  // Heatmap overlay — opt-in toggle. Off by default so users who
+  // just want the polyline aren't visually overloaded.
+  const [heatVisible, setHeatVisible] = useState(false);
 
   // Reset selections when the user switches city in the header. A
   // neighborhood from one city's adapter doesn't exist in another's
   // bbox, so carrying it over would silently fail.
   useEffect(() => { setFrom(null); setTo(null); setResult(null); setError(null); }, [city.slug]);
+
+  // Citywide incident counts per area — joined with cityAreas' centroids
+  // to produce the heat overlay points. We fetch this only once results
+  // are visible so we don't pay the cost for users who never engage the
+  // route flow. Same SWR cache key as Awareness/Map, so it's usually
+  // an instant cache hit.
+  interface CitywideHeatResp { perArea: Array<{ slug: string; incidentCount: number }> }
+  const citywideHeatPath = result ? `/crime-data/citywide?city=${city.slug}` : null;
+  const { data: citywideHeat } = useApi<CitywideHeatResp>(citywideHeatPath, [citywideHeatPath]);
+  const heatPoints = useMemo<Array<[number, number, number]>>(() => {
+    if (!citywideHeat || cityAreas.length === 0) return [];
+    const bySlug = new Map<string, { centroid: { lat: number; lng: number } }>();
+    for (const a of cityAreas) bySlug.set(a.slug, { centroid: a.centroid });
+    const max = citywideHeat.perArea.reduce((m, p) => Math.max(m, p.incidentCount), 0) || 1;
+    const out: Array<[number, number, number]> = [];
+    for (const p of citywideHeat.perArea) {
+      const meta = bySlug.get(p.slug);
+      if (!meta) continue;
+      const w = Math.max(0, Math.min(1, p.incidentCount / max));
+      if (w > 0) out.push([meta.centroid.lat, meta.centroid.lng, w]);
+    }
+    return out;
+  }, [citywideHeat, cityAreas]);
 
   async function compute() {
     setBusy(true); setError(null); setResult(null);
@@ -266,12 +292,29 @@ export default function SafeRoutePage() {
 
       {result && (
         <>
+          <div className="flex items-center justify-end -mb-2">
+            <button
+              type="button"
+              onClick={() => setHeatVisible((v) => !v)}
+              aria-pressed={heatVisible}
+              className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
+                heatVisible
+                  ? "bg-bay-500 text-white"
+                  : "surface-muted text-slate2-700 hover:bg-bay-100"
+              }`}
+              title="Toggle the city-wide neighborhood-activity density heatmap on top of the route map."
+            >
+              {heatVisible ? "Hide activity heatmap" : "Show activity heatmap"}
+            </button>
+          </div>
           <RouteMap
             from={result.from}
             to={result.to}
             routes={result.routes}
             selectedIdx={selectedIdx}
             ratingStrokes={RATING_TONE}
+            heatPoints={heatPoints}
+            heatVisible={heatVisible}
           />
 
           <section className="grid grid-cols-1 md:grid-cols-3 gap-3">

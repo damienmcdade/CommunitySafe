@@ -7,6 +7,7 @@ import { useDocumentTitle } from "@/lib/use-document-title";
 import { SafeZoneAreaPicker } from "@/components/SafeZoneAreaPicker";
 import { SaveAreaStar } from "@/components/SavedAreasRail";
 import { TrendPanel } from "@/components/TrendPanel";
+import { formatRatePer100k, formatRatePer100kProse, formatDeltaPct } from "@/lib/format";
 
 interface ScoreRow {
   category: "PERSONS" | "PROPERTY";
@@ -275,33 +276,33 @@ function ScoreReport({ score, accent, categoryFilter }: { score: ScoreResp; acce
                 <header className="flex items-baseline justify-between gap-2">
                   <h3 className="font-display text-base text-slate2-900">{CAT_LABEL[r.category]}</h3>
                   <span className={`text-xs font-medium ${above ? "text-coral-700" : below ? "text-sage-700" : "text-slate2-500"}`}>
-                    {primaryDelta > 0 ? "+" : ""}{primaryDelta}% vs {primaryAnchor}
+                    {formatDeltaPct(primaryDelta)} vs {primaryAnchor}
                   </span>
                 </header>
-                <svg viewBox="0 0 200 70" className="mt-3 w-full h-16" role="img" aria-label={`${CAT_LABEL[r.category]}: ${r.localPer100k} per 100k locally, ${r.cityPer100k} per 100k ${score.city.label} citywide, ${r.nationalPer100k} per 100k national`}>
+                <svg viewBox="0 0 200 70" className="mt-3 w-full h-16" role="img" aria-label={`${CAT_LABEL[r.category]}: ${formatRatePer100kProse(r.localPer100k)} locally, ${formatRatePer100kProse(r.cityPer100k)} ${score.city.label} citywide, ${formatRatePer100kProse(r.nationalPer100k)} national`}>
                   {/* This area */}
                   <text x="0" y="9" style={{ fontSize: 6 }} fill="#475569">{score.area.label}</text>
                   <rect x="0" y="12" width="200" height="7" rx="2" fill="#e9eef3" />
                   <rect x="0" y="12" width={(r.localPer100k / max) * 200} height="7" rx="2" fill={above ? "#DC2626" : below ? "#7BA86E" : "#2563EB"} />
-                  <text x="200" y="9" textAnchor="end" style={{ fontSize: 6 }} fill="#475569">{r.localPer100k.toLocaleString()} / 100k</text>
+                  <text x="200" y="9" textAnchor="end" style={{ fontSize: 6 }} fill="#475569">{formatRatePer100k(r.localPer100k)}</text>
                   {/* City baseline — only shown for per-area rows */}
                   {!isCitywide && (
                     <>
                       <text x="0" y="32" style={{ fontSize: 6 }} fill="#475569">{score.city.label} citywide</text>
                       <rect x="0" y="35" width="200" height="7" rx="2" fill="#e9eef3" />
                       <rect x="0" y="35" width={(r.cityPer100k / max) * 200} height="7" rx="2" fill="#0E4F73" />
-                      <text x="200" y="32" textAnchor="end" style={{ fontSize: 6 }} fill="#475569">{r.cityPer100k.toLocaleString()} / 100k</text>
+                      <text x="200" y="32" textAnchor="end" style={{ fontSize: 6 }} fill="#475569">{formatRatePer100k(r.cityPer100k)}</text>
                     </>
                   )}
                   {/* National reference */}
                   <text x="0" y={isCitywide ? 32 : 55} style={{ fontSize: 6 }} fill="#475569">National (FBI {score.source.publishedYear})</text>
                   <rect x="0" y={isCitywide ? 35 : 58} width="200" height="7" rx="2" fill="#e9eef3" />
                   <rect x="0" y={isCitywide ? 35 : 58} width={(r.nationalPer100k / max) * 200} height="7" rx="2" fill="#94a3b8" />
-                  <text x="200" y={isCitywide ? 32 : 55} textAnchor="end" style={{ fontSize: 6 }} fill="#475569">{r.nationalPer100k.toLocaleString()} / 100k</text>
+                  <text x="200" y={isCitywide ? 32 : 55} textAnchor="end" style={{ fontSize: 6 }} fill="#475569">{formatRatePer100k(r.nationalPer100k)}</text>
                 </svg>
                 <p className="mt-3 text-xs text-slate2-500 tabular-nums">
                   {r.count.toLocaleString()} reported in the cached window
-                  {!isCitywide && <span> · {r.deltaPct > 0 ? "+" : ""}{r.deltaPct}% vs national</span>}.
+                  {!isCitywide && <span> · {formatDeltaPct(r.deltaPct)} vs national</span>}.
                 </p>
               </article>
             </li>

@@ -6,6 +6,12 @@ import type { Config } from "tailwindcss";
 // Adds an indigo accent for a third color voice (used for callouts, sparingly).
 const config: Config = {
   content: ["./src/**/*.{ts,tsx}"],
+  // Class-based dark mode — toggled by adding/removing "dark" on
+  // <html>. Implementation in lib/use-theme.ts; user toggle on
+  // /settings/privacy. Dark variants intentionally cover only the
+  // base surfaces + helper components — per-page polish happens
+  // incrementally as components are touched.
+  darkMode: "class",
   theme: {
     extend: {
       colors: {
