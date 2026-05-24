@@ -3,6 +3,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useCity, STATES, citiesInState, CITIES, type CityInfo } from "@/lib/use-city";
 import { WheelPicker, type WheelItem } from "./WheelPicker";
 
+// Shared selector-pill styling. Used by both CitySelector and the
+// StateSelector below so the two controls are visually identical
+// (a state pill next to a city pill in the header). Pulled into a
+// constant rather than a wrapper component so each selector keeps
+// its own ref / aria handling.
+const TRIGGER_CLS = "inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm bg-white border border-bay-200 text-slate2-900 shadow-card hover:bg-bay-50 hover:border-bay-400 hover:shadow-glow-bay transition-all";
+
 /// Header city switcher. Two modes share one dropdown:
 ///
 ///   1. Search-first (default open state): a single combobox the user
@@ -59,7 +66,7 @@ export function CitySelector() {
       <button
         ref={triggerRef}
         onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
-        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm bg-white border border-bay-200 text-slate2-900 shadow-card hover:bg-bay-50 hover:border-bay-400 hover:shadow-glow-bay transition-all"
+        className={TRIGGER_CLS}
         aria-label={`Change city — currently ${city.label}, ${city.state}`}
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -72,8 +79,6 @@ export function CitySelector() {
         <span className="flex items-baseline gap-1.5">
           <span className="text-[10px] uppercase tracking-wider text-slate2-500">City</span>
           <span className="font-semibold">{city.label}</span>
-          <span className="text-slate2-500">·</span>
-          <span className="text-slate2-700 font-medium">{city.state}</span>
         </span>
         <svg viewBox="0 0 16 16" className="w-3.5 h-3.5 text-slate2-500" fill="none" stroke="currentColor" aria-hidden>
           <path d="M4 6l4 4 4-4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -327,6 +332,113 @@ function BrowseByStateDisclosure({
               {pendingIsLive ? "Use this city" : "Coming soon"}
             </button>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/// State selector — sibling pill to CitySelector, identical visual
+/// treatment. Clicking opens a state list (with city counts); picking
+/// a state switches the city to the first live city in that state.
+/// Renders nothing if the current city's state has no peers (i.e.,
+/// it's the only city in its state) — the control would just be
+/// noise in that case.
+export function StateSelector() {
+  const { city, setCity } = useCity();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") { setOpen(false); triggerRef.current?.focus(); }
+    }
+    if (open) {
+      document.addEventListener("click", onClick);
+      document.addEventListener("keydown", onKey);
+    }
+    return () => {
+      document.removeEventListener("click", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  function pickState(abbr: string) {
+    if (abbr === city.state) { setOpen(false); return; }
+    // Switch to the first LIVE city in the chosen state. If none, fall
+    // back to the first city regardless of status so the dropdown
+    // doesn't appear to no-op.
+    const peers = citiesInState(abbr);
+    const target = peers.find((c) => c.status === "live") ?? peers[0];
+    if (target) setCity(target.slug);
+    setOpen(false);
+    triggerRef.current?.focus();
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        ref={triggerRef}
+        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
+        className={TRIGGER_CLS}
+        aria-label={`Change state — currently ${city.stateLabel}`}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+      >
+        {/* Region / flag-like icon — visually distinguishable from
+            the city pin while keeping the same visual weight. */}
+        <svg viewBox="0 0 16 16" className="w-4 h-4 text-bay-700 shrink-0" fill="currentColor" aria-hidden>
+          <path d="M3 2v12h1.5V9l3.5 1.2c.5.2 1 0 1.3-.4l2.2-3.2c.3-.5.1-1.2-.5-1.4L7.5 3.8V2H3zm1.5 1.5h1.5v1.7l3.7 1.4-1.6 2.4L4.5 8V3.5z"/>
+        </svg>
+        <span className="flex items-baseline gap-1.5">
+          <span className="text-[10px] uppercase tracking-wider text-slate2-500">State</span>
+          <span className="font-semibold">{city.state}</span>
+        </span>
+        <svg viewBox="0 0 16 16" className="w-3.5 h-3.5 text-slate2-500" fill="none" stroke="currentColor" aria-hidden>
+          <path d="M4 6l4 4 4-4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      {open && (
+        <div
+          role="dialog"
+          aria-label="Change state"
+          className="absolute right-0 mt-2 w-[16rem] surface p-2 z-30 animate-pop-in"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <p className="px-2 pt-1 pb-2 text-[10px] uppercase tracking-wider text-slate2-500">
+            Jump to a state
+          </p>
+          <ul role="listbox" aria-label="States" className="max-h-72 overflow-auto divide-y divide-sand-100 rounded-lg border border-sand-200">
+            {STATES.map((s) => {
+              const isCurrent = s.abbr === city.state;
+              return (
+                <li key={s.abbr}>
+                  <button
+                    type="button"
+                    onClick={() => pickState(s.abbr)}
+                    className={`w-full flex items-baseline justify-between gap-2 px-3 py-2 text-sm text-left transition-colors ${
+                      isCurrent ? "bg-bay-100 text-slate2-900 font-medium" : "hover:bg-sand-100 text-slate2-900"
+                    }`}
+                    role="option"
+                    aria-selected={isCurrent}
+                  >
+                    <span className="truncate">
+                      {s.label}
+                      {isCurrent && <span className="ml-1.5 text-[10px] text-bay-700">· current</span>}
+                    </span>
+                    <span className="text-[10px] uppercase tracking-wider text-slate2-500 shrink-0">
+                      {s.cities} {s.cities === 1 ? "city" : "cities"}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
     </div>

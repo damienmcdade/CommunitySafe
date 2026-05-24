@@ -137,8 +137,8 @@ export default function NowPage() {
       </header>
 
       {/* --- CITY SECTION --- */}
-      <section id="now-city" className="space-y-4" aria-labelledby="now-city-heading">
-        <div className="flex items-baseline justify-between gap-4">
+      <section id="now-city" className="space-y-3" aria-labelledby="now-city-heading">
+        <div className="flex items-baseline justify-between gap-3">
           <h2 id="now-city-heading" className="font-display text-2xl text-slate2-900">{city.label} — citywide</h2>
           <a href="#now-neighborhood" className="text-xs text-bay-700 hover:underline">Jump to neighborhood ↓</a>
         </div>
@@ -152,8 +152,8 @@ export default function NowPage() {
 
         <CitywideSafeZoneSection city={{ slug: city.slug, label: city.label }} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2 space-y-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          <div className="lg:col-span-2 space-y-3">
             <IncidentSummaryCard
               citySlug={city.slug}
               contextLabel={`${city.label} (citywide)`}
@@ -161,7 +161,7 @@ export default function NowPage() {
             <CrimeChart mode="city" citySlug={city.slug} cityLabel={city.label} />
             <DataProvenanceBanner provenance={citywide?.alerts[0]?.provenance ?? null} />
           </div>
-          <aside className="space-y-4">
+          <aside className="space-y-3">
             <HotspotCard
               citySlug={city.slug}
               cityLabel={city.label}
@@ -178,8 +178,8 @@ export default function NowPage() {
       <div className="border-t border-sand-200" aria-hidden />
 
       {/* --- NEIGHBORHOOD SECTION --- */}
-      <section id="now-neighborhood" className="space-y-4 scroll-mt-6" aria-labelledby="now-area-heading">
-        <div className="flex items-baseline justify-between gap-4 flex-wrap">
+      <section id="now-neighborhood" className="space-y-3 scroll-mt-6" aria-labelledby="now-area-heading">
+        <div className="flex items-baseline justify-between gap-3 flex-wrap">
           <div>
             <h2 id="now-area-heading" className="font-display text-2xl text-slate2-900">
               {area ? area.label : "Pick a neighborhood"}
@@ -191,7 +191,7 @@ export default function NowPage() {
           <a href="#now-city" className="text-xs text-bay-700 hover:underline">↑ Back to city</a>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
           <div className="lg:col-span-2"><LocationSearch current={area} onResolved={setArea} /></div>
           <div className="surface p-4 flex flex-col gap-2 text-sm">
             <button
@@ -239,8 +239,8 @@ export default function NowPage() {
               area={area}
             />
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <div className="lg:col-span-2 space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+              <div className="lg:col-span-2 space-y-3">
                 <IncidentSummaryCard areaSlug={area.slug} contextLabel={area.label} />
                 <AreaBriefPanel areaSlug={area.slug} />
                 <CrimeChart
@@ -254,7 +254,7 @@ export default function NowPage() {
                 <TimeOfDayCard areaSlug={area.slug} areaLabel={area.label} />
                 <DataProvenanceBanner provenance={selectedAreaStats?.alerts[0]?.provenance ?? null} />
               </div>
-              <aside className="space-y-4">
+              <aside className="space-y-3">
                 <NewsPanel areaSlug={area.slug} />
               </aside>
             </div>
@@ -272,7 +272,7 @@ function CitywideSafeZoneSection({ city }: { city: { slug: string; label: string
   });
   const sourceLabel = `${city.label} official police open-data feed`;
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
       <div className="lg:col-span-2">
         <BlockScoreWidget
           score={data.blockScore}
@@ -308,7 +308,7 @@ function AreaSafeZoneSection({
   });
   const sourceLabel = `${city.label} official police open-data feed`;
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
       <div className="lg:col-span-2">
         <BlockScoreWidget
           score={data.blockScore}

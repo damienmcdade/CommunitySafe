@@ -2,7 +2,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { TabNav } from "@/components/TabNav";
-import { CitySelector } from "@/components/CitySelector";
+import { CitySelector, StateSelector } from "@/components/CitySelector";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AIAssistant } from "@/components/AIAssistant";
 import { SavedAreasRail } from "@/components/SavedAreasRail";
@@ -22,6 +22,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </Link>
           <div className="flex items-center gap-2 text-xs text-slate2-500">
             <ThemeToggle align="right" size="sm" />
+            <StateSelector />
             <CitySelector />
           </div>
         </div>
@@ -36,7 +37,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <main
         id="main"
         key={typeof window === "undefined" ? "ssr" : window.location.pathname}
-        className="max-w-5xl mx-auto px-4 py-8 animate-fade-in space-y-4"
+        className="max-w-5xl mx-auto px-4 py-6 animate-fade-in space-y-3"
       >
         <SavedAreasRail />
         {children}
