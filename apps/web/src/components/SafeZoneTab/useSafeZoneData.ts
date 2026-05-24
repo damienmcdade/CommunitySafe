@@ -54,25 +54,41 @@ interface InsightsApi {
   }>;
 }
 
-/// Convert a local-vs-baseline ratio into a 0–100 safety index. The
-/// piecewise-linear mapping anchors three points:
-///   ratio 0.0  →  score 100 (zero reported activity)
-///   ratio 1.0  →  score  50 (matches baseline)
-///   ratio 2.0  →  score  10 (twice the baseline)
-/// Between those anchors the score is linear in `ratio`. Specifically:
-///   ratio in [0, 1] → raw = 100 - 50*ratio  (e.g. ratio 0.5 → 75)
-///   ratio in (1, ∞] → raw = max(5, 50 - 40*(ratio-1))  (floored at 5)
-/// Output is rounded and clamped to [5, 100]. The floor at 5 prevents
-/// extreme ratios (>2.1×) from all reading as 0 — they all read as 5,
-/// which the widget renders as the "elevated" band.
+/// Convert a local-vs-baseline ratio into a 0–100 safety index.
+///
+/// PRIOR DESIGN had a steep linear collapse: ratio 1 → score 50,
+/// ratio 2 → score 10, then floored at 5. That was tuned for the
+/// neighborhood-vs-city ratios (typical range 0.3–2.5×) where the
+/// citywide baseline keeps most readings inside the score's
+/// discriminating range. But for the CITYWIDE-vs-NATIONAL pairing,
+/// urban cities consistently read 2–7× the national rate (national
+/// includes rural + suburban, which pulls the baseline well below
+/// any large city), so EVERY major city collapsed to score=5 and
+/// users couldn't tell a 2× city from a 7× city — they all read
+/// "elevated, score 5".
+///
+/// NEW MAPPING uses a smooth 1/(1+k(ratio−1)) decay above ratio 1
+/// so the [1, 10] range stays discriminating:
+///   ratio 0    → 100  (no reports)
+///   ratio 0.5  →  80  (well below baseline, A-tier)
+///   ratio 1.0  →  60  (matches baseline)
+///   ratio 2.0  →  35
+///   ratio 3.0  →  25
+///   ratio 5.0  →  16
+///   ratio 10   →   8  (very high)
+///   ratio > 12 →   5  (floor)
 function ratioToScore(ratio: number): number {
   if (!Number.isFinite(ratio) || ratio < 0) return 50;
   if (ratio <= 0) return 100;
-  // Piecewise-linear with diminishing returns at both ends. 100 at ratio 0,
-  // 50 at ratio 1, 10 at ratio 2, clamped to [5, 100].
   let raw: number;
-  if (ratio <= 1) raw = 100 - 50 * ratio;
-  else raw = Math.max(5, 50 - 40 * (ratio - 1));
+  if (ratio <= 1) {
+    // Linear 100 → 60 in [0, 1].
+    raw = 100 - 40 * ratio;
+  } else {
+    // Smooth decay 60 / (1 + 0.7(r−1)) for r > 1. Gives meaningful
+    // separation through ratio ~12 before the floor kicks in.
+    raw = 60 / (1 + 0.7 * (ratio - 1));
+  }
   return Math.max(5, Math.min(100, Math.round(raw)));
 }
 
