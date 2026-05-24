@@ -3,49 +3,58 @@ import { CrimeCategory } from "@prisma/client";
 import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../types";
 import type { KnownArea } from "../neighborhoods";
 
-// Cincinnati — CPD Crime Incidents.
-// Socrata dataset k59e-2pvf on data.cincinnati-oh.gov. The published row
-// also includes victim + suspect demographic columns; TravelSafe HARD
-// REFUSES to read or surface those fields (no race, ethnicity, age, gender,
-// or weapons profile) — we only request neighborhood, offense category,
-// date, and coordinates. This is enforced by the $select param in fetchCin().
-// Doc: https://dev.socrata.com/foundry/data.cincinnati-oh.gov/k59e-2pvf
+// Cincinnati — Reported Crime (STARS Category Offenses) on or after
+// 6/3/2024. Socrata dataset 7aqy-xrv9 on data.cincinnati-oh.gov.
+//
+// The legacy "PDI Crime Incidents" dataset (k59e-2pvf) stopped
+// accepting new incidents around 2020 — by the time of this adapter
+// rewrite the newest date_from was 2020-06-19, which fell outside
+// the safety-score 365d wall-clock window and broke every Cincinnati
+// score in production. CPD migrated active reporting to the STARS
+// schema (separate before/after 2024-06-03 datasets); 7aqy-xrv9
+// holds everything since then and updates daily.
+//
+// The new dataset uses `type` to label Part 1 vs Part 2 and
+// `stars_category` for the offense — different mapping than the old
+// ucr_group field. Field names also dropped underscores in the
+// date columns (`datefrom` instead of `date_from`).
+//
+// Still NEVER request demographic columns. The 7aqy-xrv9 schema
+// doesn't even publish them, but the $select is kept explicit so a
+// future schema addition doesn't accidentally pull them.
 
-const BASE = "https://data.cincinnati-oh.gov/resource/k59e-2pvf.json";
-const ROW_LIMIT = 5_000;
+const BASE = "https://data.cincinnati-oh.gov/resource/7aqy-xrv9.json";
+const ROW_LIMIT = 50_000;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
 
 interface CinRow {
   incident_no?: string;
-  offense?: string;
-  ucr_group?: string;
-  /// Date the incident actually occurred. Preferred over date_reported
-  /// because Cincinnati publishes a significant cold-case backlog —
-  /// reports with recent date_reported but date_from from years ago.
-  /// Using date_from gives a representative "recent activity" signal
-  /// in the 365-day rate window.
-  date_from?: string;
-  /// Date the report was filed. Cincinnati backlog skews this recent
-  /// while the actual incident may be years old. Kept as a fallback
-  /// for rows that have date_reported but no date_from.
-  date_reported?: string;
+  /// e.g. "Theft from Auto", "Aggravated Assault" — the canonical
+  /// STARS offense label.
+  stars_category?: string;
+  /// "Part 1 Violent", "Part 1 Property", "Part 2 Minor" — the FBI
+  /// UCR Part-1/Part-2 classification. Maps cleanly to our NIBRS
+  /// three-bucket taxonomy.
+  type?: string;
+  /// Date the incident occurred (camelCase, no underscore in the new
+  /// schema). Preferred over datereported.
+  datefrom?: string;
+  /// Date the report was filed. Kept as a fallback when datefrom is
+  /// missing — same rationale as the legacy adapter.
+  datereported?: string;
   cpd_neighborhood?: string;
   latitude_x?: string;
   longitude_x?: string;
 }
 
-// CPD's ucr_group is the canonical UCR-Part-1 + Part-2 bucketing. Map to
-// our 3-bucket NIBRS taxonomy:
-//   PERSONS: aggravated assaults, homicide, rape, robbery
-//   PROPERTY: burglary/breaking entering, theft, unauthorized use (vehicle)
-//   SOCIETY: part 2 minor (catch-all) + everything else
-const PERSONS_UCR = new Set(["AGGRAVATED ASSAULTS", "HOMICIDE", "RAPE", "ROBBERY"]);
-const PROPERTY_UCR = new Set(["BURGLARY/BREAKING ENTERING", "THEFT", "UNAUTHORIZED USE"]);
+// Map the STARS `type` field to our 3-bucket NIBRS taxonomy. The
+// labels are stable across the dataset and the bucketing matches
+// the FBI's own UCR Part 1 (Violent vs Property) + Part 2 (Society).
 function mapToNibrs(row: CinRow): CrimeCategory {
-  const g = (row.ucr_group ?? "").trim().toUpperCase();
-  if (PERSONS_UCR.has(g)) return CrimeCategory.PERSONS;
-  if (PROPERTY_UCR.has(g)) return CrimeCategory.PROPERTY;
+  const t = (row.type ?? "").trim().toLowerCase();
+  if (t.includes("part 1 violent")) return CrimeCategory.PERSONS;
+  if (t.includes("part 1 property")) return CrimeCategory.PROPERTY;
   return CrimeCategory.SOCIETY;
 }
 
@@ -56,15 +65,15 @@ function titleCase(s: string): string {
 }
 
 const PROVENANCE: DataProvenance = {
-  source: "Cincinnati Police Department Crime Incidents (City of Cincinnati Open Data)",
-  datasetUrl: "https://data.cincinnati-oh.gov/safety/PDI-Police-Data-Initiative-Crime-Incidents/k59e-2pvf",
+  source: "Cincinnati Police Department Reported Crime (STARS) — on or after 6/3/2024 (City of Cincinnati Open Data)",
+  datasetUrl: "https://data.cincinnati-oh.gov/Safety/Reported-Crime-STARS-Category-Offenses-on-or-after/7aqy-xrv9",
   recency: "Refreshed daily by CPD; reporting lag varies (some incidents filed weeks/months after occurrence)",
   granularity: "neighborhood",
   disclaimer:
     "Incidents are reported by the Cincinnati Police Department and aggregated to " +
-    "CPD's named neighborhoods. TravelSafe does NOT request or display the " +
-    "victim / suspect demographic columns CPD publishes (race, ethnicity, age, " +
-    "gender) — only neighborhood, offense, date, and coordinates.",
+    "CPD's named neighborhoods. TravelSafe does NOT request or display any " +
+    "victim / suspect demographic columns — only neighborhood, offense, date, and " +
+    "coordinates.",
 };
 
 /// Parse a date string, returning null when invalid. See kansas-city
@@ -79,11 +88,10 @@ function safeIso(raw: string | null | undefined): string | null {
 
 async function fetchCin(): Promise<Incident[]> {
   // Explicit $select — never request demographic columns. Order by
-  // date_from (incident occurrence) DESC so the newest-50k pull covers
-  // recent activity rather than the cold-case backlog that skews
-  // date_reported.
-  const select = "incident_no,offense,ucr_group,date_from,date_reported,cpd_neighborhood,latitude_x,longitude_x";
-  const u = `${BASE}?$limit=${ROW_LIMIT}&$select=${select}&$order=date_from%20DESC&$where=date_from%20IS%20NOT%20NULL%20AND%20cpd_neighborhood%20IS%20NOT%20NULL`;
+  // datefrom (incident occurrence) DESC so the newest pull covers
+  // recent activity rather than backlog that skews datereported.
+  const select = "incident_no,stars_category,type,datefrom,datereported,cpd_neighborhood,latitude_x,longitude_x";
+  const u = `${BASE}?$limit=${ROW_LIMIT}&$select=${select}&$order=datefrom%20DESC&$where=datefrom%20IS%20NOT%20NULL%20AND%20cpd_neighborhood%20IS%20NOT%20NULL`;
   const res = await fetch(u, {
     headers: { Accept: "application/json", "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
   });
@@ -92,9 +100,9 @@ async function fetchCin(): Promise<Incident[]> {
   const out: Incident[] = [];
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
-    // Prefer date_from (incident occurrence) over date_reported (filing
-    // date). See CinRow comment for the cold-case backlog rationale.
-    const occurredAt = safeIso(r.date_from ?? r.date_reported);
+    // Prefer datefrom (incident occurrence) over datereported (filing
+    // date). See CinRow comment for the rationale.
+    const occurredAt = safeIso(r.datefrom ?? r.datereported);
     if (!occurredAt) continue;
     const lat = Number(r.latitude_x);
     const lng = Number(r.longitude_x);
@@ -103,7 +111,7 @@ async function fetchCin(): Promise<Incident[]> {
       area: r.cpd_neighborhood ? titleCase(r.cpd_neighborhood.trim()) : "Unknown",
       occurredAt,
       nibrsCategory: mapToNibrs(r),
-      ibrOffenseDescription: r.offense?.trim() || r.ucr_group?.trim() || "Unknown",
+      ibrOffenseDescription: r.stars_category?.trim() || r.type?.trim() || "Unknown",
       beat: null,
       blockLabel: undefined,
       lat: !isNaN(lat) && lat !== 0 ? lat : undefined,

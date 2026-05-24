@@ -352,7 +352,16 @@ export async function getCitywideSafetyScore(citySlug: string): Promise<SafetySc
   }
 
   // Step 2: count incidents strictly in [windowStartMs, nowMs].
-  for (const incidents of perArea) {
+  // Also track which AREAS contributed at least one in-window incident
+  // so the population denominator can be limited to the "fresh-data"
+  // subset of the city. This is the DC/KC fix: if half a city's
+  // adapter coverage is stale (LAPD/CPD-style), summing the fresh
+  // half's incidents over the FULL city population understates the
+  // per-100k rate by however much pop the stale areas held.
+  const freshAreaSlugs = new Set<string>();
+  for (let a = 0; a < areas.length; a++) {
+    const incidents = perArea[a];
+    let contributed = false;
     for (const i of incidents) {
       const t = +new Date(i.occurredAt);
       if (!Number.isFinite(t) || t <= 0) continue;
@@ -360,8 +369,11 @@ export async function getCitywideSafetyScore(citySlug: string): Promise<SafetySc
       const k = i.nibrsCategory as "PERSONS" | "PROPERTY" | "SOCIETY";
       if (k === "PERSONS") persons += 1;
       else if (k === "PROPERTY") property += 1;
+      else continue;
+      contributed = true;
       if (t > latest) latest = t;
     }
+    if (contributed) freshAreaSlugs.add(areas[a].slug);
   }
 
   // Step 3: windowDays = the LESSER of 365 (the cap) and the adapter's
@@ -376,10 +388,31 @@ export async function getCitywideSafetyScore(citySlug: string): Promise<SafetySc
     ? Math.min(RATE_WINDOW_DAYS, Math.max(1, Math.round((nowMs - dataEarliestMs) / MS_PER_DAY)))
     : 0;
   const windowDays = roundWindowDays(rawWindowDays);
-  // Full city population — no per-area division. The Vintage 2024 Census
-  // total is the canonical denominator the FBI itself uses to publish
-  // city-vs-national rates.
-  const pop = cityPop;
+  // FRESH-DATA DENOMINATOR. Sum the populations of only the areas
+  // that contributed at least one in-window incident. When every
+  // tracked area is fresh (the normal case) this sums to approximately
+  // cityPop. When ~half a city's adapter coverage is stale (DC/KC
+  // pattern, where some neighborhoods publish recent reports and
+  // others haven't been updated in months), this scales the
+  // denominator with the numerator so the per-100k rate isn't
+  // artificially deflated.
+  //
+  // If freshPopSum is implausibly small (no curated/generated pop
+  // for any fresh area), we fall back to cityPop so we never divide
+  // by ~0. The gradeWithNullGuard downstream still catches the
+  // genuine no-data case (persons + property === 0) and emits N/A
+  // instead of a misleading "A".
+  let freshPopSum = 0;
+  for (const a of areas) {
+    if (!freshAreaSlugs.has(a.slug)) continue;
+    const known = knownNeighborhoodPopulation(city.slug, a.slug);
+    if (known) freshPopSum += known.population;
+  }
+  const popFraction = cityPop > 0 ? freshPopSum / cityPop : 0;
+  // Clamp: if fresh-area pop is implausibly small (< 10% of city)
+  // OR we couldn't resolve any per-area pops, use cityPop as a safe
+  // fallback. Otherwise use the fresh subset.
+  const pop = (popFraction >= 0.10 && freshPopSum > 0) ? freshPopSum : cityPop;
   // CFS calibration — see CFS_CALIBRATION comment at the top of the file.
   // 1.0 for NIBRS-based adapters, ~0.35-0.50 for CFS-based.
   const cfsScale = CFS_CALIBRATION[city.slug] ?? 1.0;

@@ -3,22 +3,23 @@ import { CrimeCategory } from "@prisma/client";
 import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../types";
 import type { KnownArea } from "../neighborhoods";
 
-// City of Los Angeles — LAPD Crime Data from 2020 to Present.
-// Socrata dataset 2nrs-mtv8 on data.lacity.org.
-// Docs: https://dev.socrata.com/foundry/data.lacity.org/2nrs-mtv8
+// City of Los Angeles — LAPD NIBRS Offenses Dataset 2024 to 2025.
+// Socrata dataset y8y3-fqfu on data.lacity.org.
 //
-// NIBRS mapping note: LAPD publishes Part I (1) vs Part II (2) instead of
-// the three-way NIBRS PE/PR/SO classification. We approximate:
-//   * Part I + crm_cd in violent set    -> PERSONS
-//   * Part I + crm_cd in property set   -> PROPERTY
-//   * Part II                            -> SOCIETY
+// The legacy "Crime Data from 2020 to Present" dataset (2nrs-mtv8)
+// stopped accepting new rows at the end of 2024 — by the time of
+// this adapter rewrite the newest date_occ on the legacy feed was
+// 2024-12-30, which fell outside the safety-score 365d wall-clock
+// window and broke every LA score in production. The new dataset
+// is in proper NIBRS format with a direct `crime_against` column
+// (Person/Property/Society) so we no longer need the legacy
+// Part I/II heuristic — accuracy improves as a side effect.
 //
-// IMPORTANT: This dataset has victim demographic columns (vict_age,
-// vict_sex, vict_descent). TravelSafe's spec forbids displaying or
-// storing those. The adapter ONLY reads non-demographic fields. Do not
-// add demographic fields to Incident.
+// IMPORTANT: The dataset publishes incident metadata only.
+// TravelSafe's spec forbids displaying or storing victim/suspect
+// demographic data; we just don't request those columns.
 
-const BASE = "https://data.lacity.org/resource/2nrs-mtv8.json";
+const BASE = "https://data.lacity.org/resource/y8y3-fqfu.json";
 // 5-minute cache: half the client's 10-minute refresh window. With matched
 // 10/10 minute TTLs the client could land on a stale cache right before it
 // expired and see the same data twice in a row, which read as "the app isn't
@@ -28,55 +29,79 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
 
 interface SodaRow {
-  dr_no?: string;
+  caseno?: string;
+  uniquenibrno?: string;
   date_occ?: string;
   area_name?: string;
-  crm_cd?: string;
-  crm_cd_desc?: string;
-  part_1_2?: string;
+  nibr_code?: string;
+  nibr_description?: string;
+  /// "Person" | "Property" | "Society" — direct NIBRS classification
+  /// published by LAPD. Maps cleanly to our CrimeCategory enum.
+  crime_against?: string;
   rpt_dist_no?: string;
-  lat?: string;
-  lon?: string;
-  location?: string;
+  // The NIBRS dataset doesn't publish per-row lat/lng. Discovery
+  // falls back to a sensible LAPD-division centroid instead — see
+  // AREA_CENTROIDS below.
 }
 
-// LAPD crime codes considered "violent" (Persons) — coarse mapping from
-// publicly-documented Part I serious offenses.
-const VIOLENT_CRM_CD = new Set([
-  "110", "113", "121", "122", "210", "220", "230", "231", "235", "236",
-  "250", "251", "761", "762", "812", "813", "860", "910", "920", "921",
-]);
-
 function mapToNibrs(row: SodaRow): CrimeCategory {
-  const part = (row.part_1_2 ?? "").trim();
-  const crm = (row.crm_cd ?? "").trim();
-  if (part === "1") {
-    if (VIOLENT_CRM_CD.has(crm)) return CrimeCategory.PERSONS;
-    return CrimeCategory.PROPERTY;
-  }
+  const v = (row.crime_against ?? "").trim().toLowerCase();
+  if (v === "person" || v === "persons") return CrimeCategory.PERSONS;
+  if (v === "property") return CrimeCategory.PROPERTY;
   return CrimeCategory.SOCIETY;
 }
 
+// Approximate centroids for the 21 LAPD patrol divisions. The NIBRS
+// dataset doesn't publish per-row coordinates, so for the Crime Map
+// and the neighborhood-discovery code we anchor each division to a
+// representative point. Values are eyeball-checked against the
+// LAPD's published division-boundary map.
+const AREA_CENTROIDS: Record<string, { lat: number; lng: number }> = {
+  "central":       { lat: 34.0463, lng: -118.2476 },
+  "rampart":       { lat: 34.0744, lng: -118.2769 },
+  "southwest":     { lat: 34.0173, lng: -118.3047 },
+  "hollenbeck":    { lat: 34.0444, lng: -118.2090 },
+  "harbor":        { lat: 33.7793, lng: -118.2655 },
+  "hollywood":     { lat: 34.0980, lng: -118.3268 },
+  "wilshire":      { lat: 34.0617, lng: -118.3441 },
+  "west la":       { lat: 34.0464, lng: -118.4438 },
+  "van nuys":      { lat: 34.1855, lng: -118.4493 },
+  "west valley":   { lat: 34.1948, lng: -118.5436 },
+  "northeast":     { lat: 34.1031, lng: -118.2079 },
+  "77th street":   { lat: 33.9706, lng: -118.2880 },
+  "newton":        { lat: 34.0149, lng: -118.2548 },
+  "pacific":       { lat: 33.9888, lng: -118.4439 },
+  "n hollywood":   { lat: 34.1697, lng: -118.3851 },
+  "foothill":      { lat: 34.2625, lng: -118.4192 },
+  "devonshire":    { lat: 34.2569, lng: -118.5392 },
+  "southeast":     { lat: 33.9396, lng: -118.2473 },
+  "mission":       { lat: 34.2719, lng: -118.4587 },
+  "olympic":       { lat: 34.0578, lng: -118.3122 },
+  "topanga":       { lat: 34.2113, lng: -118.5824 },
+};
+function centroidFor(name: string): { lat: number; lng: number } | null {
+  return AREA_CENTROIDS[name.toLowerCase().trim()] ?? null;
+}
+
 const PROVENANCE: DataProvenance = {
-  source: "LAPD Crime Data 2020–Present (City of Los Angeles Open Data)",
-  datasetUrl: "https://data.lacity.org/Public-Safety/Crime-Data-from-2020-to-Present/2nrs-mtv8",
+  source: "LAPD NIBRS Offenses 2024–2025 (City of Los Angeles Open Data)",
+  datasetUrl: "https://data.lacity.org/Public-Safety/LAPD-NIBRS-Offenses-Dataset-2024-to-2025/y8y3-fqfu",
   recency: "Refreshed weekly by LAPD",
   granularity: "neighborhood",
   disclaimer:
     "Incidents are reported by the Los Angeles Police Department and aggregated to " +
-    "LAPD reporting area / division — not live, not street-level. TravelSafe does not " +
-    "track individuals and intentionally ignores victim-demographic columns published " +
-    "by LAPD.",
+    "LAPD patrol division — not live, not street-level. TravelSafe does not track " +
+    "individuals and intentionally ignores victim/suspect-demographic columns " +
+    "published by LAPD.",
 };
 
 async function fetchLapd(): Promise<Incident[]> {
-  // Pull the most recent ~10k rows; SODA orders DESC by date_occ.
   const url = new URL(BASE);
-  url.searchParams.set("$select", "dr_no,date_occ,area_name,crm_cd,crm_cd_desc,part_1_2,rpt_dist_no,lat,lon");
+  url.searchParams.set("$select", "caseno,uniquenibrno,date_occ,area_name,nibr_code,nibr_description,crime_against,rpt_dist_no");
   url.searchParams.set("$order", "date_occ DESC");
-  // SODA accepts up to 50,000 in a single page. We pull a large slice so the
-  // per-neighborhood counts on the Crime Map are statistically meaningful, not
-  // a tiny ~3k sample that flattens busy and quiet areas into the same band.
+  // 50k slice — same rationale as the legacy adapter. The NIBRS feed
+  // currently holds ~700k incidents across 2024-2025, so 50k newest
+  // gives us a fresh ~3-4 month window across all 21 divisions.
   url.searchParams.set("$limit", "50000");
   const res = await fetch(url, {
     headers: {
@@ -87,18 +112,18 @@ async function fetchLapd(): Promise<Incident[]> {
   if (!res.ok) throw new Error(`LAPD SODA ${res.status} fetching ${url}`);
   const rows = (await res.json()) as SodaRow[];
   return rows.map((r, i) => {
-    const lat = Number(r.lat);
-    const lon = Number(r.lon);
+    const area = r.area_name?.trim() || "Unknown";
+    const cen = centroidFor(area);
     return {
-      id: `la-${r.dr_no ?? i}`,
-      area: r.area_name?.trim() || "Unknown",
+      id: `la-${r.uniquenibrno ?? r.caseno ?? i}`,
+      area,
       occurredAt: r.date_occ ?? new Date(0).toISOString(),
       nibrsCategory: mapToNibrs(r),
-      ibrOffenseDescription: r.crm_cd_desc?.trim() ?? "Unknown",
+      ibrOffenseDescription: r.nibr_description?.trim() || r.nibr_code?.trim() || "Unknown",
       beat: r.rpt_dist_no ?? null,
       blockLabel: undefined,
-      lat: !isNaN(lat) && lat !== 0 ? lat : undefined,
-      lng: !isNaN(lon) && lon !== 0 ? lon : undefined,
+      lat: cen?.lat,
+      lng: cen?.lng,
     };
   });
 }
@@ -120,23 +145,28 @@ export async function getRowsLA(): Promise<Incident[]> {
 
 export async function getDiscoveredAreasLA(): Promise<KnownArea[]> {
   const rows = await getRowsLA();
-  const agg = new Map<string, { latSum: number; lngSum: number; count: number }>();
+  // Per-row lat/lng isn't published by the NIBRS feed; we count
+  // incidents per area name and look the centroid up in
+  // AREA_CENTROIDS instead. Skip areas with no centroid mapping
+  // (would render as a tiny dot at 0,0 on the Crime Map).
+  const counts = new Map<string, number>();
   for (const r of rows) {
     const name = r.area?.trim();
     if (!name || name === "Unknown") continue;
-    if (r.lat == null || r.lng == null) continue;
-    const e = agg.get(name) ?? { latSum: 0, lngSum: 0, count: 0 };
-    e.latSum += r.lat; e.lngSum += r.lng; e.count += 1;
-    agg.set(name, e);
+    counts.set(name, (counts.get(name) ?? 0) + 1);
   }
-  return Array.from(agg.entries())
-    .filter(([, e]) => e.count >= 3)
-    .map(([name, e]) => ({
-      slug: `la-${name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`,
-      label: name,
-      jurisdiction: "Los Angeles",
-      centroid: { lat: e.latSum / e.count, lng: e.lngSum / e.count },
-    }))
+  return Array.from(counts.entries())
+    .filter(([, n]) => n >= 3)
+    .map(([name]) => {
+      const cen = centroidFor(name);
+      return cen ? {
+        slug: `la-${name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`,
+        label: name,
+        jurisdiction: "Los Angeles",
+        centroid: cen,
+      } : null;
+    })
+    .filter((a): a is KnownArea => a !== null)
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
