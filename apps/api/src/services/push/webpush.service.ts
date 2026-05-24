@@ -1,0 +1,80 @@
+import webpush from "web-push";
+import { prisma } from "../../lib/prisma.js";
+import { env } from "../../env.js";
+
+// Web Push fan-out helpers. Ported from apps/web's webpush.ts so the
+// digest worker can run on Railway without a network round-trip back
+// to Vercel. Same VAPID config (CommunitySafe owns one keypair shared
+// across both runtimes).
+
+let vapidReady = false;
+function ensureVapid(): boolean {
+  if (vapidReady) return true;
+  if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY) return false;
+  webpush.setVapidDetails(env.VAPID_SUBJECT, env.VAPID_PUBLIC_KEY, env.VAPID_PRIVATE_KEY);
+  vapidReady = true;
+  return true;
+}
+
+export interface PushPayload {
+  title: string;
+  body: string;
+  tag?: string;
+  data?: Record<string, unknown>;
+}
+
+export interface PushResult {
+  sent: number;
+  failed: number;
+  pruned: number;
+  reason?: string;
+}
+
+export async function sendToUser(userId: string, payload: PushPayload): Promise<PushResult> {
+  if (!ensureVapid()) return { sent: 0, failed: 0, pruned: 0, reason: "vapid_not_configured" };
+
+  const subs = await prisma.pushSubscription.findMany({ where: { userId } });
+  if (subs.length === 0) return { sent: 0, failed: 0, pruned: 0, reason: "no_subscriptions" };
+
+  const body = JSON.stringify(payload);
+  let sent = 0, failed = 0, pruned = 0;
+  const toPrune: string[] = [];
+
+  await Promise.all(subs.map(async (s) => {
+    try {
+      await webpush.sendNotification(
+        { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+        body,
+      );
+      sent += 1;
+    } catch (err) {
+      const e = err as { statusCode?: number };
+      if (e.statusCode === 404 || e.statusCode === 410) {
+        toPrune.push(s.endpoint);
+        pruned += 1;
+      } else {
+        failed += 1;
+      }
+    }
+  }));
+
+  if (toPrune.length > 0) {
+    await prisma.pushSubscription.deleteMany({ where: { endpoint: { in: toPrune } } });
+  }
+
+  return { sent, failed, pruned };
+}
+
+export async function sendToMany(
+  userIds: string[],
+  payload: PushPayload,
+): Promise<{ users: number; sent: number; failed: number; pruned: number }> {
+  let sent = 0, failed = 0, pruned = 0;
+  for (const uid of userIds) {
+    const r = await sendToUser(uid, payload);
+    sent += r.sent;
+    failed += r.failed;
+    pruned += r.pruned;
+  }
+  return { users: userIds.length, sent, failed, pruned };
+}

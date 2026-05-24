@@ -7,13 +7,12 @@ import { sendToMany } from "@/server/services/push/webpush";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-/// Daily push digest. Fires once a day via Vercel Cron and pings every
-/// user who has (a) at least one valid push subscription AND (b) opted
-/// into DIGEST_DAILY (the default — REAL_TIME users are handled by a
-/// separate alert-fired path, not yet implemented). Honors the
-/// per-user notificationDailyCap by skipping anyone already at-cap
-/// today (best-effort: the cap state lives in memory only for now,
-/// so cap is approximate across function instances).
+/// MIGRATED to Railway as of v15. The daily digest is now fired by
+/// apps/api/src/services/push/digest.worker.ts (interval-based, 16:00
+/// UTC). This route is kept as a manual-trigger endpoint so operators
+/// can still curl the digest on demand without restarting Railway,
+/// but the Vercel Cron schedule has been dropped from vercel.json so
+/// it no longer auto-fires (which would double-send).
 ///
 /// Payload is intentionally generic — we don't yet have a
 /// SavedArea model, so the digest can't personalize per-area.

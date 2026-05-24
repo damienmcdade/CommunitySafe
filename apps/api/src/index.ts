@@ -17,6 +17,7 @@ import { geoRouter } from "./routes/geo.routes.js";
 import { aiRouter } from "./routes/ai.routes.js";
 import { officialAlertsRouter } from "./routes/official-alerts.routes.js";
 import { startCheckInWorker } from "./services/safety/check-in.worker.js";
+import { startDigestWorker } from "./services/push/digest.worker.js";
 
 const app = express();
 
@@ -56,6 +57,7 @@ app.use(errorHandler);
 const server = app.listen(env.LISTEN_PORT, () => {
   console.log(`[api] listening on :${env.LISTEN_PORT} (env=${env.NODE_ENV})`);
   startCheckInWorker();
+  startDigestWorker();
 });
 
 for (const sig of ["SIGINT", "SIGTERM"] as const) {
