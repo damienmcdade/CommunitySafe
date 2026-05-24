@@ -26,7 +26,7 @@ import { milwaukeeAdapter, getDiscoveredAreasMilwaukee } from "./adapters/milwau
 import { lasVegasAdapter, getDiscoveredAreasLasVegas } from "./adapters/las-vegas-arcgis";
 import { boiseAdapter, getDiscoveredAreasBoise } from "./adapters/boise-arcgis";
 import { buffaloAdapter, getDiscoveredAreasBuffalo } from "./adapters/buffalo-socrata";
-import { tucsonAdapter, getDiscoveredAreasTucson } from "./adapters/tucson-arcgis";
+import { norfolkAdapter, getDiscoveredAreasNorfolk } from "./adapters/norfolk-socrata";
 import { kansasCityAdapter, getDiscoveredAreasKansasCity } from "./adapters/kansas-city-socrata";
 import { saintPaulAdapter, getDiscoveredAreasSaintPaul } from "./adapters/saint-paul-arcgis";
 import { pittsburghAdapter, getDiscoveredAreasPittsburgh } from "./adapters/pittsburgh-ckan";
@@ -230,11 +230,15 @@ export const CITIES: CityEntry[] = [
     discover: getDiscoveredAreasBuffalo,
   },
   {
-    slug: "tucson",
-    label: "Tucson",
-    bbox: { south: 32.07, west: -111.10, north: 32.40, east: -110.74 },
-    adapter: tucsonAdapter,
-    discover: getDiscoveredAreasTucson,
+    // Replaced Tucson (May 2026) — TPD only published a rolling
+    // Last-45-Days layer with no historical alternative, which
+    // produced perpetually-noisy scores. Norfolk publishes a full
+    // 108k-incident dataset on data.norfolk.gov with daily updates.
+    slug: "norfolk",
+    label: "Norfolk",
+    bbox: { south: 36.79, west: -76.34, north: 36.97, east: -76.18 },
+    adapter: norfolkAdapter,
+    discover: getDiscoveredAreasNorfolk,
   },
   {
     slug: "kansas-city",
@@ -332,7 +336,7 @@ export function cityForArea(slug: string): CityEntry {
   if (slug.startsWith("lv-")   || slug === "las-vegas")    return CITIES[22];
   if (slug.startsWith("bzi-")  || slug === "boise")        return CITIES[23];
   if (slug.startsWith("buf-")  || slug === "buffalo")      return CITIES[24];
-  if (slug.startsWith("tuc-")  || slug === "tucson")       return CITIES[25];
+  if (slug.startsWith("nor-")  || slug === "norfolk")      return CITIES[25];
   if (slug.startsWith("kc-")   || slug === "kansas-city")  return CITIES[26];
   if (slug.startsWith("sp-")   || slug === "saint-paul")   return CITIES[27];
   if (slug.startsWith("pgh-")  || slug === "pittsburgh")   return CITIES[28];

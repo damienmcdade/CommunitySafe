@@ -79,7 +79,7 @@ const CITY_TO_ORI = {
   "las-vegas":     "NV0020100",   // Las Vegas Metropolitan Police Department
   "boise":         "ID0010100",   // Boise Police Department
   "buffalo":       "NY0140100",   // Buffalo Police Department
-  "tucson":        "AZ0100300",   // Tucson Police Department
+  "norfolk":       "VA1170000",   // Norfolk Police Department
   "kansas-city":   "MOKPD0000",   // Kansas City Police Department (KCPD)
   "saint-paul":    "MN0620900",   // St. Paul Police Department
   "pittsburgh":    "PAPPD0000",   // Pittsburgh Bureau of Police

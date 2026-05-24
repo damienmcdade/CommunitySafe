@@ -84,7 +84,7 @@ const CITY_CONFIG = {
   "las-vegas":     { slugPrefix: "lv-",    counties: [["32", "003"]] },
   "boise":         { slugPrefix: "bzi-",   counties: [["16", "001"]] },
   "buffalo":       { slugPrefix: "buf-",   counties: [["36", "029"]] },
-  "tucson":        { slugPrefix: "tuc-",   counties: [["04", "019"]] },
+  "norfolk":       { slugPrefix: "nor-",   counties: [["51", "710"]] },
   "kansas-city":   { slugPrefix: "kc-",    counties: [["29", "095"]] },
   "saint-paul":    { slugPrefix: "sp-",    counties: [["27", "123"]] },
   "pittsburgh":    { slugPrefix: "pgh-",   counties: [["42", "003"]] },

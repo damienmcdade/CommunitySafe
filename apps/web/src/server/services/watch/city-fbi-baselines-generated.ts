@@ -45,6 +45,7 @@ export const CITY_FBI_BASELINES: Record<string, CityFbiBaseline> = {
   "nashville": { violent: 955, property: 3862, year: 2025, ori: "TN0190100" },
   "new-orleans": { violent: 1361, property: 5090, year: 2023, ori: "LANPD0000" },
   "new-york": { violent: 658, property: 2288, year: 2025, ori: "NY0303000" },
+  "norfolk": { violent: 397, property: 3176, year: 2025, ori: "VA1170000" },
   "oakland": { violent: 1475, property: 5255, year: 2025, ori: "CA0010900" },
   "philadelphia": { violent: 825, property: 4349, year: 2025, ori: "PAPEP0000" },
   "phoenix": { violent: 695, property: 2043, year: 2025, ori: "AZ0072300" },
@@ -53,6 +54,5 @@ export const CITY_FBI_BASELINES: Record<string, CityFbiBaseline> = {
   "san-diego": { violent: 373, property: 1551, year: 2025, ori: "CA0371100" },
   "san-francisco": { violent: 486, property: 2960, year: 2025, ori: "CA0380100" },
   "seattle": { violent: 700, property: 4446, year: 2025, ori: "WASPD0000" },
-  "tucson": { violent: 355, property: 2043, year: 2025, ori: "AZ0100300" },
   "washington-dc": { violent: 748, property: 3081, year: 2025, ori: "DCMPD0000" },
 };

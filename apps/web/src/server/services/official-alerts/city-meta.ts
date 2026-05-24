@@ -45,4 +45,5 @@ export const OFFICIAL_ALERTS_CITY_META: Record<string, OfficialAlertsCityMeta> =
   "las-vegas":         { slug: "las-vegas",         label: "Las Vegas",         state: "NV", centroid: { lat: 36.17, lng: -115.14 } },
   "cleveland":         { slug: "cleveland",         label: "Cleveland",         state: "OH", centroid: { lat: 41.50, lng: -81.69 } },
   "miami":             { slug: "miami",             label: "Miami",             state: "FL", centroid: { lat: 25.76, lng: -80.19 } },
+  "norfolk":           { slug: "norfolk",           label: "Norfolk",           state: "VA", centroid: { lat: 36.85, lng: -76.28 } },
 };

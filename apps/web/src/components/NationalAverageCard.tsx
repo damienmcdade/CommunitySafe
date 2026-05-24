@@ -49,7 +49,7 @@ export function NationalAverageCard() {
       <header className="flex items-baseline justify-between flex-wrap gap-2">
         <h3 className="font-display text-lg text-slate2-900">{city.label} vs. national average</h3>
         <a href={NATIONAL_SOURCE_URL} target="_blank" rel="noreferrer" className="text-xs text-bay-700 hover:underline">
-          FBI Crime in the Nation, {score?.source.publishedYear ?? 2024}
+          FBI Crime in the Nation, {score?.source.publishedYear ?? 2025}
         </a>
       </header>
       <p className="mt-1 text-xs text-slate2-500">
