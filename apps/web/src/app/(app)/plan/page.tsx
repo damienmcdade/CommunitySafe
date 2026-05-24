@@ -1,12 +1,7 @@
-"use client";
-import SafeRoutePage from "../route/page";
+import { redirect } from "next/navigation";
 
-/// `/plan` — legacy hub URL. After the v5 IA split (Safety Score moved
-/// into City Awareness, Safe Route promoted to a top-level tab), this
-/// route only exists to keep old bookmarks alive. We render the Safe
-/// Route page directly so anyone hitting /plan or /plan?tab=route
-/// lands somewhere useful instead of a 404. Nav strip points to /route
-/// now; this page is bookmark-preservation only.
-export default function PlanPage() {
-  return <SafeRoutePage />;
+/// Legacy /plan URL preserved as a server redirect. The Overwatch /
+/// Pathfinder hub holds Crime Map + Safe Route now.
+export default function PlanRedirect() {
+  redirect("/overwatch?tab=route");
 }

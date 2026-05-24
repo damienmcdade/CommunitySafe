@@ -432,13 +432,12 @@ model SuspensionEvent {
 model PushSubscription {
   id        String   @id @default(cuid())
   userId    String
-  // Endpoint storage stays as the default Postgres TEXT type.
-  // Finding #8 in docs/schema-review.md suggested capping at
-  // VARCHAR(2048) for planner stats, but the ALTER COLUMN required
-  // --accept-data-loss (despite all real-world FCM/APNs endpoints
-  // fitting in ~1KB). Keeping the safer default; revisit if the
-  // planner stats actually start mattering.
-  endpoint  String   @unique
+  // FCM/APNs endpoints fit comfortably in ~1KB; cap at VARCHAR(2048)
+  // so the planner can use length stats. Finding #8 in
+  // docs/schema-review.md. Applied with --accept-data-loss because
+  // Prisma flags the Text→VarChar narrowing as potentially lossy
+  // even though every real-world endpoint is far under the cap.
+  endpoint  String   @unique @db.VarChar(2048)
   p256dh    String
   auth      String
   createdAt DateTime @default(now())

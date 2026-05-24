@@ -198,7 +198,11 @@ html.dark svg line[stroke="#e9eef3"]   { stroke: #2A3445; }
 
 /* Inputs ------------------------------------------------------------------ */
 .input {
-  @apply w-full px-3 py-2 bg-white border border-sand-200 rounded-xl
+  /* w-full keeps inputs full-bleed on mobile; max-w-2xl caps them on
+     tablet+ so they don't stretch absurdly wide on desktop. Mobile UX
+     audit L2. Cards / wrappers that need a narrower input can scope
+     a smaller max-w on the parent. */
+  @apply w-full max-w-2xl px-3 py-2 bg-white border border-sand-200 rounded-xl
          transition-all duration-200
          focus:outline-none focus:border-bay-400 focus-visible:shadow-ring-bay;
 }

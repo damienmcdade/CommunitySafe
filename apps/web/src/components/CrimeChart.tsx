@@ -1,7 +1,7 @@
 "use client";
 import { useMemo } from "react";
 import { useApi } from "@/lib/api-client";
-import { WheelPicker, type WheelItem } from "./WheelPicker";
+import type { WheelItem } from "./WheelPicker";
 import { snapToSupported, useTimeWindow, type WindowValue } from "@/lib/use-time-window";
 
 interface CategoryCounts { PERSONS: number; PROPERTY: number; SOCIETY: number }
@@ -191,16 +191,40 @@ export function CrimeChart({
           )}
         </div>
 
+        {/* Time-interval picker — converted from a WheelPicker drum to
+            a vertical button list because the wheel's 32px row height
+            truncated long labels like "All cached data" and
+            "Last 12 months" even with break-words. Buttons auto-size to
+            the full label, no clipping possible. */}
         <div className="rounded-xl bg-sand-50 ring-1 ring-sand-200 p-2">
-          <p className="text-[11px] uppercase tracking-wider text-slate2-500 px-1.5 pb-1">Time interval</p>
-          <WheelPicker
-            items={WINDOW_ITEMS}
-            value={windowValue}
-            onChange={setWindowValue}
-            height={140}
-            rowHeight={32}
-            ariaLabel="Crime Chart time interval"
-          />
+          <p className="text-[11px] uppercase tracking-wider text-slate2-500 px-1.5 pb-1.5">Time interval</p>
+          <div role="radiogroup" aria-label="Crime Chart time interval" className="flex flex-col gap-1">
+            {WINDOW_ITEMS.map((item) => {
+              const active = item.value === windowValue;
+              return (
+                <button
+                  key={item.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => setWindowValue(String(item.value))}
+                  title={item.detail}
+                  className={`w-full text-left px-2.5 py-1.5 rounded-md text-sm transition-colors leading-tight ${
+                    active
+                      ? "bg-bay-500 text-white font-semibold"
+                      : "text-slate2-900 hover:bg-bay-100"
+                  }`}
+                >
+                  <span className="block">{item.label}</span>
+                  {item.detail && (
+                    <span className={`block text-[11px] ${active ? "text-white/80" : "text-slate2-500"}`}>
+                      {item.detail}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
