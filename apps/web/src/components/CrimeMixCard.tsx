@@ -1,9 +1,15 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useApi } from "@/lib/api-client";
 import { useCity } from "@/lib/use-city";
 import { relativeTime } from "@/lib/sse";
 import { explainOffense } from "@/lib/offense-explainer";
+import { INCIDENT_CATEGORIES, getIncidentCategory } from "@/lib/incident-categories";
+
+// localStorage key for the user's preferred category chip on the
+// CrimeMixCard. Persists across tab + page navigation so a user who
+// always cares about women's-safety sees that view by default.
+const CATEGORY_STORAGE_KEY = "travelsafe.crime-mix.category.v1";
 
 interface Slice { offense: string; category: "PERSONS" | "PROPERTY" | "SOCIETY"; count: number; lastOccurredAt: string }
 interface Mix { area: string; windowDays: number; asOf: string | null; totalIncidents: number; topOffenses: Slice[] }
@@ -42,7 +48,33 @@ export function CrimeMixCard({ areaSlug, jurisdictionSlug, title }: { areaSlug?:
       ? `/crime-data/mix?city=${jurisdictionSlug}`
       : null;
   const { data, loading, error } = useApi<Mix>(path, [path]);
-  const max = Math.max(1, ...(data?.topOffenses ?? []).map((o) => o.count));
+
+  // User-chosen incident-category filter (women's safety, nightlife,
+  // scams, etc.). Persists via localStorage so a user who always
+  // cares about a specific category sees that view by default. The
+  // filter narrows the displayed topOffenses client-side — the
+  // underlying API still returns the full list so the user can swap
+  // categories without re-fetching.
+  const [categoryId, setCategoryIdState] = useState<string>("all");
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(CATEGORY_STORAGE_KEY);
+      if (stored && INCIDENT_CATEGORIES.some((c) => c.id === stored)) {
+        setCategoryIdState(stored);
+      }
+    } catch { /* ignore */ }
+  }, []);
+  const setCategoryId = useCallback((next: string) => {
+    setCategoryIdState(next);
+    try { window.localStorage.setItem(CATEGORY_STORAGE_KEY, next); } catch { /* ignore */ }
+  }, []);
+  const activeCategory = useMemo(() => getIncidentCategory(categoryId), [categoryId]);
+  const filteredOffenses = useMemo(() => {
+    const all = data?.topOffenses ?? [];
+    if (categoryId === "all") return all;
+    return all.filter((o) => activeCategory.match(o.offense));
+  }, [data?.topOffenses, categoryId, activeCategory]);
+  const max = Math.max(1, ...filteredOffenses.map((o) => o.count));
   const sourceLabel = SOURCE_LABEL[city.slug] ?? `${city.label} police data`;
   const windowText = (() => {
     if (!data || data.totalIncidents === 0) return "";
@@ -64,6 +96,29 @@ export function CrimeMixCard({ areaSlug, jurisdictionSlug, title }: { areaSlug?:
       <p className="mt-1 text-xs text-slate2-500">
         Top reported offense types from {sourceLabel}{data?.asOf ? `. Most recent report ${relativeTime(data.asOf)}` : ""}. Hover a bar for the most-recent occurrence of that offense.
       </p>
+
+      {/* Personalized category filter chips. Narrows the displayed
+          offenses to a single safety-concern category (women's
+          safety, scams, nightlife, etc.) on top of the raw NIBRS
+          mix. Selection persists via localStorage. */}
+      <div className="mt-3 flex flex-wrap gap-1.5 text-xs" role="group" aria-label="Filter offenses by category">
+        {INCIDENT_CATEGORIES.map((c) => {
+          const active = c.id === categoryId;
+          return (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => setCategoryId(c.id)}
+              aria-pressed={active}
+              title={c.description}
+              className={`px-2.5 py-1 rounded-full transition-colors ${active ? "bg-bay-500 text-white" : "surface-muted text-slate2-700 hover:bg-bay-100"}`}
+            >
+              {c.label}
+            </button>
+          );
+        })}
+      </div>
+
       {loading && (
         <ul className="mt-4 space-y-2.5">
           {[0, 1, 2, 3, 4].map((i) => (
@@ -75,9 +130,14 @@ export function CrimeMixCard({ areaSlug, jurisdictionSlug, title }: { areaSlug?:
       {!loading && !error && (data?.topOffenses ?? []).length === 0 && (
         <p className="mt-3 text-sm text-slate2-500">No incidents from {sourceLabel} for this area in the recent cached window.</p>
       )}
-      {!loading && (data?.topOffenses ?? []).length > 0 && (
+      {!loading && !error && (data?.topOffenses ?? []).length > 0 && filteredOffenses.length === 0 && (
+        <p className="mt-3 text-sm text-slate2-500">
+          No offenses match the &ldquo;{activeCategory.label}&rdquo; filter in this area&apos;s data. Try a different category or &ldquo;All offenses.&rdquo;
+        </p>
+      )}
+      {!loading && filteredOffenses.length > 0 && (
         <ul className="mt-4 space-y-3">
-          {data!.topOffenses.map((s) => {
+          {filteredOffenses.map((s) => {
             const pct = (s.count / max) * 100;
             const tone = COLOR[s.category];
             return (
