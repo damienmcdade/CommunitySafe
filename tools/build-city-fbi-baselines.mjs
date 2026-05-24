@@ -48,37 +48,42 @@ if (!KEY) {
 // NOPD vs LA State Police) we pick the one whose jurisdiction
 // matches our adapter's data feed. ORIs are the FBI's canonical
 // 9-character agency IDs.
+// Verified ORIs from cde.ucr.cjis.gov agency catalog (queried via
+// /agency/byStateAbbr/{state}). DO NOT GUESS these — small suburban
+// departments share confusingly similar ORIs (Amberley Village PD,
+// Normandy Park PD, South Tucson PD, etc.) and pulling the wrong
+// ORI returns plausible-looking but wildly off rates.
 const CITY_TO_ORI = {
   "san-diego":     "CA0371100",   // San Diego Police Department
   "los-angeles":   "CA0194200",   // Los Angeles Police Department
   "san-francisco": "CA0380100",   // San Francisco Police Department
   "oakland":       "CA0010900",   // Oakland Police Department
-  "chicago":       "ILCPD0000",   // Chicago Police Department (uses non-FIPS ORI)
+  "chicago":       "ILCPD0000",   // Chicago Police Department
   "new-york":      "NY0303000",   // New York City Police Department
-  "seattle":       "WA0171000",   // Seattle Police Department
-  "denver":        "CO0160000",   // Denver Police Department
+  "seattle":       "WASPD0000",   // Seattle Police Department
+  "denver":        "CODPD0000",   // Denver Police Department
   "detroit":       "MI8234900",   // Detroit Police Department
-  "washington-dc": "DCMPD0000",   // DC Metropolitan Police Department
+  "washington-dc": "DCMPD0000",   // Washington Police Department (MPD)
   "boston":        "MA0130100",   // Boston Police Department
   "philadelphia":  "PAPEP0000",   // Philadelphia Police Department
-  "cincinnati":    "OH0310200",   // Cincinnati Police Department
+  "cincinnati":    "OHCIP0000",   // Cincinnati Police Department
   "new-orleans":   "LANPD0000",   // New Orleans Police Department
-  "baton-rouge":   "LA0170100",   // Baton Rouge Police Department
-  "cambridge":     "MA0170300",   // Cambridge Police Department
+  "baton-rouge":   "LA0170200",   // Baton Rouge Police Department
+  "cambridge":     "MA0091100",   // Cambridge Police Department (MA)
   "dallas":        "TXDPD0000",   // Dallas Police Department
-  "charlotte":     "NCCMPD0000",  // Charlotte-Mecklenburg Police Department
-  "nashville":     "TNMNPD0000",  // Metro Nashville Police Department
-  "minneapolis":   "MNMPD0000",   // Minneapolis Police Department
-  "cleveland":     "OH0181800",   // Cleveland Police Department
+  "charlotte":     "NC0600100",   // Charlotte-Mecklenburg Police Department
+  "nashville":     "TN0190100",   // Metropolitan Nashville Police Department
+  "minneapolis":   "MN0271100",   // Minneapolis Police Department
+  "cleveland":     "OHCLP0000",   // Cleveland Police Department
   "milwaukee":     "WIMPD0000",   // Milwaukee Police Department
-  "las-vegas":     "NVLVM0000",   // Las Vegas Metropolitan Police Department
+  "las-vegas":     "NV0020100",   // Las Vegas Metropolitan Police Department
   "boise":         "ID0010100",   // Boise Police Department
-  "buffalo":       "NY0140200",   // Buffalo Police Department
-  "tucson":        "AZ0100200",   // Tucson Police Department
-  "kansas-city":   "MO0480000",   // Kansas City MO Police Department
-  "saint-paul":    "MN0620900",   // Saint Paul Police Department
+  "buffalo":       "NY0140100",   // Buffalo Police Department
+  "tucson":        "AZ0100300",   // Tucson Police Department
+  "kansas-city":   "MOKPD0000",   // Kansas City Police Department (KCPD)
+  "saint-paul":    "MN0620900",   // St. Paul Police Department
   "pittsburgh":    "PAPPD0000",   // Pittsburgh Bureau of Police
-  "phoenix":       "AZ0072700",   // Phoenix Police Department
+  "phoenix":       "AZ0072300",   // Phoenix Police Department
 };
 
 async function fetchAgencyAnnual(ori, offense) {
