@@ -191,16 +191,42 @@ function slugify(s: string): string {
   return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
+// v68 — derive the upstream CSV neighborhood string from a slug. The
+// adapter used to rely on findArea() in neighborhoods.ts to map slug
+// → label, then upstreamName(label) → upstream CSV name. But
+// findArea uses listKnownAreasSync() which returns the FALLBACK_AREAS
+// (only 6 entries) until an async listKnownAreas() call populates the
+// shared cache. Most SD area slugs ("adams-north", "barrio-logan",
+// "balboa-park", etc.) aren't in the fallback, so findArea returned
+// null and the matcher fell back to lowercased-slug. CSV neighborhoods
+// have spaces ("Adams North" → "adams north") while slugs have dashes
+// ("adams-north"); the strict equality never matched, dropping ~80%
+// of SD's 28k CSV rows from per-area counts and producing the 0.27×
+// PERSONS ratio vs FBI baseline flagged by the grade-sanity worker.
+//
+// New approach: convert slug → display name by reversing slugify
+// (dashes back to spaces, title-case each word), then apply
+// upstreamName for the Downtown ↔ Core-Columbia remap.
+function slugToCsvNeighborhood(slug: string): string {
+  const titleCased = slug
+    .split("-")
+    .map((w) => (w.length === 0 ? w : w[0].toUpperCase() + w.slice(1)))
+    .join(" ");
+  return upstreamName(titleCased);
+}
+
 export const sdpdNibrsAdapter: CrimeDataAdapter = {
   name: "sdpd-nibrs",
 
   async getAreaStats(area: string): Promise<AreaStats | null> {
     const rows = await getRows();
+    // v68 — when findArea returns null (the common case for auto-
+    // discovered SD areas), derive the CSV neighborhood string
+    // directly from the slug rather than falling back to the raw
+    // slug (which fails to match because slugs have dashes and
+    // CSV neighborhoods have spaces).
     const known = findArea(area);
-    const displayed = known?.label ?? area;
-    // Match against the UPSTREAM name so the remapped "Downtown"
-    // display label still finds incidents tagged "Core-Columbia" in
-    // the SDPD CSV.
+    const displayed = known?.label ?? slugToCsvNeighborhood(area);
     const matchAgainst = upstreamName(displayed).toLowerCase();
     const inArea = rows.filter((r) => r.area.toLowerCase() === matchAgainst);
     if (inArea.length === 0) return null;
@@ -211,7 +237,7 @@ export const sdpdNibrsAdapter: CrimeDataAdapter = {
   async getIncidents(area: string, opts?: { limit?: number; since?: Date }) {
     const rows = await getRows();
     const known = findArea(area);
-    const displayed = known?.label ?? area;
+    const displayed = known?.label ?? slugToCsvNeighborhood(area);
     const matchAgainst = upstreamName(displayed).toLowerCase();
     let filtered = rows.filter((r) => r.area.toLowerCase() === matchAgainst);
     if (opts?.since) filtered = filtered.filter((r) => new Date(r.occurredAt) >= opts.since!);
