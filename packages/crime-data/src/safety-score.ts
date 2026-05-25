@@ -773,8 +773,13 @@ export async function getSafetyScore(areaSlug: string, areaLabel: string): Promi
   // The adapter cache means the underlying police feed is hit once per
   // city regardless — the per-area dispatch is in-process and fast.
   const areas = await city.discover().catch(() => []);
+  // v62 — same 5k → 50k bump as the citywide variant. For per-area
+  // safety-score on Phoenix (the only city where per-area volume
+  // exceeded 5k), the prior cap silently dropped 80% of the
+  // selected area's annual incidents and made the comparison-base
+  // tiny relative to the rest of the city.
   const incidentsPerArea = await Promise.all(
-    areas.map((a) => crimeData.getIncidents(a.slug, { limit: 5000 }).catch(() => [])),
+    areas.map((a) => crimeData.getIncidents(a.slug, { limit: 50000 }).catch(() => [])),
   );
 
   // Same rate-window cap as getCitywideSafetyScore — see comment there.
@@ -827,7 +832,7 @@ export async function getSafetyScore(areaSlug: string, areaLabel: string): Promi
   const idx = areas.findIndex((a) => a.slug === areaSlug);
   const areaIncidents = idx >= 0
     ? incidentsPerArea[idx]
-    : await crimeData.getIncidents(areaSlug, { limit: 5000 }).catch(() => []);
+    : await crimeData.getIncidents(areaSlug, { limit: 50000 }).catch(() => []);
 
   // INCIDENT-PREVENTION INVARIANT (2026-05-22):
   // Earlier we silently returned a score of 100 whenever the per-area
