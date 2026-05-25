@@ -107,10 +107,40 @@ async function fetchPage(offset: number): Promise<CleRow[]> {
   return (body.features ?? []).map((f) => f.attributes);
 }
 
+// v63 — bounded concurrency. Cleveland's ArcGIS endpoint rate-limits
+// or silently drops large parallel bursts: probing showed 30 parallel
+// page requests all returning [], while single sequential requests
+// work fine. The earlier Promise.all-all-30 was responsible for the
+// adapter being completely empty in production (observable as
+// "cleveland: 0 rows" in the all-adapter freshness audit, despite a
+// healthy upstream returning fresh 2026-05-25 data via direct curl).
+// 4-at-a-time keeps the total cycle under ~30s while staying inside
+// whatever per-IP concurrency cap the host enforces.
+async function fetchPagesBounded<T>(
+  count: number,
+  pageSize: number,
+  fetcher: (offset: number) => Promise<T[]>,
+  concurrency: number,
+): Promise<T[][]> {
+  const offsets = Array.from({ length: count }, (_, i) => i * pageSize);
+  const results: T[][] = new Array(count);
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(concurrency, count) }, async () => {
+    while (true) {
+      const idx = cursor++;
+      if (idx >= offsets.length) return;
+      results[idx] = await fetcher(offsets[idx]).catch(() => [] as T[]);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
 async function fetchCleveland(): Promise<Incident[]> {
-  const pages = await Promise.all(
-    Array.from({ length: PAGES }, (_, i) => fetchPage(i * PAGE_SIZE).catch(() => [] as CleRow[])),
-  );
+  // Concurrency tuned at 6: at 4 it took ~5min (over the warm-worker's
+  // 4-min interval, causing tick overlap); at higher than ~8 the
+  // upstream's per-IP cap kicks in and pages start returning empty.
+  const pages = await fetchPagesBounded<CleRow>(PAGES, PAGE_SIZE, fetchPage, 6);
   const rows = pages.flat();
   const out: Incident[] = [];
   for (const r of rows) {
