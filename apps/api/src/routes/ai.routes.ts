@@ -5,6 +5,7 @@ import { streamComposeFeedback } from "../services/ai/compose-feedback.js";
 import { explainIncident } from "../services/ai/incident-explain.service.js";
 import { generateAreaBrief } from "../services/ai/area-brief.service.js";
 import { generateIncidentSummary } from "../services/ai/incident-summary.service.js";
+import { aiConfigured as isAiConfigured } from "../services/ai/provider.js";
 
 export const aiRouter = Router();
 
@@ -38,10 +39,18 @@ aiRouter.get("/area-brief", async (req, res, next) => {
     if (!area) return res.status(400).json({ error: "area_required" });
     const brief = await generateAreaBrief(area);
     res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=900");
+    // v66 — was `aiConfigured: brief !== null` which conflated three
+    // distinct null cases: (1) provider unset, (2) area has no top
+    // offenses, (3) model fetch failed. Cases 2+3 made the frontend
+    // hide the entire panel even though AI was working — user-reported
+    // as "AI summary inoperable for all neighborhoods" because every
+    // sparse-data area returned aiConfigured=false. Now reports the
+    // provider state honestly so the panel can render "not enough
+    // recent data" instead of disappearing.
     res.json({
       area,
       brief,
-      aiConfigured: brief !== null,
+      aiConfigured: isAiConfigured(),
       disclaimer:
         "Two-paragraph AI brief grounded in the area's actual top reported " +
         "offenses. Not legal or medical advice; never describes individuals.",
