@@ -46,6 +46,17 @@ const PAGES = 10;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
 
+// v70 — direct CSV download path. The data.boston.gov CSV-download
+// endpoint redirects to a signed S3 URL (24h pre-signed). S3 is
+// wide-open by IP, so this WORKS from both Vercel and Railway even
+// though the CKAN API endpoint silently 0-records from Vercel.
+// 45MB / 307k lines / 3s fetch on Railway; we keep the most-recent
+// 30k rows in cache. Longer TTL (30min) because BPD publishes
+// daily, not real-time.
+const CSV_URL = "https://data.boston.gov/dataset/6220d948-eae2-4e4b-8723-2dc8e67722a3/resource/b973d8cb-eeb2-4e7e-99da-c92938efc9c0/download/tmpcyl1hw5w.csv";
+const CSV_ROWS_TO_KEEP = 30_000;
+const CSV_CACHE_TTL_MS = 30 * 60 * 1000;
+
 interface BostonRow {
   INCIDENT_NUMBER?: string;
   OFFENSE_DESCRIPTION?: string;
@@ -209,11 +220,109 @@ async function fetchBoston(): Promise<Incident[]> {
   });
 }
 
+// v70 — quote-aware CSV row splitter. BPD CSV embeds commas inside
+// quoted Location strings ("(lat, lng)") and OFFENSE_DESCRIPTION
+// occasionally has commas too — naive split corrupts column indexes.
+function splitCSVRow(line: string): string[] {
+  const out: string[] = [];
+  let cur = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+      else if (ch === '"') inQuotes = false;
+      else cur += ch;
+    } else {
+      if (ch === '"') inQuotes = true;
+      else if (ch === ",") { out.push(cur); cur = ""; }
+      else cur += ch;
+    }
+  }
+  out.push(cur);
+  return out;
+}
+
+async function fetchBostonFromCSV(): Promise<Incident[]> {
+  const res = await fetch(CSV_URL, {
+    redirect: "follow",
+    headers: { "User-Agent": "TravelSafe/1.0 (https://github.com/damienmcdade/TravelSafe)" },
+  });
+  if (!res.ok) throw new Error(`Boston CSV ${res.status}`);
+  const text = await res.text();
+  const lines = text.split("\n");
+  if (lines.length < 2) throw new Error("Boston CSV: empty");
+  const headers = splitCSVRow(lines[0]);
+  const idx: Record<string, number> = {};
+  for (const [i, h] of headers.entries()) idx[h] = i;
+  type ParsedRow = { ts: number; row: BostonRow };
+  const parsed: ParsedRow[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line) continue;
+    const f = splitCSVRow(line);
+    const dateStr = f[idx.OCCURRED_ON_DATE];
+    if (!dateStr) continue;
+    // BPD timestamps come as "2026-04-21 22:44:00+00" — Node rejects the
+    // bare "+00" offset; normalize to "+00:00" so Date.parse succeeds.
+    const iso = dateStr.replace(" ", "T").replace(/([+-]\d{2})$/, "$1:00");
+    const ts = Date.parse(iso);
+    if (!Number.isFinite(ts)) continue;
+    parsed.push({
+      ts,
+      row: {
+        INCIDENT_NUMBER: f[idx.INCIDENT_NUMBER] || "",
+        OFFENSE_DESCRIPTION: (f[idx.OFFENSE_DESCRIPTION] || "").trim(),
+        OFFENSE_CODE_GROUP: f[idx.OFFENSE_CODE_GROUP] || null,
+        DISTRICT: f[idx.DISTRICT] || "",
+        OCCURRED_ON_DATE: dateStr,
+        Lat: f[idx.Lat] || null,
+        Long: f[idx.Long] || null,
+        SHOOTING: f[idx.SHOOTING] || "",
+      },
+    });
+  }
+  parsed.sort((a, b) => b.ts - a.ts);
+  const top = parsed.slice(0, CSV_ROWS_TO_KEEP);
+  return top.map(({ row }, i) => {
+    const lat = Number(row.Lat);
+    const lon = Number(row.Long);
+    return {
+      id: `bos-${row.INCIDENT_NUMBER || i}`,
+      area: enrich(row.DISTRICT),
+      occurredAt: safeIsoFromBostonDate(row.OCCURRED_ON_DATE),
+      nibrsCategory: mapToNibrs(row),
+      ibrOffenseDescription: titleCaseOffense(row.OFFENSE_DESCRIPTION),
+      beat: row.DISTRICT ?? null,
+      blockLabel: undefined,
+      lat: !isNaN(lat) && lat !== 0 ? lat : undefined,
+      lng: !isNaN(lon) && lon !== 0 ? lon : undefined,
+    };
+  });
+}
+
 export async function getRowsBoston(): Promise<Incident[]> {
   const now = Date.now();
-  if (cache && cache.rows.length > 0 && now - cache.fetchedAt < CACHE_TTL_MS) return cache.rows;
-  // If a Cloudflare Worker proxy is wired up, prefer live data — it's a few
-  // weeks fresher than the bundled snapshot.
+  // v70 — CSV cache has its own longer TTL (30min) because BPD only
+  // publishes daily; refreshing every 5min on a 45MB download wastes
+  // bandwidth without producing new data.
+  if (cache && cache.rows.length > 0 && now - cache.fetchedAt < CSV_CACHE_TTL_MS) return cache.rows;
+
+  // PRIMARY PATH: direct CSV download (S3-signed, works from any IP).
+  // This bypasses the data.boston.gov IP-blocking that hit the CKAN
+  // API path. Returns 20-30k rows of recent BPD incidents in ~3-5s
+  // total (3s fetch + 1-2s parse).
+  try {
+    const rows = await fetchBostonFromCSV();
+    if (rows.length > 0) {
+      cache = { fetchedAt: now, rows };
+      return rows;
+    }
+  } catch (err) {
+    console.warn("[boston] CSV fetch failed, trying CKAN/snapshot fallbacks:", (err as Error).message);
+  }
+
+  // SECONDARY: Cloudflare Worker → CKAN proxy if configured.
   if (env.BOSTON_PROXY_URL) {
     try {
       const rows = await fetchBoston();
@@ -225,7 +334,9 @@ export async function getRowsBoston(): Promise<Incident[]> {
       console.warn("[boston] proxy fetch failed, falling back to snapshot:", (err as Error).message);
     }
   }
-  // Fallback to bundled snapshot (works without any external infrastructure).
+
+  // LAST RESORT: bundled snapshot (5k rows committed at build time).
+  // Stays in sync via the GitHub Actions weekly refresh workflow.
   const rows = rowsFromSnapshot();
   cache = { fetchedAt: now, rows };
   return rows;
