@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { ensureAnonymousAuth, getStoredToken } from "@/lib/api-client";
 
 interface Message {
   role: "user" | "assistant";
@@ -123,9 +124,20 @@ export function AIAssistant() {
     setMessages((m) => [...m, { role: "assistant", content: "" }]);
 
     try {
+      // v68 — fetch the assistant manually (the api() helper consumes
+      // the response body so it can't be used for streaming). Need to
+      // inject the Bearer token ourselves; without it the route's
+      // requireSession() gate returned `missing_bearer_token` and the
+      // chat error-bar surfaced that to users. Bootstraps the anon
+      // session if none exists yet, so first-visit users still get
+      // a working assistant on first click.
+      await ensureAnonymousAuth();
+      const tk = getStoredToken();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (tk) headers.Authorization = `Bearer ${tk}`;
       const res = await fetch("/api/assistant", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         // Don't replay the intro to the model — it adds noise to the system context.
         body: JSON.stringify({ messages: next.filter((m, i) => !(i === 0 && m === INTRO)) }),
       });
@@ -185,21 +197,30 @@ export function AIAssistant() {
       </button>
 
       {open && (
-        // Pin the chat panel to the top-right of the VIEWPORT (not the page),
-        // so it sits above the fold no matter how far the user has scrolled.
-        // `top-5 right-5` matches the launcher's right offset; `max-h` caps
-        // the panel to the viewport height minus a small inset and lets it
-        // shrink on short screens. The dialog stays clear of the launcher
-        // pill at the bottom-right so both are reachable at once.
-        <section
-          ref={panelRef}
-          id="travelsafe-assistant-panel"
-          role="dialog"
-          aria-label="CommunitySafe assistant"
-          aria-modal="false"
-          onKeyDown={onPanelKeyDown}
-          className="fixed top-5 right-5 z-[1500] w-[min(24rem,calc(100vw-2.5rem))] max-h-[min(34rem,calc(100vh-2.5rem))] flex flex-col surface bg-white animate-pop-in"
-        >
+        <>
+          {/* v68 — backdrop dim. Center-of-screen positioning per user
+              feedback that the prior top-right-corner placement was
+              hard to see and the input field landed off the visible
+              area. The semi-opaque backdrop also doubles as a
+              click-to-close target. */}
+          <button
+            type="button"
+            aria-label="Close CommunitySafe assistant"
+            onClick={() => setOpen(false)}
+            className="fixed inset-0 z-[1499] bg-slate2-900/30 backdrop-blur-sm animate-fade-in"
+          />
+          <section
+            ref={panelRef}
+            id="travelsafe-assistant-panel"
+            role="dialog"
+            aria-label="CommunitySafe assistant"
+            aria-modal="true"
+            onKeyDown={onPanelKeyDown}
+            // Centered modal: fixed positioning with translate-50/50
+            // centering, capped to a comfortable reading width. Stays
+            // clear of the launcher pill at the bottom-right.
+            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[1500] w-[min(32rem,calc(100vw-1.5rem))] max-h-[min(40rem,calc(100vh-3rem))] flex flex-col surface bg-white animate-pop-in"
+          >
           <header className="flex items-center justify-between gap-2 px-4 py-3 border-b border-sand-200">
             <div>
               <h2 className="font-display text-sm text-slate2-900">CommunitySafe assistant</h2>
@@ -276,7 +297,8 @@ export function AIAssistant() {
               Answers come from the same official police feeds + FBI Crime Data Explorer 2025 data the rest of the app uses. No web search, no personal data.
             </p>
           </footer>
-        </section>
+          </section>
+        </>
       )}
     </>
   );

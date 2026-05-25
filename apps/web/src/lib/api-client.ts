@@ -21,6 +21,13 @@ function token(): string | null {
   return localStorage.getItem("travelsafe.token");
 }
 
+// v68 — exposed for callers that need to inject the Bearer token into
+// a streaming fetch (the api() wrapper consumes the response body so
+// can't be used for SSE / readable-stream responses like the AI
+// assistant chat). Consumers should also `await ensureAnonymousAuth()`
+// before reading to avoid a tokenless first request.
+export function getStoredToken(): string | null { return token(); }
+
 export function setToken(t: string | null) {
   if (typeof window === "undefined") return;
   if (t == null) localStorage.removeItem("travelsafe.token");
