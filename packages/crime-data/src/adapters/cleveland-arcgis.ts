@@ -25,6 +25,8 @@ const PAGE_SIZE = 2000;
 // grade-flipping was a regular occurrence on cache refreshes.
 // 60k rows ≈ 60 days, comfortably above the 30-day "low confidence"
 // trip-wire and stable enough that grades don't ping-pong.
+// v69 followup-4 — tried 4k/15-pages experiment but Cleveland ArcGIS
+// times out 2k+ requests under load; keeping the proven config.
 const PAGES = 30;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
