@@ -28,7 +28,16 @@ const VILLAGE_CENTROID: Record<string, { lat: number; lng: number }> =
 const PHOENIX_RESOURCE_ID = "0ce3411a-2fc6-4302-a33f-167f68608a20";
 const DATASTORE_API = "https://www.phoenixopendata.com/api/3/action/datastore_search";
 const PAGE_SIZE = 10_000;
-const PAGES_TO_FETCH = 5;
+// v57 bump 5 → 20 (50k → 200k rows). Phoenix publishes ~200k
+// incidents/year via UCR; the prior 50k cache covered only ~3
+// months of data. v32's 5th-percentile windowDays trim couldn't
+// help because rows were evenly distributed across the year (the
+// trim is designed for bimodal outlier rows, not steady density).
+// Result: dataEarliestMs landed ~1 year ago → windowDays=364 →
+// annualization of the partial 50k count under-stated Phoenix's
+// rate by 4-5×, tripping the v25 divergence guard. With 200k
+// rows we capture roughly the full year.
+const PAGES_TO_FETCH = 20;
 const CACHE_TTL_MS = 10 * 60 * 1000;
 
 interface RawRow {

@@ -16,10 +16,30 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // v57 — release signingConfig pulls from env vars set by the
+    // ~/communitysafe-upload-keystore.env file (not committed).
+    // When the env vars are absent (e.g. CI without secrets), the
+    // release build falls back to the debug signingConfig so it
+    // still builds locally but is not Play-Store-uploadable.
+    signingConfigs {
+        release {
+            def ks = System.getenv("COMMUNITYSAFE_UPLOAD_KEYSTORE")
+            if (ks != null && file(ks).exists()) {
+                storeFile file(ks)
+                storePassword System.getenv("COMMUNITYSAFE_UPLOAD_STOREPASS")
+                keyAlias System.getenv("COMMUNITYSAFE_UPLOAD_ALIAS") ?: "upload"
+                keyPassword System.getenv("COMMUNITYSAFE_UPLOAD_KEYPASS")
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            def ks = System.getenv("COMMUNITYSAFE_UPLOAD_KEYSTORE")
+            if (ks != null && file(ks).exists()) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }
