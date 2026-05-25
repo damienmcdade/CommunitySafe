@@ -484,7 +484,14 @@ function NeighborhoodCombobox({
         <ul
           id={listboxId}
           aria-label={ariaLabel}
-          className="absolute z-30 left-0 right-0 mt-1 surface shadow-card-lift max-h-72 overflow-auto p-1"
+          // v53 — dropdown height bumped 72 (18rem ≈ 9 rows) → 96
+          // (24rem ≈ 12 rows) with a vh-cap so big cities can render
+          // many rows on tall viewports. overscroll-contain stops
+          // touch-scrolls from bubbling out to the page once the
+          // listbox is engaged. Touch-action: pan-y ensures touch
+          // gestures actually scroll the listbox instead of being
+          // intercepted by the combobox input.
+          className="absolute z-30 left-0 right-0 mt-1 surface shadow-card-lift max-h-96 sm:max-h-[60vh] overflow-y-auto overscroll-contain touch-pan-y p-1"
           role="listbox"
         >
           {matches.map((m, i) => (

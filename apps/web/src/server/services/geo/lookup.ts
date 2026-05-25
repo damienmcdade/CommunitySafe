@@ -18,15 +18,32 @@ export interface LookupResult {
   rawQuery: string;
 }
 
+// v53 — tighten the loose token-match scoring so a query like
+// "123 Main St San Diego" doesn't fuzzy-match to "Bedford-
+// Stuyvesant East" (NYC) because "st" appears inside "stuy". The
+// prior version awarded score = token.length for any substring
+// hit; tokens of length 2 like "st" and "rd" were the smoking gun.
+// v53 fixes:
+//   - require minimum token length 4 to score (eliminates "st",
+//     "rd", "ave" false positives)
+//   - require WORD-BOUNDARY match (the token has to start a word
+//     in the haystack, not appear mid-word)
+//   - cap final score against the haystack length so an area whose
+//     label simply contains MANY short bits doesn't out-rank a
+//     genuine substring match
 function fuzzyMatch(needle: string, areas: KnownArea[]): KnownArea | null {
   const n = needle.toLowerCase().replace(/[^a-z0-9 ]+/g, "");
   if (!n) return null;
-  const tokens = n.split(/\s+/).filter(Boolean);
+  const tokens = n.split(/\s+/).filter((t) => t.length >= 4);
+  if (tokens.length === 0) return null;
   let best: { area: KnownArea; score: number } | null = null;
   for (const area of areas) {
     const hay = `${area.slug} ${area.label}`.toLowerCase();
     let score = 0;
-    for (const t of tokens) if (hay.includes(t)) score += t.length;
+    for (const t of tokens) {
+      const re = new RegExp(`(^|[^a-z0-9])${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z0-9]|$)`, "i");
+      if (re.test(hay)) score += t.length;
+    }
     if (score > 0 && (!best || score > best.score)) best = { area, score };
   }
   return best?.area ?? null;
@@ -76,19 +93,36 @@ export async function lookupLocation(q: string): Promise<LookupResult | null> {
   // most-recent listKnownAreas() call populated. If the cache is
   // cold, we still try the async load but wrap in a timeout so
   // the lookup endpoint never blocks past ~12s.
+  // v53 — when the input LOOKS like a street address (leading
+  // digit, OR contains a street-suffix keyword), skip fuzzy and
+  // go straight to Nominatim. Fuzzy is for "Pacific Beach"-style
+  // bare neighborhood names; for "1600 Pennsylvania Ave Washington
+  // DC" or "123 Main St San Diego" it produces nonsense (the prior
+  // build matched the SD address to Bedford-Stuyvesant East in NYC
+  // because "st" appeared inside "stuyvesant").
+  const looksLikeAddress = /^\s*\d/.test(trimmed)
+    || /\b(?:st|street|ave|avenue|rd|road|blvd|boulevard|dr|drive|ln|lane|pl|place|ct|court|hwy|highway|pkwy|parkway)\.?\b/i.test(trimmed);
+
   let areas = listKnownAreasSync();
-  if (areas.length < 50) {
-    // Cache is cold or fallback-only — pull fresh but cap the wait
-    // at 12s so the endpoint returns SOMETHING within Vercel's budget.
-    const timeout = new Promise<KnownArea[]>((resolve) =>
-      setTimeout(() => resolve(areas), 12_000));
-    areas = await Promise.race([listKnownAreas(), timeout]);
+  if (!looksLikeAddress) {
+    if (areas.length < 50) {
+      // Cache is cold or fallback-only — pull fresh but cap the wait
+      // at 12s so the endpoint returns SOMETHING within Vercel's budget.
+      const timeout = new Promise<KnownArea[]>((resolve) =>
+        setTimeout(() => resolve(areas), 12_000));
+      areas = await Promise.race([listKnownAreas(), timeout]);
+    }
+    const fuzzy = fuzzyMatch(trimmed, areas);
+    if (fuzzy) return { area: fuzzy, matchedVia: "fuzzy", rawQuery: trimmed };
   }
-  const fuzzy = fuzzyMatch(trimmed, areas);
-  if (fuzzy) return { area: fuzzy, matchedVia: "fuzzy", rawQuery: trimmed };
 
   const geo = await nominatimGeocode(trimmed);
   if (geo) {
+    // Make sure we have a full discovered-area list so the snap-to-
+    // nearest math has the city's polygons to compare against.
+    // listKnownAreas() refreshes the cache; nearestArea reads the
+    // sync (last-known-good) snapshot the listKnownAreas pass writes.
+    if (areas.length < 50) await listKnownAreas().catch(() => []);
     const area = nearestArea(geo);
     if (area) return { area, matchedVia: "geocode", rawQuery: trimmed };
   }
