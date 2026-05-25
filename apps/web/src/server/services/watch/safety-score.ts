@@ -67,7 +67,13 @@ const CFS_CALIBRATION: Record<string, number> = {
   // property dispatches than violent — separate investigation
   // needed before tuning further. Tracked in #154.
   "cleveland":     0.55,
-  "new-orleans":   0.40,
+  // New Orleans 0.40 → 0.80 (v28). Same pattern as Cleveland —
+  // 0.40 scaled NOPD's actual rate (~698/100k violent) down to
+  // 279/100k, ~5× under the FBI baseline of 1361. 0.80 lands
+  // violent at ~558/100k (0.41× baseline, Grade B-ish) and
+  // property at ~4282/100k (0.84× baseline). Plausible signal,
+  // inside the divergence guard.
+  "new-orleans":   0.80,
   "las-vegas":     0.50,
   "boise":         0.30,
 };

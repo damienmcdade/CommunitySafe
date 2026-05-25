@@ -46,8 +46,13 @@ interface SodaRow {
 
 function mapToNibrs(row: SodaRow): CrimeCategory {
   const v = (row.crime_against ?? "").trim().toLowerCase();
-  if (v === "person" || v === "persons") return CrimeCategory.PERSONS;
-  if (v === "property") return CrimeCategory.PROPERTY;
+  // LAPD's NIBRS feed emits a multi-category string when a single
+  // incident spans groups ("Person, Property, Society", 8k+ rows).
+  // The prior exact-match dropped those to SOCIETY; treat any string
+  // that mentions "person" as PERSONS first (most severe), then
+  // "property", so the multi-row's violent component is preserved.
+  if (v.includes("person")) return CrimeCategory.PERSONS;
+  if (v.includes("property")) return CrimeCategory.PROPERTY;
   return CrimeCategory.SOCIETY;
 }
 
