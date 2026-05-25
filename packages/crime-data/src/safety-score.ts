@@ -478,8 +478,17 @@ export async function getCitywideSafetyScore(citySlug: string): Promise<SafetySc
   // a few ms of overhead each. Promise.all collapses N×O(ms) into one
   // round-trip, which matters for cities like Detroit (199 areas) and
   // Oakland (134 areas).
+  // v59 — limit raised 5,000 → 50,000 per area. The prior 5k cap
+  // worked for cities like Detroit (199 areas × few-dozen rows each)
+  // but silently truncated Phoenix's biggest villages (Maryvale at
+  // 26k rows in a 365-day cache, North Mountain at 24k, etc.) to
+  // their 5k most-recent — which collapsed the safety-score's
+  // effective window for that area from 365 days to ~70 days.
+  // Across the city the aggregate count under-stated Phoenix's
+  // Part-1 rate by ~13× vs FBI baseline. 50k is comfortably above
+  // any single area's annual volume in the registry.
   const perArea = await Promise.all(
-    areas.map((a) => crimeData.getIncidents(a.slug, { limit: 5000 }).catch(() => [])),
+    areas.map((a) => crimeData.getIncidents(a.slug, { limit: 50000 }).catch(() => [])),
   );
 
   // ─── STABILITY FIX ──────────────────────────────────────────────────
