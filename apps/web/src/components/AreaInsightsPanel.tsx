@@ -57,7 +57,9 @@ export function AreaInsightsPanel({ areaQueryString }: { areaQueryString: string
             ))}
             {data.trends.length === 0 && (
               <li className="surface-muted p-3 text-xs text-slate2-500 sm:col-span-3">
-                Not enough incidents in the cached window to draw a trend. This is typical for many SD neighborhoods.
+                {/* v64 — was hardcoded "SD neighborhoods" which read
+                    wrong for every other city in the registry. */}
+                Not enough incidents in the cached window to draw a trend. This is typical for many neighborhoods on a quiet week.
               </li>
             )}
           </ul>

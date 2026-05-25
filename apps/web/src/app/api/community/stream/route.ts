@@ -2,6 +2,11 @@ import type { NextRequest } from "next/server";
 import { communityEvents } from "@/server/services/community/events";
 
 export const dynamic = "force-dynamic";
+// v64 — set explicit maxDuration. Without it the function inherits
+// the default and the SSE connection drops with a Vercel Runtime
+// Timeout Error in the logs. 300s (5 min) is well past the heartbeat
+// interval (25s) so clients can reconnect naturally.
+export const maxDuration = 300;
 // Vercel function streaming: keep the connection open for up to ~5 min.
 // In-process EventEmitter only sees events from the same instance; for
 // multi-instance scale, swap for Vercel Queues or Redis pub/sub.

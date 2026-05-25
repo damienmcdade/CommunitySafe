@@ -193,7 +193,10 @@ function TrendReport({ trend, accent, sectionHeadingLevel = 2 }: { trend: TrendR
 
         {dispatchBullets.length === 0 ? (
           <p className="mt-3 text-sm text-slate2-500">
-            No dispatches in the past 30 days for this neighborhood — that&apos;s normal for many areas in any given month.
+            {/* v64 — was hardcoded "past 30 days" even when the window
+                picker was set to 7d / 90d / 180d. User trust hit when
+                the label and the actual window diverged. */}
+            No dispatches in the past {windowDays} days for this neighborhood — that&apos;s normal for many areas in any given month.
           </p>
         ) : (
           <ol className="mt-3 space-y-1.5">

@@ -160,21 +160,24 @@ async function osrmRoute(
 
 interface AreaIntensity { area: KnownArea; intensity: number }
 
-// Time-of-day boundaries for "nighttime" — 8pm to 6am. Routes
-// planned for this window weight incidents that ALSO occurred at
-// night more heavily, on the theory that crime patterns are
-// shift-correlated and a daytime-friendly area can be meaningfully
-// busier after dark. Boundaries are intentionally inclusive of
-// dusk/dawn so 7pm and 6am don't fall in a no-mans-land.
-function isNightHour(hour: number): boolean {
-  return hour >= 20 || hour < 6;
-}
+// v64 — daytime / nighttime crime-curve weighting. Renamed from the
+// prior "now/tonight" UI which was confusing: "now" / "tonight" sound
+// like literal clock times ("right now" vs "later tonight"), but the
+// underlying logic was actually about which time-of-day crime curve
+// to weight. Renaming to daytime/nighttime makes the user choice
+// match the actual computation.
+//   Daytime = 6am-8pm: incidents that occurred in this window get
+//     a 1.2× boost when the user has chosen Daytime travel. Captures
+//     the commercial-corridor crime pattern (afternoon + early
+//     evening peak).
+//   Nighttime = 8pm-6am: incidents in this window get a 1.5× boost
+//     when the user has chosen Nighttime travel. Boost is heavier
+//     than daytime because the nighttime crime curve is more
+//     concentrated (sharp residential spike 2-4am).
+function isDaytimeHour(hour: number): boolean { return hour >= 6 && hour < 20; }
+function isNightHour(hour: number): boolean { return hour >= 20 || hour < 6; }
 
-// Weight multipliers applied per-incident when scoring a route.
-// Defaults to 1.0 (no weighting). Nighttime travel + nighttime
-// incident → 1.5× weight. Active incidents (last 24h) → 2× weight
-// regardless of time-of-travel — recent activity is the strongest
-// signal that an area is currently hot.
+const DAYTIME_INCIDENT_WEIGHT = 1.2;
 const NIGHT_INCIDENT_WEIGHT = 1.5;
 const ACTIVE_INCIDENT_WEIGHT = 2.0;
 const ACTIVE_INCIDENT_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -184,7 +187,9 @@ async function loadCityIntensity(citySlug: string, timeOfTravel?: Date): Promise
   const city = cityBySlug(citySlug);
   if (!city) return [];
   const areas = await city.discover().catch(() => [] as KnownArea[]);
-  const isNightTravel = timeOfTravel ? isNightHour(timeOfTravel.getHours()) : false;
+  const travelHour = timeOfTravel?.getHours();
+  const isDaytimeTravel = travelHour != null && isDaytimeHour(travelHour);
+  const isNightTravel = travelHour != null && isNightHour(travelHour);
   const activeCutoff = Date.now() - ACTIVE_INCIDENT_WINDOW_MS;
   // Pull each area's recent incident count in parallel — the adapter caches
   // the city-wide pull so all 100 areas share one upstream fetch.
@@ -196,12 +201,13 @@ async function loadCityIntensity(citySlug: string, timeOfTravel?: Date): Promise
         let weight = 1;
         const incTime = +new Date(inc.occurredAt);
         if (Number.isFinite(incTime)) {
-          // Nighttime weighting: incident occurred at night AND user
-          // is planning to travel at night → boost.
-          if (isNightTravel) {
-            const incHour = new Date(incTime).getHours();
-            if (isNightHour(incHour)) weight *= NIGHT_INCIDENT_WEIGHT;
-          }
+          const incHour = new Date(incTime).getHours();
+          // Time-of-day curve weighting. Travel time selects which
+          // curve to boost: daytime travel boosts daytime-occurring
+          // incidents (commercial-corridor pattern), nighttime travel
+          // boosts nighttime-occurring incidents (residential spike).
+          if (isDaytimeTravel && isDaytimeHour(incHour)) weight *= DAYTIME_INCIDENT_WEIGHT;
+          else if (isNightTravel && isNightHour(incHour)) weight *= NIGHT_INCIDENT_WEIGHT;
           // Active-incident avoidance: anything in the last 24h
           // gets a 2× boost regardless of travel time. Catches the
           // "shooting on this block tonight" pattern.

@@ -196,7 +196,12 @@ export function NewsPanel({ areaSlug }: { areaSlug?: string }) {
         <p className="mt-3 text-sm text-slate2-500">All sources are hidden. Use the source picker to enable some.</p>
       )}
       {!loading && !error && items.length === 0 && (
-        <p className="mt-3 text-sm text-slate2-500">No matching headlines in the past week for {city.label}. Quiet news is generally good news.</p>
+        <p className="mt-3 text-sm text-slate2-500">
+          {/* v64 — was hardcoded "past week" even when picker was set
+              to 30d / 90d. Now reflects actual selection so trust
+              isn't broken when label and content diverge. */}
+          No matching headlines in {NEWS_WINDOWS.find((w) => w.value === windowDays)?.label.toLowerCase() ?? `the past ${windowDays} days`} for {city.label}. Quiet news is generally good news.
+        </p>
       )}
       {!loading && visibleItems.length > 0 && (
         <>

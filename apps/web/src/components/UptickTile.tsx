@@ -31,10 +31,10 @@ export function UptickTile() {
     <section className="surface p-5 min-h-[180px] flex flex-col">
       <header className="flex items-baseline justify-between flex-wrap gap-1">
         <h2 className="font-display text-lg text-slate2-900">Recent upticks in {city.label}</h2>
-        <span className="text-xs text-slate2-500">7-day vs prior 7</span>
+        <span className="text-xs text-slate2-500">prior 7 days → last 7 days</span>
       </header>
       <p className="mt-1 text-xs text-slate2-500">
-        Neighborhoods where the past week reported notably more incidents than the week before.
+        Neighborhoods where the last 7 days reported notably more incidents than the 7 days before that.
         Click one to drill in.
       </p>
 

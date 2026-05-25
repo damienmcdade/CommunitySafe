@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { rateLimit } from "@/server/lib/rate-limit";
+import { tryProxy } from "@/server/lib/proxy-to-api";
 import { allKnownAreas } from "@/server/services/geo/lookup";
 import { cityBySlug } from "@/server/services/crime-data/cities";
 import { getDiscoveredAreasStale as sdpdStale } from "@travelsafe/crime-data/adapters/sdpd-nibrs";
@@ -28,6 +29,13 @@ const STABLE_CACHE_HEADERS = {
 export async function GET(req: NextRequest) {
   const limited = rateLimit(req, { scope: "geo" });
   if (limited) return limited;
+  // v64 — proxy to Railway. Vercel logs showed recurring 504 timeouts
+  // on /api/geo/areas because city.discover() on a cold Vercel instance
+  // can do a full adapter fetch (5min+ for Cleveland). Railway's warm
+  // cache returns the same data in ms. Fallback to local on Railway
+  // hiccup so this never blocks a user.
+  const proxied = await tryProxy(req, "/geo/areas");
+  if (proxied) return proxied.response;
   const citySlug = req.nextUrl.searchParams.get("city");
   if (citySlug) {
     const city = cityBySlug(citySlug);
