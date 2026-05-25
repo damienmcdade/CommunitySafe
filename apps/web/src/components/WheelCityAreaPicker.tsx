@@ -113,6 +113,23 @@ export function WheelCityAreaPicker({
     // the user explicitly closes it via outside-click or Escape.
   }
 
+  // v49 — Done button now flushes whatever's pending to the global
+  // stores before closing. Bug it fixes: a user could pick a state
+  // (which pre-selects the first live city in pendingCity LOCAL
+  // state but doesn't commit globally), never scroll the city wheel,
+  // tap Done — and the main page would still show the OLD city.
+  // The state wheel deliberately doesn't auto-commit on scroll
+  // because the user might still scrub the city wheel; Done is the
+  // explicit "I'm finished" signal, so it commits here.
+  function commitAndClose() {
+    if (pendingCity !== city.slug) {
+      setCity(pendingCity);
+      // setArea will fire from the cityAreas useEffect once the
+      // new city's areas load.
+    }
+    onCommit?.();
+  }
+
   // Wheel items.
   const stateItems: WheelItem[] = useMemo(
     () => STATES.map((s) => ({
@@ -218,7 +235,7 @@ export function WheelCityAreaPicker({
         {onCommit && (
           <button
             type="button"
-            onClick={() => onCommit()}
+            onClick={commitAndClose}
             className="btn-primary text-sm px-3 py-1.5"
           >
             Done
