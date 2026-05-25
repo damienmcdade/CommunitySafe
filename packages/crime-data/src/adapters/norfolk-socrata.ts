@@ -158,14 +158,25 @@ export async function getDiscoveredAreasNorfolk(): Promise<KnownArea[]> {
     if (!r.area || r.area === "Unknown") continue;
     counts.set(r.area, (counts.get(r.area) ?? 0) + 1);
   }
+  // Drop entries whose name produces an empty slug body (e.g.,
+  // rows where neighborhd is "." or other punctuation-only — Norfolk's
+  // feed has a handful that survived the IS NOT NULL filter).
+  // Bug surfaced in v42 e2e sweep as {slug:"nor-",label:"."} in
+  // /api/geo/areas.
   return Array.from(counts.entries())
     .filter(([, n]) => n >= 3)
-    .map(([name]) => ({
-      slug: `nor-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`,
-      label: name,
-      jurisdiction: "Norfolk",
-      centroid: NORFOLK_CENTROID,
-    }))
+    .map(([name]) => {
+      const slugBody = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      return {
+        slug: `nor-${slugBody}`,
+        label: name,
+        jurisdiction: "Norfolk",
+        centroid: NORFOLK_CENTROID,
+        _slugBody: slugBody,
+      };
+    })
+    .filter((a) => a._slugBody.length > 0)
+    .map(({ _slugBody, ...rest }) => { void _slugBody; return rest; })
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 

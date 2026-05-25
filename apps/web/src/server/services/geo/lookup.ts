@@ -1,4 +1,4 @@
-import { findArea, nearestArea, listKnownAreas, type KnownArea } from "../crime-data/neighborhoods";
+import { findArea, nearestArea, listKnownAreas, listKnownAreasSync, type KnownArea } from "../crime-data/neighborhoods";
 
 const SD_ZIP_TO_AREA: Record<string, string> = {
   "92101": "downtown-sd",
@@ -56,10 +56,12 @@ export async function lookupLocation(q: string): Promise<LookupResult | null> {
   const trimmed = q.trim();
   if (!trimmed) return null;
 
-  // Always pull the discovered list so we can match against the full ~100+
-  // SDPD-known neighborhoods, not just the small hardcoded fallback.
-  const areas = await listKnownAreas();
-
+  // Try the cheap matches first BEFORE doing the heavy 30-adapter
+  // listKnownAreas() fan-out. exact + zip + nominatim hit synchronous
+  // tables or a single HTTP call; they complete in <500ms. Only fall
+  // back to the full discovery list for the fuzzy-match path.
+  // Previously this loaded the full list up-front and routinely
+  // exceeded the 30s Vercel timeout on cold cache.
   const exact = findArea(trimmed);
   if (exact) return { area: exact, matchedVia: "exact", rawQuery: trimmed };
 
@@ -69,6 +71,19 @@ export async function lookupLocation(q: string): Promise<LookupResult | null> {
     if (area) return { area, matchedVia: "zip", rawQuery: trimmed };
   }
 
+  // Only now pull the discovered list for fuzzy matching. Use the
+  // sync (last-known-good) variant first — it returns whatever the
+  // most-recent listKnownAreas() call populated. If the cache is
+  // cold, we still try the async load but wrap in a timeout so
+  // the lookup endpoint never blocks past ~12s.
+  let areas = listKnownAreasSync();
+  if (areas.length < 50) {
+    // Cache is cold or fallback-only — pull fresh but cap the wait
+    // at 12s so the endpoint returns SOMETHING within Vercel's budget.
+    const timeout = new Promise<KnownArea[]>((resolve) =>
+      setTimeout(() => resolve(areas), 12_000));
+    areas = await Promise.race([listKnownAreas(), timeout]);
+  }
   const fuzzy = fuzzyMatch(trimmed, areas);
   if (fuzzy) return { area: fuzzy, matchedVia: "fuzzy", rawQuery: trimmed };
 
