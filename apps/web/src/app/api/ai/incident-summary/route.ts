@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { wrap } from "@/server/lib/http";
+import { tryProxy } from "@/server/lib/proxy-to-api";
 import { generateIncidentSummary } from "@/server/services/ai/incident-summary";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,10 @@ const CACHE_HEADERS = {
 /// when the LLM is unavailable, so the UI can render a useful
 /// summary card either way.
 export const GET = wrap(async (req: NextRequest) => {
+  // v38: prefer Railway when API_BASE_URL is set.
+  const proxied = await tryProxy(req, "/ai/incident-summary");
+  if (proxied) return proxied.response;
+
   const area = req.nextUrl.searchParams.get("area");
   const citySlug = req.nextUrl.searchParams.get("city");
   const windowDaysRaw = req.nextUrl.searchParams.get("windowDays");

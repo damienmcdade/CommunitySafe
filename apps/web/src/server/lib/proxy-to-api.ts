@@ -19,7 +19,7 @@ interface ProxyResult {
 }
 
 export async function tryProxy(
-  req: { nextUrl: URL },
+  req: { nextUrl: URL; headers: { get(name: string): string | null } },
   upstreamPath: string,
 ): Promise<ProxyResult | null> {
   if (!env.API_BASE_URL) return null;
@@ -28,12 +28,20 @@ export async function tryProxy(
   // semantics round-trip unchanged.
   req.nextUrl.searchParams.forEach((v, k) => url.searchParams.set(k, v));
 
+  // Forward the Authorization header (anon-auth JWT) so Railway's
+  // requireAuth / optionalAuth middleware sees the same identity the
+  // Vercel handler would have. Cookies stay on Vercel — the Railway
+  // API doesn't use them.
+  const upstreamHeaders: Record<string, string> = { Accept: "application/json" };
+  const auth = req.headers.get("authorization");
+  if (auth) upstreamHeaders["Authorization"] = auth;
+
   const controller = new AbortController();
   const to = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
     const upstream = await fetch(url.toString(), {
       method: "GET",
-      headers: { Accept: "application/json" },
+      headers: upstreamHeaders,
       signal: controller.signal,
     });
     if (!upstream.ok) {
