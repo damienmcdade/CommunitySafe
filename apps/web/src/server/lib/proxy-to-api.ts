@@ -12,7 +12,12 @@ import { env } from "./env";
 //   if (proxied) return proxied;
 //   // ...local fallback path
 
-const TIMEOUT_MS = 25_000;
+// 55s leaves ~5s headroom inside Vercel's 60s function max. Citywide
+// safety-score on the biggest cities (Detroit 199 areas, KC 145
+// areas) can take 30-40s on a cold cache, so the original 25s
+// timeout was tripping the divergence-guard path even when Railway
+// was healthy.
+const TIMEOUT_MS = 55_000;
 
 interface ProxyResult {
   response: NextResponse;
