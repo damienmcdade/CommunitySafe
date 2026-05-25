@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { prisma } from "../../lib/prisma";
 import { HttpError } from "../../lib/http";
 import { sendEmail } from "../notifications/email";
+import { sendSms } from "../notifications/sms";
 import { env } from "../../lib/env";
 
 function buildShareUrl(token: string) {
@@ -9,7 +10,28 @@ function buildShareUrl(token: string) {
   return `${base.replace(/\/$/, "")}/share/${token}`;
 }
 
-export async function createLiveShare(userId: string, opts: { durationMinutes: number; contactEmail?: string }) {
+// v47 — classify the contact field as email, phone, or unknown so
+// the same input box accepts either. "alice@example.com" → email;
+// "+14155551212" / "(415) 555-1212" / "4155551212" → phone
+// (normalized to E.164 for Twilio).
+function classifyContact(raw: string): { kind: "email" | "phone" | "unknown"; value: string } {
+  const trimmed = raw.trim();
+  if (!trimmed) return { kind: "unknown", value: trimmed };
+  if (trimmed.includes("@")) return { kind: "email", value: trimmed };
+  const digits = trimmed.replace(/[^\d+]/g, "");
+  if (/^\+?\d{7,15}$/.test(digits)) {
+    const e164 = digits.startsWith("+")
+      ? digits
+      : (digits.length === 10 ? `+1${digits}` : `+${digits}`);
+    return { kind: "phone", value: e164 };
+  }
+  return { kind: "unknown", value: trimmed };
+}
+
+export async function createLiveShare(
+  userId: string,
+  opts: { durationMinutes: number; contact?: string; contactEmail?: string },
+) {
   if (opts.durationMinutes < 5 || opts.durationMinutes > 240) {
     throw new HttpError(400, "duration_out_of_range", "Duration must be 5–240 minutes");
   }
@@ -18,14 +40,41 @@ export async function createLiveShare(userId: string, opts: { durationMinutes: n
   const link = await prisma.liveShareLink.create({
     data: { userId, token, expiresAt },
   });
-  if (opts.contactEmail) {
-    await sendEmail(
-      opts.contactEmail,
-      "CommunitySafe — your contact is sharing their location",
-      `A CommunitySafe user is sharing their live location with you until ${expiresAt.toISOString()}.\n\nOpen: ${buildShareUrl(token)}\n\nThe link will stop working at expiry, or sooner if revoked.`,
-    );
+  // v47 — delivery status now surfaced to UI. Prior code awaited
+  // sendEmail without checking its result; the nodemailer
+  // jsonTransport fallback (used when SMTP_URL is unset) silently
+  // swallowed every message → users got 201 back with nothing
+  // actually sent. That's the "links not sending to inputted email"
+  // complaint.
+  let delivery: { kind: "email" | "phone" | null; sent: boolean; reason?: string } = {
+    kind: null,
+    sent: false,
+  };
+  // contactEmail (legacy field) + contact (v47 unified) both accepted.
+  const contactRaw = (opts.contact ?? opts.contactEmail ?? "").trim();
+  if (contactRaw) {
+    const c = classifyContact(contactRaw);
+    const url = buildShareUrl(token);
+    const msg =
+      `CommunitySafe: your contact is sharing their live location with you ` +
+      `until ${expiresAt.toLocaleString()}. ` +
+      `Open ${url} — the link stops working at expiry, or sooner if revoked.`;
+    const subject = "CommunitySafe — your contact is sharing their location";
+    if (c.kind === "email") {
+      const r = await sendEmail(c.value, subject, msg);
+      delivery = { kind: "email", sent: r.ok, reason: r.reason };
+    } else if (c.kind === "phone") {
+      const r = await sendSms(c.value, msg);
+      delivery = {
+        kind: "phone",
+        sent: r.ok,
+        reason: r.skipped ? "sms_not_configured" : r.status ? `status_${r.status}` : undefined,
+      };
+    } else {
+      delivery = { kind: null, sent: false, reason: "contact_not_recognized" };
+    }
   }
-  return { id: link.id, token, expiresAt, shareUrl: buildShareUrl(token) };
+  return { id: link.id, token, expiresAt, shareUrl: buildShareUrl(token), delivery };
 }
 
 export async function revokeLiveShare(userId: string, id: string) {

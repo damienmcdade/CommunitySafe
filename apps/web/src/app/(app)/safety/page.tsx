@@ -460,8 +460,8 @@ function LiveSharePanel() {
   });
 
   const [duration, setDuration] = useState(30);
-  const [contactEmail, setContactEmail] = useState("");
-  const [lastShare, setLastShare] = useState<{ shareUrl: string; expiresAt: string } | null>(null);
+  const [contact, setContact] = useState("");
+  const [lastShare, setLastShare] = useState<{ shareUrl: string; expiresAt: string; delivery?: { kind: "email" | "phone" | null; sent: boolean; reason?: string } } | null>(null);
   const [createBusy, setCreateBusy] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
 
@@ -469,9 +469,13 @@ function LiveSharePanel() {
     if (!signedIn || createBusy) return;
     setCreateBusy(true);
     try {
-      const r = await api<{ shareUrl: string; expiresAt: string }>("/safety/live-share", {
+      // v47 — accepts email OR phone in one input field. The server
+      // classifies + routes to SMTP / Twilio + surfaces a delivery
+      // object back so we can show "sent" vs "saved but not delivered"
+      // instead of the prior silent-success behavior.
+      const r = await api<{ shareUrl: string; expiresAt: string; delivery?: { kind: "email" | "phone" | null; sent: boolean; reason?: string } }>("/safety/live-share", {
         method: "POST",
-        body: JSON.stringify({ durationMinutes: duration, contactEmail: contactEmail || undefined }),
+        body: JSON.stringify({ durationMinutes: duration, contact: contact || undefined }),
       });
       setLastShare(r);
       await reload();
@@ -508,8 +512,18 @@ function LiveSharePanel() {
           />
         </label>
         <label className="text-sm sm:col-span-2">
-          Send link to email (optional)
-          <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} className="mt-1 input" />
+          Send link to email or phone (optional)
+          <input
+            type="text"
+            inputMode="text"
+            value={contact}
+            onChange={(e) => setContact(e.target.value)}
+            placeholder="alice@example.com or +1 415 555 1212"
+            className="mt-1 input"
+          />
+          <p className="mt-1 text-[11px] text-slate2-500">
+            Email: SMTP delivery · Phone: SMS via Twilio. Either works in this field.
+          </p>
         </label>
         <button
           onClick={create}
@@ -524,9 +538,28 @@ function LiveSharePanel() {
       )}
 
       {lastShare && (
-        <div className="mt-4 surface-muted p-4 text-sm">
+        <div className="mt-4 surface-muted p-4 text-sm space-y-2">
           <div className="text-slate2-700">Share link (expires {new Date(lastShare.expiresAt).toLocaleString()})</div>
-          <code className="block mt-1 break-all">{lastShare.shareUrl}</code>
+          <code className="block break-all">{lastShare.shareUrl}</code>
+          {lastShare.delivery && lastShare.delivery.kind && (
+            lastShare.delivery.sent ? (
+              <p className="text-xs text-sage-700">
+                ✓ Sent via {lastShare.delivery.kind === "email" ? "email" : "SMS"}.
+              </p>
+            ) : (
+              <p className="text-xs text-amber2-700">
+                Link saved but {lastShare.delivery.kind === "email" ? "email" : "SMS"} couldn&apos;t be sent
+                {lastShare.delivery.reason === "smtp_not_configured" ? " — SMTP not configured on the server." :
+                 lastShare.delivery.reason === "sms_not_configured" ? " — Twilio not configured on the server." :
+                 lastShare.delivery.reason ? ` (${lastShare.delivery.reason}).` : "."} You can still copy the link above and share it manually.
+              </p>
+            )
+          )}
+          {lastShare.delivery && !lastShare.delivery.kind && lastShare.delivery.reason === "contact_not_recognized" && (
+            <p className="text-xs text-amber2-700">
+              Couldn&apos;t recognize the contact as an email or phone number. The link is saved — copy it manually above.
+            </p>
+          )}
         </div>
       )}
 
