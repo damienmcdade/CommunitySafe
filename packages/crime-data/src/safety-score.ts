@@ -405,8 +405,15 @@ function headlineForCity(grade: SafetyScoreResponse["grade"], cityLabel: string,
   // That mis-attribution made NOLA (grade B vs city baseline) sound
   // like it had below-national crime, when in reality NOLA's rate is
   // well above national but below NOLA's typical historical baseline.
+  //
+  // v50 — strip the redundant "(citywide)" suffix from the anchor
+  // possessive so the headline reads "New Orleans (citywide) reports
+  // below New Orleans's typical FBI-published rate" instead of the
+  // doubled "New Orleans (citywide) reports below New Orleans
+  // (citywide)'s typical FBI-published rate" form.
+  const anchorCity = cityLabel.replace(/\s*\(citywide\)\s*$/i, "");
   const anchorLabel = anchor === "city-fbi"
-    ? `${cityLabel}'s typical FBI-published rate`
+    ? `${anchorCity}'s typical FBI-published rate`
     : "the FBI national rate";
   switch (grade) {
     case "A": return `${cityLabel} reports lower per-capita rates than ${anchorLabel}.`;
