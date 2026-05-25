@@ -8,6 +8,7 @@ import {
   getTrendForArea,
   getCitywideTrend,
 } from "@travelsafe/crime-data/trend-feed";
+import { getRedis } from "../lib/redis.js";
 
 export const safezoneRouter = Router();
 
@@ -46,7 +47,28 @@ safezoneRouter.get("/safety-score", async (req, res, next) => {
     const { city, area, label } = ScoreQuery.parse(req.query);
     // Cache-Control mirrors the Vercel edge cache so a CDN in front
     // of Railway (Cloudflare etc.) can reuse the same posture.
-    res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=900");
+    res.setHeader("Cache-Control", "public, max-age=60, s-maxage=300, stale-while-revalidate=900");
+
+    // v69 — Redis L2 fast path for citywide requests. The warm-worker
+    // persists getCitywideSafetyScore results to Redis on every cycle
+    // (30min TTL); reading from Redis here is ~5-10ms vs the 50-200ms
+    // in-process aggregation, AND survives container restart (the
+    // previously-painful Cleveland cold start now lands in a few ms
+    // if the prior container's warm-cycle ran before the deploy).
+    // Per-area /safety-score?area= still falls through to compute
+    // because there are too many area variants to cache eagerly.
+    if (city) {
+      const redis = getRedis();
+      if (redis) {
+        try {
+          const cached = await redis.get(`citywide:${city}`);
+          if (cached) return res.json(JSON.parse(cached));
+        } catch {
+          // Redis fail-soft — fall through to compute below
+        }
+      }
+    }
+
     const result = city
       ? await withScoreTimeout(getCitywideSafetyScore(city))
       : await withScoreTimeout(getSafetyScore(area!, label ?? area!));

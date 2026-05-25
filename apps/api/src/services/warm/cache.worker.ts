@@ -2,6 +2,16 @@ import { CITIES } from "@travelsafe/crime-data/cities";
 import { crimeData } from "@travelsafe/crime-data/dispatcher";
 import { getCitywideSafetyScore } from "@travelsafe/crime-data/safety-score";
 import { getCitywideTrend } from "@travelsafe/crime-data/trend-feed";
+import { getRedis } from "../../lib/redis.js";
+
+// v69 — Redis L2 cache for warm-worker-computed citywide responses.
+// Eliminates the 5-min cold-start cost on Railway container restart:
+// when a new container boots, the L1 (in-process) cache is empty,
+// but Redis still has the prior warm-worker's serialized results.
+// Routes that check Redis first get an instant hit; the worker
+// continues populating in-process cache in the background.
+const REDIS_KEY_PREFIX = "citywide:";
+const REDIS_TTL_SECONDS = 30 * 60; // 30min — well past the 4-min cycle
 
 // v57 — periodic cache warmer for the heaviest cities. The adapter
 // cache TTL is 5 minutes; without continuous warming, every cold-
@@ -38,11 +48,32 @@ const HEAVY_CITIES = [
 
 async function warmCity(slug: string) {
   const start = Date.now();
-  await Promise.allSettled([
+  // v69 — capture the safety-score result and persist to Redis so route
+  // handlers can serve cold-start requests in <10ms (Redis round-trip)
+  // instead of recomputing per-area aggregation (50-200ms) or worse,
+  // re-fetching the upstream adapter (5min on Cleveland cold). Other
+  // calls (getCitywide, getCitywideTrend) just warm the in-process
+  // cache as before; their payloads are too large for cheap Redis
+  // serialization on every cycle.
+  const [, scoreResult] = await Promise.allSettled([
     crimeData.getCitywide(slug),
     getCitywideSafetyScore(slug),
     getCitywideTrend(slug),
   ]);
+  if (scoreResult.status === "fulfilled" && scoreResult.value) {
+    const redis = getRedis();
+    if (redis) {
+      try {
+        await redis.setex(`${REDIS_KEY_PREFIX}${slug}`, REDIS_TTL_SECONDS, JSON.stringify(scoreResult.value));
+      } catch (err) {
+        // Redis hiccup is non-fatal — in-process cache is still warm
+        // for the route to fall back on.
+        if (process.env.NODE_ENV !== "production") {
+          console.warn(`[warm-worker] redis cache write failed for ${slug}:`, (err as Error).message);
+        }
+      }
+    }
+  }
   return Date.now() - start;
 }
 
