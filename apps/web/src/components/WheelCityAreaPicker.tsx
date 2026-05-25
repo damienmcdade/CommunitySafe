@@ -32,17 +32,23 @@ export function WheelCityAreaPicker({
   const { city, setCity } = useCity();
   const { area, setArea } = useArea(city.slug);
 
-  // Pending city — lets the user scroll the city wheel without
-  // immediately swapping the page. Only commits on "Use this
-  // selection". Pending area is similarly local until commit so the
-  // user can scrub freely.
+  // Auto-commit model (v23): each wheel settle commits immediately
+  // to the global useCity / useArea stores. The prior pending+button
+  // flow felt broken to users because scrolling the wheel appeared
+  // to do nothing until they noticed the "Use this selection" button
+  // below — which the v23 audit confirmed several users missed
+  // entirely. With auto-commit the slider behaves like every other
+  // wheel UX they've seen (iOS date picker, Android NumberPicker).
+  //
+  // Trade-off accepted: city changes mid-scrub trigger a page-data
+  // refetch underneath. We still keep a transient `pendingCity`
+  // state so the area wheel can populate the new city's
+  // neighborhoods before the user finishes browsing — the city
+  // change commits the moment the city wheel settles, then the
+  // first area in the new list auto-commits a tick later.
   const [pendingCity, setPendingCity] = useState<string>(city.slug);
-  const [pendingArea, setPendingArea] = useState<string | null>(area?.slug ?? null);
 
-  // Reset pending state if the global city changes underneath us
-  // (e.g., user picks via City Selector header pill).
   useEffect(() => { setPendingCity(city.slug); }, [city.slug]);
-  useEffect(() => { setPendingArea(area?.slug ?? null); }, [area?.slug]);
 
   const pendingCityInfo = CITIES.find((c) => c.slug === pendingCity) ?? city;
 
@@ -57,14 +63,33 @@ export function WheelCityAreaPicker({
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [areasResp, pendingCityInfo.label]);
 
-  // When the city changes (pending or committed), default the
-  // pending area to the first one in the list so the right wheel
-  // has a valid landing position.
+  // Auto-commit city on wheel settle, AND auto-commit the first
+  // area in the new city if the user hasn't picked one yet (so the
+  // Neighborhood Awareness page is never stuck on a "Pick one"
+  // empty state after a city change).
+  function handleCityChange(slug: string) {
+    setPendingCity(slug);
+    if (slug !== city.slug) setCity(slug);
+  }
+
+  // Auto-commit the first area of a new city as soon as the area
+  // list loads, so users who picked a city never see "no area
+  // selected" downstream. Only fires when the current area doesn't
+  // belong to the now-selected city.
   useEffect(() => {
     if (cityAreas.length === 0) return;
-    if (pendingArea && cityAreas.some((a) => a.slug === pendingArea)) return;
-    setPendingArea(cityAreas[0].slug);
-  }, [cityAreas, pendingArea]);
+    const current = area?.slug ?? null;
+    if (current && cityAreas.some((a) => a.slug === current)) return;
+    const first = cityAreas[0];
+    setArea({ slug: first.slug, label: first.label, jurisdiction: first.jurisdiction });
+  }, [cityAreas, area?.slug, setArea]);
+
+  function handleAreaChange(slug: string) {
+    const picked = cityAreas.find((a) => a.slug === slug);
+    if (!picked) return;
+    setArea({ slug: picked.slug, label: picked.label, jurisdiction: picked.jurisdiction });
+    onCommit?.();
+  }
 
   const cityItems: WheelItem[] = useMemo(
     () => [...CITIES]
@@ -87,19 +112,6 @@ export function WheelCityAreaPicker({
     [cityAreas],
   );
 
-  const dirty = pendingCity !== city.slug || pendingArea !== (area?.slug ?? null);
-
-  function commit() {
-    if (pendingCity !== city.slug) setCity(pendingCity);
-    if (pendingArea) {
-      const picked = cityAreas.find((a) => a.slug === pendingArea);
-      if (picked) {
-        setArea({ slug: picked.slug, label: picked.label, jurisdiction: picked.jurisdiction });
-      }
-    }
-    onCommit?.();
-  }
-
   // Compact mode is for the header dropdown — drop the framing
   // <section>, tighten gaps, smaller wheels. Default mode is for
   // in-page placement on Neighborhood Awareness.
@@ -119,7 +131,7 @@ export function WheelCityAreaPicker({
           <WheelPicker
             items={cityItems}
             value={pendingCity}
-            onChange={setPendingCity}
+            onChange={handleCityChange}
             ariaLabel="City"
             height={wheelHeight}
             rowHeight={wheelRow}
@@ -140,8 +152,8 @@ export function WheelCityAreaPicker({
           ) : (
             <WheelPicker
               items={areaItems}
-              value={pendingArea ?? areaItems[0]?.value ?? ""}
-              onChange={setPendingArea}
+              value={area?.slug ?? areaItems[0]?.value ?? ""}
+              onChange={handleAreaChange}
               ariaLabel="Neighborhood"
               height={wheelHeight}
               rowHeight={wheelRow}
@@ -152,18 +164,9 @@ export function WheelCityAreaPicker({
         </div>
       </div>
 
-      <div className={`mt-3 flex items-center justify-between gap-2 flex-wrap ${compact ? "text-[11px]" : ""}`}>
-        <p className="text-[11px] text-slate2-500">
-          Scroll freely — commits only when you tap the button.
-        </p>
-        <button
-          onClick={commit}
-          disabled={!dirty || !pendingArea}
-          className="btn-primary text-sm px-3 py-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          Use this selection
-        </button>
-      </div>
+      <p className={`mt-3 text-[11px] text-slate2-500 text-center ${compact ? "text-[10px]" : ""}`}>
+        Selection commits the moment each wheel settles. Switch states from the State pill in the header.
+      </p>
     </>
   );
 

@@ -8,7 +8,6 @@ import { useCity } from "@/lib/use-city";
 import { useArea } from "@/lib/use-area";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { DataProvenanceBanner, type ProvenanceLike } from "@/components/DataProvenanceBanner";
-import { WheelCityAreaPicker } from "@/components/WheelCityAreaPicker";
 import { LiveActivityBadge } from "@/components/LiveActivityBadge";
 import { TimeOfDayCard } from "@/components/TimeOfDayCard";
 import { NewsPanel } from "@/components/NewsPanel";
@@ -173,24 +172,24 @@ function NeighborhoodView() {
         <LiveActivityBadge />
       </header>
 
-      {/* Wheel-style city + neighborhood picker — replaces the
-          LocationSearch typed input per v7 directive. Two wheels,
-          wrapped labels, commit-on-click so users can scrub freely. */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <div className="lg:col-span-2">
-          <WheelCityAreaPicker />
-        </div>
-        <div className="surface p-4 flex flex-col gap-2 text-sm">
-          <button onClick={useMyLocation} disabled={locBusy} className="btn-primary disabled:opacity-60 disabled:cursor-wait">
-            {locBusy ? "Locating…" : "Use my location"}
-          </button>
-          <button onClick={enableNotifications} disabled={pushBusy} className="btn-secondary disabled:opacity-60 disabled:cursor-wait">
-            {pushBusy ? "Subscribing…" : "Enable notifications"}
-          </button>
-          {pushStatus && <p className="text-xs text-slate2-500">{pushStatus}</p>}
-          {locStatus && <p className="text-xs text-sage-700">{locStatus}</p>}
-          {locError && <p className="text-xs text-amber2-700">{locError}</p>}
-          <p className="text-xs text-slate2-500">Notifications default to a once-daily digest.</p>
+      {/* v23: standalone WheelCityAreaPicker removed from this page.
+          Selection is now SOLELY driven by the City pill in the header,
+          which embeds the same picker in compact mode. The header is
+          the single source of truth so changes propagate consistently
+          to /city, /map, /watch, /community without divergent
+          selectors. Only the actions column stays here. */}
+      <div className="surface p-4 flex flex-col sm:flex-row gap-2 text-sm">
+        <button onClick={useMyLocation} disabled={locBusy} className="btn-primary disabled:opacity-60 disabled:cursor-wait">
+          {locBusy ? "Locating…" : "Use my location"}
+        </button>
+        <button onClick={enableNotifications} disabled={pushBusy} className="btn-secondary disabled:opacity-60 disabled:cursor-wait">
+          {pushBusy ? "Subscribing…" : "Enable notifications"}
+        </button>
+        <div className="text-xs text-slate2-500 sm:ml-auto sm:self-center">
+          {pushStatus && <p>{pushStatus}</p>}
+          {locStatus && <p className="text-sage-700">{locStatus}</p>}
+          {locError && <p className="text-amber2-700">{locError}</p>}
+          {!pushStatus && !locStatus && !locError && <p>Change city + neighborhood from the header. Notifications default to a once-daily digest.</p>}
         </div>
       </div>
 
