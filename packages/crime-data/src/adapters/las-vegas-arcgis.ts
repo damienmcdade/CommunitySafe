@@ -26,10 +26,13 @@ const PAGE_SIZE = 2000;
 // inflation) — deeper cache reduces that.
 // v72 bump 15 → 40. Pre-rollout audit caught LV serving
 // windowDays=21 (CONF_LOW) because 30k records from a high-volume
-// CFS feed only covered ~3 weeks. 40 pages = 80k records gives
-// ~60-90 days of coverage at LV's daily volume, lifting confidence
-// to "medium"/"high" and stabilizing the grade.
-const PAGES = 40;
+// CFS feed only covered ~3 weeks.
+// v73 — paired with date-bounded `where` clause (Event_Date >= now-90d).
+// At PAGES=40 the resulting window was 49d; LV daily volume is high
+// enough that even 80k records hit the row cap before the 90d boundary.
+// Bumped to 90 pages (180k records ≈ ~100 days at observed volume) to
+// fully clear the SHORT_WINDOW grade-sanity flag (<60d).
+const PAGES = 90;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
 
