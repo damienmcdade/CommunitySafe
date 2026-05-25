@@ -586,12 +586,50 @@ export async function getCitywideSafetyScore(citySlug: string): Promise<SafetySc
   // Charlotte, Nashville, Minneapolis, Las Vegas, Tucson — ORI
   // lookup pending), fall back to the legacy vs-national grader.
   const cityLabel = `${city.label} (citywide)`;
-  const confidence = computeDataConfidence(windowDays, persons + property, pop, cfsScale);
+  let confidence = computeDataConfidence(windowDays, persons + property, pop, cfsScale);
   const fbiBaseline = CITY_FBI_BASELINES[city.slug];
   const rawGrade = fbiBaseline
     ? gradeFromCityFbiBaseline(rows, fbiBaseline)
     : gradeFromNationalDeltas(rows);
-  const grade = gradeWithNullGuard(rawGrade, persons + property, confidence.dataConfidence);
+  let grade = gradeWithNullGuard(rawGrade, persons + property, confidence.dataConfidence);
+
+  // Calibration divergence guard (v25 audit fix). The score audit
+  // caught several cities reporting an A or B grade despite being
+  // among the highest-crime cities in the US — root cause: the
+  // adapter's annualized rate diverges from the FBI baseline by 3×
+  // or more in EITHER direction (under-count from a narrow Part-1
+  // filter, over-count from CFS data with the wrong calibration
+  // factor, or missing pop/window data). In those cases we refuse
+  // to assign a letter grade and surface a clear "calibration in
+  // progress" note instead of telling a Detroit user "Grade A".
+  if (fbiBaseline) {
+    const personsRow = rows.find((r) => r.category === "PERSONS");
+    const propertyRow = rows.find((r) => r.category === "PROPERTY");
+    const divergence: number[] = [];
+    if (personsRow && fbiBaseline.violent > 0 && personsRow.localPer100k > 0) {
+      divergence.push(personsRow.localPer100k / fbiBaseline.violent);
+    }
+    if (propertyRow && fbiBaseline.property > 0 && propertyRow.localPer100k > 0) {
+      divergence.push(propertyRow.localPer100k / fbiBaseline.property);
+    }
+    const worst = divergence.length > 0
+      ? Math.max(...divergence.map((d) => d > 1 ? d : 1 / d))
+      : 1;
+    if (worst >= 3) {
+      grade = "N/A";
+      confidence = {
+        ...confidence,
+        dataConfidence: "low",
+        dataConfidenceNote:
+          `${city.label}'s adapter rate diverges ${worst.toFixed(1)}× from the FBI ${fbiBaseline.year} ` +
+          `published baseline. Likely causes: narrow Part-1 filter, ` +
+          `wrong CFS calibration, or a population denominator mismatch. ` +
+          `Grade is suppressed to avoid misleading users until the ` +
+          `calibration lands.`,
+      };
+    }
+  }
+
   const headline = headlineForCity(grade, cityLabel);
 
   return {
