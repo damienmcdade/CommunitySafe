@@ -70,8 +70,13 @@ export function HotspotCard({
       <ol className="mt-3 space-y-2 text-sm">
         {hot.map((a) => {
           const pct = (a.incidentCount / max) * 100;
-          const dominant = (Object.entries(a.byCategory) as Array<[string, number]>)
-            .sort((x, y) => y[1] - x[1])[0]?.[0] ?? "—";
+          // v67 — guard against the empty-byCategory case. The prior
+          // fallback rendered as "100 incidents · —" (incomplete
+          // thought, looked broken). Now reads "100 incidents · mixed"
+          // when no single category dominates.
+          const dominantRaw = (Object.entries(a.byCategory) as Array<[string, number]>)
+            .sort((x, y) => y[1] - x[1])[0]?.[0];
+          const dominant = dominantRaw ? dominantRaw.toLowerCase() : "mixed offenses";
           const Wrap = onPickArea ? "button" : "div";
           return (
             <li key={a.slug}>
@@ -81,7 +86,7 @@ export function HotspotCard({
               >
                 <div className="flex items-baseline justify-between gap-3">
                   <span className={`text-slate2-900 ${onPickArea ? "group-hover:text-bay-700 transition-colors" : ""}`}>{a.label}</span>
-                  <span className="text-xs text-slate2-500 tabular-nums">{a.incidentCount.toLocaleString()} · {dominant.toLowerCase()}</span>
+                  <span className="text-xs text-slate2-500 tabular-nums">{a.incidentCount.toLocaleString()} · {dominant}</span>
                 </div>
                 <div className="mt-1 h-1.5 rounded-full bg-sand-100 overflow-hidden">
                   <div className="h-full bg-bay-500 transition-all duration-500" style={{ width: `${pct}%` }} />

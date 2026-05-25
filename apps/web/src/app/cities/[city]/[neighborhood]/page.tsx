@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { cityBySlug } from "@/server/services/crime-data/cities";
 import { getSafetyScore } from "@/server/services/watch/safety-score";
 import { getTrendForArea } from "@/server/services/watch/trend-feed";
+import { FBI_DATA_YEAR, FBI_DATA_LABEL } from "@/lib/data-vintage";
 
 interface Props {
   params: Promise<{ city: string; neighborhood: string }>;
@@ -27,7 +28,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!area) return { title: "Not found" };
   return {
     title: `${area.label}, ${city.label} safety overview`,
-    description: `Recent police-feed safety data for ${area.label} in ${city.label}, compared to the FBI Crime Data Explorer 2025 national average. Updated hourly.`,
+    description: `Recent police-feed safety data for ${area.label} in ${city.label}, compared to the ${FBI_DATA_LABEL} national average. Updated hourly.`,
     alternates: { canonical: `/cities/${citySlug}/${areaSlug}` },
     openGraph: {
       title: `${area.label}, ${city.label} · Safety overview · CommunitySafe`,
@@ -116,7 +117,7 @@ export default async function NeighborhoodLandingPage({ params }: Props) {
         <h1 className="mt-1 font-display text-3xl text-slate2-900">{area.label}, {city.label}</h1>
         <p className="mt-2 text-sm text-slate2-700 max-w-2xl">
           Recent police-feed safety data for {area.label} in {city.label}, compared to the
-          FBI Crime Data Explorer 2025 national average. Sourced directly from the {city.label} police open-data feed.
+          ${FBI_DATA_LABEL} national average. Sourced directly from the {city.label} police open-data feed.
         </p>
       </header>
 

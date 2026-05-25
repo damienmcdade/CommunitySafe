@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import { cityBySlug } from "@/server/services/crime-data/cities";
+import { FBI_DATA_YEAR, FBI_DATA_LABEL } from "@/lib/data-vintage";
 
 /// Programmatic OG image for /cities/[city]. Renders at edge per request,
 /// then cached at Vercel's edge for `revalidate` seconds. Each share of a
@@ -39,7 +40,7 @@ export default async function CityOgImage({ params }: { params: { city: string }
         <div style={{ display: "flex", flexDirection: "column", flex: 1, justifyContent: "center" }}>
           <div style={{ fontSize: 96, fontWeight: 700, lineHeight: 1.05 }}>{label}</div>
           <div style={{ fontSize: 32, marginTop: 20, opacity: 0.9, maxWidth: 920 }}>
-            Neighborhood-level safety data compared to the FBI Crime Data Explorer 2025 national average.
+            Neighborhood-level safety data compared to the ${FBI_DATA_LABEL} national average.
           </div>
         </div>
         <div

@@ -127,11 +127,15 @@ export function BlockScoreWidget({ score, loading, unavailable, contextLabel }: 
           </div>
           <h3 className="mt-2 font-display text-lg text-slate2-900">{contextLabel}</h3>
           <p className="mt-1 text-sm text-slate2-700 leading-snug">{score.headline}</p>
+          {/* v67 — rewrote the inverted "Higher means fewer..." copy.
+              Card-audit caught it reads backwards. Now a linear scale
+              users can follow left-to-right. */}
           <p className="mt-2 text-xs text-slate2-500 leading-snug">
-            Higher means fewer police reports per resident than the comparison baseline.
-            100 = far below the baseline; 50 = roughly matches it; below 50 = above the
-            baseline. Areas with no recent reports in the cached window show as
-            &ldquo;data unavailable&rdquo; rather than a score.
+            Score legend: <strong>100</strong> = quietest (well below your city&apos;s baseline) ·
+            {" "}<strong>50</strong> = roughly matches the baseline ·
+            {" "}<strong>0</strong> = most activity (well above the baseline).
+            Areas with no recent reports in the cached window show as
+            &ldquo;data unavailable&rdquo; instead of a score.
           </p>
           <a
             href={score.benchmark.url}

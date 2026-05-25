@@ -25,6 +25,7 @@ import Script from "next/script";
 import { CityBackdrop } from "@/components/CityBackdrop";
 import { SessionBootstrap } from "@/components/SessionBootstrap";
 import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/use-theme";
+import { FBI_DATA_YEAR, FBI_DATA_LABEL } from "@/lib/data-vintage";
 
 // Google AdSense publisher ID. Default is the CommunitySafe account
 // (ca-pub-8731629548430880); env var override lets staging /
@@ -49,7 +50,7 @@ export const metadata: Metadata = {
   },
   description:
     "Neighborhood-level safety awareness across 30 US cities. Drawn from " +
-    "official police data sources and the FBI Crime Data Explorer 2025 " +
+    `official police data sources and the ${FBI_DATA_LABEL} ` +
     "national average. Not surveillance; not a substitute for emergency services.",
   manifest: "/manifest.json",
   // openGraph defaults inherited by every page. Per-page metadata can

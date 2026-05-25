@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CITIES } from "@/server/services/crime-data/cities";
 import { CityStatusInline } from "@/components/CityStatusInline";
+import { FBI_DATA_YEAR, FBI_DATA_LABEL } from "@/lib/data-vintage";
 
 export const metadata: Metadata = {
   title: "All supported cities",
@@ -28,7 +29,7 @@ export default function CitiesIndexPage() {
         </h1>
         <p className="mt-2 text-sm text-slate2-700 max-w-2xl">
           Pick a city to see neighborhood-level safety data drawn from that city&apos;s
-          official police open-data feed, compared to the FBI Crime Data Explorer 2025
+          official police open-data feed, compared to the ${FBI_DATA_LABEL}
           national average.
         </p>
       </header>

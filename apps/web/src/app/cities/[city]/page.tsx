@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { CITIES, cityBySlug } from "@/server/services/crime-data/cities";
 import { getCitywideSafetyScore } from "@/server/services/watch/safety-score";
 import { CityCompare } from "@/components/CityCompare";
+import { FBI_DATA_YEAR, FBI_DATA_LABEL } from "@/lib/data-vintage";
 
 interface Props {
   params: Promise<{ city: string }>;
@@ -29,7 +30,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!city) return { title: "City not found" };
   return {
     title: `${city.label} safety overview`,
-    description: `Neighborhood-level safety data for ${city.label} — official police-feed coverage compared to the FBI Crime Data Explorer 2025 national average.`,
+    description: `Neighborhood-level safety data for ${city.label} — official police-feed coverage compared to the ${FBI_DATA_LABEL} national average.`,
     alternates: { canonical: `/cities/${slug}` },
     openGraph: {
       title: `${city.label} safety overview · CommunitySafe`,

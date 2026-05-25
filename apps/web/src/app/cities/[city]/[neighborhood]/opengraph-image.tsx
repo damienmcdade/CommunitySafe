@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import { cityBySlug } from "@/server/services/crime-data/cities";
+import { FBI_DATA_YEAR, FBI_DATA_LABEL } from "@/lib/data-vintage";
 
 /// Programmatic OG image for /cities/[city]/[neighborhood]. Renders the
 /// neighborhood label, parent city, and the AREA's per-neighborhood
@@ -127,7 +128,7 @@ export default async function NeighborhoodOgImage({
               {area.label}
             </div>
             <div style={{ display: "flex", fontSize: 26, marginTop: 22, opacity: 0.92, maxWidth: 720, lineHeight: 1.3 }}>
-              Neighborhood-level safety data compared to the FBI Crime Data Explorer 2025 national average.
+              Neighborhood-level safety data compared to the ${FBI_DATA_LABEL} national average.
             </div>
           </div>
           <div style={{ display: "flex", fontSize: 20, opacity: 0.85 }}>

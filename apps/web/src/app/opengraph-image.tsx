@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { FBI_DATA_YEAR, FBI_DATA_LABEL } from "@/lib/data-vintage";
 
 /// Default OG image for every public surface that doesn't ship its
 /// own opengraph-image.tsx. Per-city + per-neighborhood pages override
@@ -58,7 +59,7 @@ export default function RootOgImage() {
               lineHeight: 1.3,
             }}
           >
-            Drawn from official police open-data feeds and the FBI Crime Data Explorer 2025 national average.
+            Drawn from official police open-data feeds and the ${FBI_DATA_LABEL} national average.
           </div>
         </div>
         <div

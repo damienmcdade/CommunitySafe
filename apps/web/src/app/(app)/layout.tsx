@@ -7,6 +7,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { AIAssistant } from "@/components/AIAssistant";
 import { SavedAreasRail } from "@/components/SavedAreasRail";
 import { DataDisclaimer } from "@/components/DataDisclaimer";
+import { FBI_DATA_YEAR, FBI_DATA_LABEL } from "@/lib/data-vintage";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
@@ -64,7 +65,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <footer className="mt-12 border-t border-sand-200 bg-white/60 backdrop-blur">
         <div className="max-w-5xl mx-auto px-4 py-6 flex flex-wrap items-center justify-between gap-3 text-xs text-slate2-500">
           <p>
-            CommunitySafe surfaces official city police-incident data and the FBI Crime Data Explorer 2025 national rate.
+            CommunitySafe surfaces official city police-incident data and the ${FBI_DATA_LABEL} national rate.
             Historical reporting only — not a substitute for emergency services.
           </p>
           <nav aria-label="Legal" className="flex gap-3 flex-wrap">
