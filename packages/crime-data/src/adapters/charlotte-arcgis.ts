@@ -97,10 +97,35 @@ async function fetchPage(offset: number): Promise<CmpdRow[]> {
   return (body.features ?? []).map((f) => f.attributes);
 }
 
+// v69 followup-5 — bounded-concurrency same as Cleveland's v63 fix.
+// All-30-parallel via Promise.all was getting rate-limited by Charlotte's
+// ArcGIS host: on Railway, only ~1 of the 30 pages succeeded each cycle,
+// leaving the cache with 1998 rows (one page) instead of 60k. The
+// safety-score then reported PERSONS=91, PROPERTY=730 with asOf
+// 2025-10-07 (the most recent in-cache Part-1 hit), grade=N/A,
+// ratio 0.02× — caught by the all-cities test.
+async function fetchPagesBounded<T>(
+  count: number,
+  pageSize: number,
+  fetcher: (offset: number) => Promise<T[]>,
+  concurrency: number,
+): Promise<T[][]> {
+  const offsets = Array.from({ length: count }, (_, i) => i * pageSize);
+  const results: T[][] = new Array(count);
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(concurrency, count) }, async () => {
+    while (true) {
+      const idx = cursor++;
+      if (idx >= offsets.length) return;
+      results[idx] = await fetcher(offsets[idx]).catch(() => [] as T[]);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
 async function fetchCharlotte(): Promise<Incident[]> {
-  const pages = await Promise.all(
-    Array.from({ length: PAGES }, (_, i) => fetchPage(i * PAGE_SIZE).catch(() => [] as CmpdRow[])),
-  );
+  const pages = await fetchPagesBounded<CmpdRow>(PAGES, PAGE_SIZE, fetchPage, 4);
   const rows = pages.flat();
   // Filter out rows with no parseable date BEFORE constructing Incidents.
   // The earlier `new Date(0).toISOString()` fallback survived row mapping
