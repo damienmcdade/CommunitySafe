@@ -51,7 +51,15 @@ const WINDOW_MS = 60_000;
 // are PUBLIC routes that hammer upstream police APIs. Now in LIMITS.
 const LIMITS: Array<{ prefix: string; cap: number }> = [
   { prefix: "/api/auth/anonymous", cap: 5 },   // unbounded User row creation
-  { prefix: "/api/ai/",            cap: 5 },   // billed AI calls
+  // v47 bump 5 → 40. The original cap of 5/min was set before the
+  // Redis cache landed on Railway (v16, v38). Now ~90% of /api/ai/
+  // calls are cache hits with no LLM cost — the cap was throttling
+  // legitimate users navigating 2-3 neighborhood pages (area-brief
+  // + incident-summary + per-row incident-explain) and surfacing as
+  // "Could not generate a brief right now" everywhere. 40/min still
+  // bounds the worst-case cache-miss + Groq cost (well under the
+  // free-tier 14,400 rpd cap).
+  { prefix: "/api/ai/",            cap: 40 },
   { prefix: "/api/assistant",      cap: 10 },  // AI streaming — most expensive
   { prefix: "/api/safety/",        cap: 30 },  // by-coordinates / tips / trends
   { prefix: "/api/route",          cap: 30 },  // safe-route planner (DB + 2 upstream)
