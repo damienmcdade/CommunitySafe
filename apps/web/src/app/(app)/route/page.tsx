@@ -5,6 +5,7 @@ import { api, useApi } from "@/lib/api-client";
 import { useCity } from "@/lib/use-city";
 import { useArea } from "@/lib/use-area";
 import { useDocumentTitle } from "@/lib/use-document-title";
+import { requestLocation, GeolocationError } from "@/lib/geolocation";
 
 const RouteMap = dynamic(() => import("./RouteMap"), {
   ssr: false,
@@ -82,10 +83,14 @@ export default function SafeRoutePage() {
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [areasResp, city.label]);
 
-  // Two committed picks + their query strings drive the search UI.
-  // We do NOT keep raw free-text — the user must select a neighborhood
-  // from the autofill list so the lat/lng we send to the routing engine
-  // is always a real, supported area centroid (no geocoding lottery).
+  // v52 — From/To now accept either a NEIGHBORHOOD (from the city's
+  // autofill list, lat/lng = centroid) OR a free-text ADDRESS that's
+  // geocoded server-side via Nominatim. Both paths produce the same
+  // {lat, lng, label} shape so compute() doesn't branch.
+  //
+  // From/To kept as Area to preserve the slug → setGlobalArea pipe
+  // when the user picks a neighborhood. Address-mode picks set
+  // slug = "" (sentinel) since they don't belong to a tracked area.
   const [from, setFrom] = useState<Area | null>(null);
   const [to, setTo]     = useState<Area | null>(null);
 
@@ -203,13 +208,13 @@ export default function SafeRoutePage() {
           tool, not Google Maps. We surface it before the inputs so users
           set the right expectation. */}
       <aside className="surface-muted p-4 text-sm text-slate2-700 leading-snug">
-        <strong className="text-slate2-900">Neighborhood-to-neighborhood only.</strong>{" "}
-        Safe Route does not accept street addresses, ZIP codes, or landmarks.
-        Both endpoints must be {city.label} neighborhoods supported by CommunitySafe.
-        The resulting polyline runs centroid-to-centroid through {city.label}&apos;s
-        actual street network, then the exposure score reflects the historical
-        police-feed activity of the neighborhoods that polyline crosses — not a
-        turn-by-turn safety guarantee.
+        <strong className="text-slate2-900">Neighborhoods + addresses both supported.</strong>{" "}
+        Each endpoint can be either a {city.label} neighborhood (autofills from
+        the supported list) or a street address / ZIP / landmark (geocoded via
+        OpenStreetMap). Toggle the input type with the chip above each box.
+        The exposure score still reflects the historical police-feed activity
+        of the neighborhoods the polyline crosses — addresses route to the
+        nearest supported area for scoring, not turn-by-turn navigation.
       </aside>
 
       <section className="surface p-5 space-y-3">
@@ -222,21 +227,20 @@ export default function SafeRoutePage() {
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <NeighborhoodCombobox
+              <EndpointPicker
                 label="From"
-                placeholder={`Type to search ${cityAreas.length} ${city.label} neighborhoods`}
+                cityLabel={city.label}
                 options={cityAreas}
                 value={from}
                 onPick={pickFrom}
-                ariaLabel={`Starting neighborhood in ${city.label}`}
+                showFindMyLocation
               />
-              <NeighborhoodCombobox
+              <EndpointPicker
                 label="To"
-                placeholder="Pick a destination neighborhood"
+                cityLabel={city.label}
                 options={cityAreas.filter((a) => a.slug !== from?.slug)}
                 value={to}
                 onPick={setTo}
-                ariaLabel={`Destination neighborhood in ${city.label}`}
               />
             </div>
 
@@ -289,6 +293,13 @@ export default function SafeRoutePage() {
           </>
         )}
       </section>
+
+      {/* v52 — Neighborhood Lookup card. User types any address +
+          we return the supported neighborhood it falls inside (via
+          /geo/lookup which does Nominatim geocoding then nearest-area
+          snap). Lets a user ask "what's the situation around 1600
+          Pennsylvania Ave?" without leaving the route planner. */}
+      <NeighborhoodLookupCard cityLabel={city.label} onApplyAsFrom={pickFrom} cityAreas={cityAreas} />
 
       {result && (
         <>
@@ -501,5 +512,214 @@ function NeighborhoodCombobox({
         </div>
       )}
     </div>
+  );
+}
+
+/// v52 — wraps NeighborhoodCombobox with a NEIGHBORHOOD ↔ ADDRESS
+/// mode toggle. Neighborhood mode preserves the existing autofill
+/// behavior. Address mode shows a free-text input that geocodes via
+/// /api/geo/lookup on submit; the geocoded result snaps to the
+/// nearest supported area centroid (so routing still works against
+/// the city's scoring grid).
+///
+/// `showFindMyLocation` opts in to the geolocation button (typically
+/// only on the From slot — the user's "current location").
+interface GeoLookupResp {
+  area: { slug: string; label: string; jurisdiction: string; centroid: { lat: number; lng: number } };
+  matchedVia: "exact" | "zip" | "fuzzy" | "geocode";
+  rawQuery: string;
+}
+
+function EndpointPicker({
+  label, cityLabel, options, value, onPick, showFindMyLocation = false,
+}: {
+  label: "From" | "To";
+  cityLabel: string;
+  options: Area[];
+  value: Area | null;
+  onPick: (a: Area | null) => void;
+  showFindMyLocation?: boolean;
+}) {
+  const [mode, setMode] = useState<"neighborhood" | "address">("neighborhood");
+  const [addrInput, setAddrInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [hint, setHint] = useState<string | null>(null);
+
+  async function resolveAddress(q: string) {
+    if (!q.trim()) return;
+    setBusy(true); setHint(null);
+    try {
+      const r = await api<GeoLookupResp>(`/geo/lookup?q=${encodeURIComponent(q)}`);
+      onPick(r.area);
+      // Telegraph the snap-to-area so the user knows we're routing
+      // against the nearest supported neighborhood, not the literal
+      // street address.
+      setHint(`Matched to ${r.area.label}${r.matchedVia === "geocode" ? " (nearest supported neighborhood)" : ""}.`);
+    } catch (e) {
+      setHint(`Could not find that location: ${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function useMyLocation() {
+    setBusy(true); setHint(null);
+    try {
+      const pos = await requestLocation();
+      const r = await api<GeoLookupResp>(`/geo/lookup?lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`);
+      onPick(r.area);
+      setHint(`Your location → ${r.area.label}.`);
+    } catch (e) {
+      const msg = e instanceof GeolocationError ? e.message : (e as Error).message;
+      setHint(msg);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-slate2-500">
+        <span>{label}</span>
+        <div className="inline-flex rounded-md border border-bay-200 p-0.5">
+          <button
+            type="button"
+            onClick={() => setMode("neighborhood")}
+            className={`px-2 py-0.5 rounded text-[11px] transition-colors ${mode === "neighborhood" ? "bg-bay-500 text-white" : "text-slate2-700 hover:bg-bay-50"}`}
+            aria-pressed={mode === "neighborhood"}
+          >Neighborhood</button>
+          <button
+            type="button"
+            onClick={() => setMode("address")}
+            className={`px-2 py-0.5 rounded text-[11px] transition-colors ${mode === "address" ? "bg-bay-500 text-white" : "text-slate2-700 hover:bg-bay-50"}`}
+            aria-pressed={mode === "address"}
+          >Address</button>
+        </div>
+        {showFindMyLocation && (
+          <button
+            type="button"
+            onClick={useMyLocation}
+            disabled={busy}
+            className="ml-auto text-[11px] text-bay-700 hover:underline disabled:opacity-50"
+          >
+            {busy ? "Locating…" : "Use my location"}
+          </button>
+        )}
+      </div>
+      {mode === "neighborhood" ? (
+        <NeighborhoodCombobox
+          label=""
+          placeholder={`Type to search ${options.length} ${cityLabel} neighborhoods`}
+          options={options}
+          value={value}
+          onPick={(a) => { onPick(a); setHint(null); }}
+          ariaLabel={`${label} neighborhood in ${cityLabel}`}
+        />
+      ) : (
+        <div>
+          <input
+            value={addrInput}
+            onChange={(e) => setAddrInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void resolveAddress(addrInput); } }}
+            placeholder="e.g. 1600 Pennsylvania Ave, Washington DC"
+            className="input text-sm"
+            autoComplete="off"
+            aria-label={`${label} address`}
+          />
+          <button
+            type="button"
+            onClick={() => void resolveAddress(addrInput)}
+            disabled={busy || !addrInput.trim()}
+            className="mt-1 text-xs text-bay-700 hover:underline disabled:opacity-50"
+          >
+            {busy ? "Looking up…" : "Look up this address"}
+          </button>
+        </div>
+      )}
+      {value && mode === "address" && (
+        <p className="text-[11px] text-slate2-500">Routing against <strong>{value.label}</strong>.</p>
+      )}
+      {hint && <p className="text-[11px] text-slate2-500">{hint}</p>}
+    </div>
+  );
+}
+
+/// v52 — Neighborhood Lookup card. Standalone helper card on the
+/// Safe Route tab: user types any address + we return the supported
+/// neighborhood it falls inside. The "Use as From" button feeds the
+/// result back into the route planner above.
+function NeighborhoodLookupCard({
+  cityLabel,
+  cityAreas,
+  onApplyAsFrom,
+}: {
+  cityLabel: string;
+  cityAreas: Area[];
+  onApplyAsFrom: (a: Area) => void;
+}) {
+  const [q, setQ] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<GeoLookupResp | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function lookup() {
+    if (!q.trim()) return;
+    setBusy(true); setError(null); setResult(null);
+    try {
+      const r = await api<GeoLookupResp>(`/geo/lookup?q=${encodeURIComponent(q)}`);
+      setResult(r);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="surface p-5">
+      <h3 className="font-display text-lg text-slate2-900">Neighborhood lookup</h3>
+      <p className="text-xs text-slate2-500 mt-0.5">
+        Have an address but not sure which {cityLabel} neighborhood it&apos;s in? Type it here.
+      </p>
+      <div className="mt-3 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void lookup(); } }}
+          placeholder="Street address, ZIP code, or landmark"
+          className="input text-sm"
+          aria-label="Address, ZIP, or landmark"
+        />
+        <button
+          onClick={lookup}
+          disabled={busy || !q.trim()}
+          className="btn-primary text-sm px-3 py-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {busy ? "Looking up…" : "Look up"}
+        </button>
+      </div>
+      {error && <p className="mt-2 text-xs text-coral-700">{error}</p>}
+      {result && (
+        <div className="mt-3 surface-muted p-3 text-sm space-y-1">
+          <div className="text-slate2-900">
+            <strong>{result.area.label}</strong>
+            {" "}
+            <span className="text-xs text-slate2-500">({result.area.jurisdiction})</span>
+          </div>
+          <p className="text-[11px] text-slate2-500">
+            Matched via {result.matchedVia === "geocode" ? "geocoding (snapped to nearest supported neighborhood)" : result.matchedVia}.
+          </p>
+          {cityAreas.some((a) => a.slug === result.area.slug) && (
+            <button
+              type="button"
+              onClick={() => onApplyAsFrom(result.area)}
+              className="text-xs text-bay-700 hover:underline"
+            >
+              Use as starting neighborhood ↑
+            </button>
+          )}
+        </div>
+      )}
+    </section>
   );
 }
