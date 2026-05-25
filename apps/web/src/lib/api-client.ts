@@ -74,7 +74,19 @@ export async function api<T = unknown>(path: string, init: RequestInit = {}): Pr
     "Content-Type": "application/json",
     ...(init.headers ?? {}),
   };
-  const tk = token();
+  // Anon-auth race: SessionBootstrap mints the device token in a
+  // useEffect, but auth-gated panels (AreaBriefPanel, AIAssistant,
+  // ThreatFeed's row explainer) mount in the same render tick and
+  // their first fetch fires before the token lands — they get a 401
+  // and the useApi hook locks in an error state with no token-change
+  // signal to re-trigger. Wait the bootstrap out here so the first
+  // call is never tokenless. Idempotent + cached, so this adds at
+  // most one ~150ms wait on the very first navigation.
+  let tk = token();
+  if (!tk && typeof window !== "undefined" && !path.startsWith("/auth/")) {
+    await ensureAnonymousAuth();
+    tk = token();
+  }
   if (tk) (headers as Record<string, string>).Authorization = `Bearer ${tk}`;
   // init.signal already flows through to fetch() via the spread — callers
   // that pass an AbortSignal will see the underlying fetch cancel when
