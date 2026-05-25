@@ -9,11 +9,19 @@ interface Props {
   params: Promise<{ city: string }>;
 }
 
-// Pre-render every supported city. Phoenix is included even though its
-// adapter is in bootstrap — the page degrades gracefully via the
-// soft-fail in getCitywideSafetyScore.
+// v63 hotfix — excluded slow-cold-cache cities from static generation.
+// Cleveland's bounded-concurrency adapter fetch (added in v63 after the
+// 30-parallel rate-limit fix) takes ~5min cold, which blows Vercel's
+// 60s static-generation timeout — three retries all failed and the
+// whole production build errored on /cities/cleveland. These cities
+// render on-demand via ISR (revalidate=300, in line with the API
+// route Cache-Control) so the first user pays the cold-fetch wait
+// but every subsequent hit serves from edge cache.
+const DYNAMIC_ONLY_CITIES = new Set(["cleveland"]);
+export const revalidate = 300;
 export function generateStaticParams() {
-  return CITIES.map((c) => ({ city: c.slug }));
+  return CITIES.filter((c) => !DYNAMIC_ONLY_CITIES.has(c.slug))
+    .map((c) => ({ city: c.slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
