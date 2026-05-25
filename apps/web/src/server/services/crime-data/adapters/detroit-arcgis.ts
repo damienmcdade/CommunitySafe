@@ -28,8 +28,17 @@ interface DetroitRow {
   longitude?: number;
 }
 
+// Detroit DPD splits violent crime across SEVEN distinct
+// offense_category strings. The prior set (v24 and earlier) only
+// captured 4 of them — AGGRAVATED ASSAULT, SEXUAL ASSAULT, and
+// HOMICIDE were silently classified as SOCIETY, dropping ~88k
+// violent incidents per year out of the PERSONS bucket. That made
+// Detroit's local violent rate look like 29% of the FBI Part-1
+// baseline and earned the city a misleading Grade A. v25
+// added the divergence guard; v26 fixes the underlying mapping.
 const PERSONS_CATEGORIES = new Set([
-  "ASSAULT", "MURDER", "ROBBERY", "SEX OFFENSES",
+  "ASSAULT", "AGGRAVATED ASSAULT", "MURDER", "HOMICIDE", "JUSTIFIABLE HOMICIDE",
+  "ROBBERY", "SEX OFFENSES", "SEXUAL ASSAULT",
   "KIDNAPPING", "FAMILY OFFENSE", "HUMAN TRAFFICKING",
 ]);
 const PROPERTY_CATEGORIES = new Set([

@@ -60,6 +60,14 @@ const CFS_CALIBRATION: Record<string, number> = {
   "cleveland":     0.35,
   "new-orleans":   0.40,
   "las-vegas":     0.50,
+  // Boise added in v26 — adapter is BPD calls-for-service per the
+  // boise-arcgis.ts disclaimer, but it wasn't on the calibration
+  // list. Raw rate ran 6.5× the FBI Part-1 baseline (which is itself
+  // the entire violent-rate-to-CFS ratio for a sleepy city). 0.30
+  // scale lands violent at ~1.97× and property at ~0.72× of FBI
+  // baseline — mixed signal but inside the 3× divergence guard so
+  // a grade can compute.
+  "boise":         0.30,
 };
 // POPULATION_VINTAGE is re-exported so consumers can render the label
 // without reaching into the shared module independently.

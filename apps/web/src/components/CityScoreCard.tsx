@@ -1,6 +1,7 @@
 "use client";
 import { useApi } from "@/lib/api-client";
 import { formatRatePer100k, formatRatePer100kProse, formatDeltaPct } from "@/lib/format";
+import { POPULATION_VINTAGE } from "@/server/services/crime-data/population";
 
 interface ScoreRow {
   category: "PERSONS" | "PROPERTY";
@@ -77,7 +78,7 @@ export function CityScoreCard({ citySlug, cityLabel }: { citySlug: string; cityL
           </div>
         </div>
         <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate2-500 tabular-nums items-center">
-          <span>~{score.populationEstimate.toLocaleString()} residents (estimated, US Census Vintage 2023)</span>
+          <span>~{score.populationEstimate.toLocaleString()} residents (estimated, US Census {POPULATION_VINTAGE})</span>
           {score.windowDays > 0 && <span>·  window: ~{score.windowDays} days</span>}
           {score.asOf && <span>·  newest report: {new Date(score.asOf).toLocaleDateString()}</span>}
         </div>

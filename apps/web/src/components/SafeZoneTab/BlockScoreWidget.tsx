@@ -1,6 +1,7 @@
 "use client";
 import type { BlockScore, BlockScoreBand } from "./types";
 import { DataFreshnessBadge } from "../DataFreshnessBadge";
+import { POPULATION_VINTAGE } from "@/server/services/crime-data/population";
 
 export interface BlockScoreWidgetProps {
   /// Normalized 0–100 index. Pass null while loading.
@@ -188,7 +189,7 @@ function HowItsCalculated({ benchmark }: { benchmark: BlockScore["benchmark"] })
           <li>
             <strong className="text-slate2-900">Express it as a rate per 100,000 residents.</strong>{" "}
             The same denominator the FBI uses for its city-vs-national comparisons,
-            scaled by US Census Vintage 2023 city population.
+            scaled by US Census {POPULATION_VINTAGE} city population.
           </li>
           <li>
             <strong className="text-slate2-900">Compare to the baseline.</strong>{" "}
