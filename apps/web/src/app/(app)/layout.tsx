@@ -2,7 +2,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { TabNav } from "@/components/TabNav";
-import { CitySelector, StateSelector } from "@/components/CitySelector";
+import { CitySelector } from "@/components/CitySelector";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AIAssistant } from "@/components/AIAssistant";
 import { SavedAreasRail } from "@/components/SavedAreasRail";
@@ -23,17 +23,17 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           >
             <span className="bg-gradient-to-r from-bay-700 to-coral-500 bg-clip-text text-transparent">Community</span>Safe
           </Link>
-          {/* Right-cluster: theme + state selectors are hidden on
-              mobile (theme lives at /settings/privacy, state is
-              jump-only and the combined city+neighborhood picker
-              already lets users change cities). CitySelector renders
-              compact on mobile so the right edge never clips. */}
+          {/* Right-cluster: ThemeToggle on desktop, single CitySelector
+              everywhere. v45 — the standalone StateSelector pill is
+              removed; state lives as the first wheel inside the
+              CitySelector dropdown (now a 3-wheel State + City +
+              Neighborhood picker). Resolves the user-reported lockout
+              where picking a state auto-committed the first city and
+              users couldn't choose a different one without manually
+              hunting through the global city list. */}
           <div className="flex items-center gap-2 text-xs text-slate2-500 min-w-0">
             <div className="hidden sm:inline-flex">
               <ThemeToggle align="right" size="sm" />
-            </div>
-            <div className="hidden sm:inline-flex">
-              <StateSelector />
             </div>
             <CitySelector />
           </div>
