@@ -1,12 +1,13 @@
 import "server-only";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
+import { HttpError } from "@travelsafe/crime-data/errors";
 
-export class HttpError extends Error {
-  constructor(public status: number, public code: string, message?: string) {
-    super(message ?? code);
-  }
-}
+// HttpError is now defined in @travelsafe/crime-data/errors so the
+// scoring + dispatcher code (which lives in that package as of v35)
+// can throw from a portable class. Re-exported here so existing
+// callers still import from "@/server/lib/http".
+export { HttpError };
 
 /// Standard error response shape across all Route Handlers.
 export function errorResponse(err: unknown): NextResponse {

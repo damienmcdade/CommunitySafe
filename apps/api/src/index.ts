@@ -16,6 +16,7 @@ import { shareRouter } from "./routes/share.routes.js";
 import { geoRouter } from "./routes/geo.routes.js";
 import { aiRouter } from "./routes/ai.routes.js";
 import { officialAlertsRouter } from "./routes/official-alerts.routes.js";
+import { safezoneRouter } from "./routes/safezone.routes.js";
 import { startCheckInWorker } from "./services/safety/check-in.worker.js";
 import { startDigestWorker } from "./services/push/digest.worker.js";
 
@@ -58,6 +59,7 @@ app.use("/share", shareRouter);
 app.use("/geo", geoRouter);
 app.use("/ai", aiRouter);
 app.use("/official-alerts", officialAlertsRouter);
+app.use("/safezone", safezoneRouter);
 
 app.use(notFound);
 app.use(errorHandler);

@@ -17,6 +17,11 @@ function readOpt(name: string): string | undefined {
 }
 
 export const env = {
+  // Adapter-selection mode. "auto" (default) tries the real adapter
+  // for each city's slug and falls back to LKG / mock. Override to
+  // "sandag" | "sdpd" | "mock" for tests / smoke runs.
+  CRIME_DATA_ADAPTER: (read("CRIME_DATA_ADAPTER", "auto") as "auto" | "sandag" | "sdpd" | "mock"),
+
   // San Diego — SANDAG Socrata jurisdiction-level fallback.
   SANDAG_SOCRATA_BASE:           read("SANDAG_SOCRATA_BASE", "https://data.sandiegocounty.gov"),
   SANDAG_CRIME_RATES_RESOURCE_ID: read("SANDAG_CRIME_RATES_RESOURCE_ID", "486f-q228"),
