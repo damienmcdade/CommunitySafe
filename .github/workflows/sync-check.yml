@@ -1,0 +1,47 @@
+name: Frontend ↔ Backend Sync Drift
+
+# Runs tools/sync-check.mjs against production on every PR and nightly.
+# When Vercel (proxied to Railway via tryProxy) and Railway-direct
+# diverge — different keys, different counts, missing query-param
+# handling — this catches it before users do.
+#
+# Caught at introduction (2026-05-25):
+#   * /geo/areas?city=X — Vercel returned 78 NYC precincts, Railway
+#     returned a hardcoded 7-item SD list (Express had legacy SD-only
+#     adapter; the proxy returned wrong data for every non-SD city).
+#   * /crime-data/citywide?city=X — Railway ignored ?city= and always
+#     returned SD totals.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "apps/api/src/**"
+      - "apps/web/src/app/api/**"
+      - "apps/web/src/server/services/crime-data/**"
+      - "packages/crime-data/**"
+      - "tools/sync-check.mjs"
+      - ".github/workflows/sync-check.yml"
+  schedule:
+    - cron: "30 13 * * *" # Daily 13:30 UTC (08:30 ET, after morning Vercel + Railway deploys settle)
+  workflow_dispatch:
+
+jobs:
+  sync-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run sync-check
+        # --strict so any drift fails CI; the script's output is the
+        # diagnostic (which probes drifted + how).
+        run: node tools/sync-check.mjs --strict
+        env:
+          # Default to production URLs. Override via repo Variables if
+          # you want PR-preview branches to test against staging.
+          SYNC_VERCEL_BASE: ${{ vars.SYNC_VERCEL_BASE || 'https://communitysafe.app' }}
+          SYNC_RAILWAY_BASE: ${{ vars.SYNC_RAILWAY_BASE || 'https://communitysafe-api-production.up.railway.app' }}
