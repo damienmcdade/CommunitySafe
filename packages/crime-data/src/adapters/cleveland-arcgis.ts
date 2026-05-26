@@ -97,7 +97,14 @@ async function fetchPage(offset: number): Promise<CleRow[]> {
   url.searchParams.set("where", "latitude IS NOT NULL AND latitude <> 0 AND neighborhood IS NOT NULL");
   url.searchParams.set("outFields", "IncidentNumber,eid,IncidentDate,IncidentTypeDescription,DispositionDescription1,address,neighborhood,police_district,ward_2026,latitude,longitude");
   url.searchParams.set("returnGeometry", "false");
-  url.searchParams.set("orderByFields", "IncidentDate DESC");
+  // v78 — switched orderBy from "IncidentDate DESC" to "OBJECTID DESC".
+  // Cleveland's ArcGIS endpoint started returning a silent timeout/400
+  // when paginating with orderBy on the Date field (probed directly:
+  // every paginated request hung). OBJECTID is monotonically assigned
+  // at insert time, so DESC still surfaces the freshest rows first.
+  // Lost: strict chronological ordering across late-arriving back-fills,
+  // which is negligible for our 30-day-window safety scoring.
+  url.searchParams.set("orderByFields", "OBJECTID DESC");
   url.searchParams.set("resultOffset", String(offset));
   url.searchParams.set("resultRecordCount", String(PAGE_SIZE));
   url.searchParams.set("f", "json");
