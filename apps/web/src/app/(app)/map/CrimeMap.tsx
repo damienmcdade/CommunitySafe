@@ -491,16 +491,33 @@ export default function CrimeMap() {
   );
   const selectedStats = selectedName ? polygonStats.get(selectedName) ?? null : null;
 
-  // v84 — outlier visual treatment. Neighborhoods at riskLevel=5
-  // (top 10% by incident count within their city; see dispatcher
-  // percentile-rank logic) get a thick crimson stroke and a 15%
-  // opacity bump so they pop visually. Pre-v84 a level-5 outlier
-  // looked identical to a level-4 neighbor — the colorblend math
-  // dominated, hiding the percentile signal that drives the
-  // user's "where should I avoid" judgement. Hot-pink rather than
-  // pure red so we don't collide with the PERSONS category color.
-  const OUTLIER_STROKE = "#BE185D";  // crimson-pink, distinct from PERSONS red (#DC2626)
-  const HIGH_STROKE    = "#9D174D";  // slightly darker for level-4
+  // v85 — coverage badge for sync transparency. Counts what the map
+  // is actually showing right now: matched polygons (real boundaries)
+  // + orphan circles (centroid-only fallback). Users see "27
+  // neighborhoods (15 boundaries + 12 approximate)" so they can
+  // trust they're seeing all available data, regardless of polygon
+  // file completeness.
+  const matchedPolyCount = useMemo(() => {
+    let n = 0;
+    for (const stats of polygonStats.values()) if (stats && stats.incidentCount > 0) n++;
+    return n;
+  }, [polygonStats]);
+  const totalCoverage = matchedPolyCount + orphanAreasWithData.length;
+
+  // v84/v85 — outlier visual treatment. The percentile-rank in the
+  // dispatcher buckets areas into riskLevel 1-5 (5 = top 10%);
+  // v85 adds an EXTRA tier for areas that exceed 75% of the
+  // city's max polygon value (the per-cycle "extreme outlier"
+  // band). Pre-v84 a level-5 outlier looked identical to a level-4
+  // neighbor — the colorblend math dominated, hiding the percentile
+  // signal users rely on for "where should I avoid" judgements.
+  //
+  // Color stack chosen to be ordered (extreme > outlier > high > low)
+  // AND distinct from the PERSONS/PROPERTY/SOCIETY category palette
+  // so users don't confuse "lots of violent crime" with "outlier".
+  const EXTREME_STROKE = "#7F1D1D"; // darkest crimson — top of city's max
+  const OUTLIER_STROKE = "#BE185D"; // crimson-pink — riskLevel=5
+  const HIGH_STROKE    = "#9D174D"; // muted plum — riskLevel=4
 
   function stylePolygon(feat: Feature<Geometry> | undefined): PathOptions {
     if (!feat) return {};
@@ -510,12 +527,18 @@ export default function CrimeMap() {
     const { fill, opacity, stroke } = fuseColor(stats, value, maxValue);
     const isSel = name === selectedName;
     const lvl = stats?.riskLevel ?? 0;
-    const isOutlier = lvl === 5;
+    const valueShare = maxValue > 0 ? value / maxValue : 0;
+    const isExtreme = lvl === 5 && valueShare >= 0.75;
+    const isOutlier = lvl === 5 && !isExtreme;
     const isHigh    = lvl === 4;
     let strokeColor = isSel ? "#0E4F73" : stroke;
     let weight = isSel ? 2.5 : 0.9;
     let fillOp = isSel ? Math.min(1, opacity + 0.18) : opacity;
-    if (isOutlier && !isSel) {
+    if (isExtreme && !isSel) {
+      strokeColor = EXTREME_STROKE;
+      weight = 3.0;
+      fillOp = Math.min(1, opacity + 0.22);
+    } else if (isOutlier && !isSel) {
       strokeColor = OUTLIER_STROKE;
       weight = 2.4;
       fillOp = Math.min(1, opacity + 0.15);
@@ -599,6 +622,15 @@ export default function CrimeMap() {
             </button>
           </div>
         )}
+        {totalCoverage > 0 && (
+          <div className="absolute bottom-3 left-3 z-[400] surface-muted px-2.5 py-1.5 text-[11px] text-slate2-700 shadow-sm flex items-center gap-1.5">
+            <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-cove-500 inline-block" />
+            <span><strong className="text-slate2-900">{totalCoverage}</strong> neighborhoods</span>
+            {orphanAreasWithData.length > 0 && (
+              <span className="text-slate2-500">· {matchedPolyCount} boundary{matchedPolyCount === 1 ? "" : "ies"} + {orphanAreasWithData.length} approximate</span>
+            )}
+          </div>
+        )}
         <MapContainer center={[city.centroid.lat, city.centroid.lng]} zoom={11} scrollWheelZoom className="h-[62vh] min-h-[460px] max-h-[720px] w-full">
           <TileLayer
             url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
@@ -626,17 +658,23 @@ export default function CrimeMap() {
             const radius = 6 + norm * 16;
             const dom = a.stats.dominantCategory;
             const color = dom ? CATEGORY_COLOR[dom].hex : "#94a3b8";
-            // v84 — outlier stroke matches polygon treatment so
-            // riskLevel=5 orphans pop the same as riskLevel=5 polygons.
-            const isOutlier = a.stats.riskLevel === 5;
-            const strokeColor = isOutlier ? OUTLIER_STROKE : color;
-            const strokeWeight = isOutlier ? 3 : 2;
+            // v84/v85 — outlier stroke matches polygon treatment so
+            // orphan circles read on the same percentile scale as
+            // real polygons. EXTREME tier (riskLevel=5 + count >=75%
+            // of city max) gets the darkest stroke + highest opacity.
+            const lvl = a.stats.riskLevel;
+            const valueShare = maxCount > 0 ? c / maxCount : 0;
+            const isExtreme = lvl === 5 && valueShare >= 0.75;
+            const isOutlier = lvl === 5 && !isExtreme;
+            const strokeColor = isExtreme ? EXTREME_STROKE : isOutlier ? OUTLIER_STROKE : color;
+            const strokeWeight = isExtreme ? 3.5 : isOutlier ? 3 : 2;
+            const fillOp = isExtreme ? 0.7 : isOutlier ? 0.6 : 0.45;
             return (
               <CircleMarker
                 key={`orphan-${a.slug}`}
                 center={[a.centroid.lat, a.centroid.lng]}
                 radius={radius}
-                pathOptions={{ color: strokeColor, fillColor: color, fillOpacity: isOutlier ? 0.6 : 0.45, weight: strokeWeight, dashArray: "4 3" }}
+                pathOptions={{ color: strokeColor, fillColor: color, fillOpacity: fillOp, weight: strokeWeight, dashArray: "4 3" }}
                 eventHandlers={{ click: () => setArea({ slug: a.slug, label: a.label, jurisdiction: city.label }) }}
               >
                 <Tooltip>
@@ -917,6 +955,34 @@ function CityLegend() {
         <span className="inline-flex items-center gap-1.5"><span className="inline-block w-5 h-3 rounded-sm" style={{ background: CATEGORY_COLOR.PROPERTY.hex, opacity: 0.7 }} />some</span>
         <span className="inline-flex items-center gap-1.5"><span className="inline-block w-5 h-3 rounded-sm" style={{ background: CATEGORY_COLOR.PROPERTY.hex, opacity: 0.95 }} />many</span>
       </div>
+
+      <p className="mt-4 text-xs uppercase tracking-wider text-slate2-500 font-medium">Outlier rank</p>
+      <ul className="mt-2 space-y-1 text-xs text-slate2-700">
+        <li className="flex items-center gap-2">
+          <span className="inline-block w-5 h-3 rounded-sm border-[3px]" style={{ background: CATEGORY_COLOR.PROPERTY.hex, borderColor: "#7F1D1D" }} />
+          <span><strong className="text-slate2-900">Extreme</strong> — top 10% AND ≥75% of city max</span>
+        </li>
+        <li className="flex items-center gap-2">
+          <span className="inline-block w-5 h-3 rounded-sm border-[2px]" style={{ background: CATEGORY_COLOR.PROPERTY.hex, borderColor: "#BE185D" }} />
+          <span><strong className="text-slate2-900">Outlier</strong> — top 10% within this city</span>
+        </li>
+        <li className="flex items-center gap-2">
+          <span className="inline-block w-5 h-3 rounded-sm border-[1.5px]" style={{ background: CATEGORY_COLOR.PROPERTY.hex, borderColor: "#9D174D" }} />
+          <span>Elevated — top 30% within this city</span>
+        </li>
+      </ul>
+
+      <p className="mt-4 text-xs uppercase tracking-wider text-slate2-500 font-medium">Boundary type</p>
+      <ul className="mt-2 space-y-1 text-xs text-slate2-700">
+        <li className="flex items-center gap-2">
+          <span className="inline-block w-5 h-3 rounded-sm" style={{ background: CATEGORY_COLOR.PROPERTY.hex, opacity: 0.7 }} />
+          <span>Solid outline = official polygon boundary</span>
+        </li>
+        <li className="flex items-center gap-2">
+          <span className="inline-block w-5 h-3 rounded-full border-2 border-dashed" style={{ background: CATEGORY_COLOR.PROPERTY.hex, opacity: 0.45, borderColor: CATEGORY_COLOR.PROPERTY.hex }} />
+          <span>Dashed circle = adapter centroid (approximate)</span>
+        </li>
+      </ul>
 
       <p className="mt-4 text-xs text-slate2-500 leading-snug">
         Hover any polygon for the exact mix and report count. Click to drill in and see
