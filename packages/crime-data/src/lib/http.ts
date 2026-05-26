@@ -28,8 +28,11 @@ export function socrataHeaders(url: string | URL, extra: Record<string, string> 
   return h;
 }
 
-// v90p3 — installPooledDispatcher moved to ./http-dispatcher to avoid
-// pulling undici (which uses node:fs, node:dns, etc) into the Vercel
-// webpack bundle when adapter files indirectly import this module.
-// The dispatcher is server-only and installed once from apps/api/index.ts.
-export { installPooledDispatcher } from "./http-dispatcher.js";
+// v90p4 — installPooledDispatcher REMOVED from this package.
+// It lived here briefly in v87-v90p3 but undici's node: scheme
+// imports (node:fs, node:dns, node:diagnostics_channel) crashed
+// the Vercel webpack bundle even with dynamic import (webpack's
+// static analyzer still saw the import("undici") string and
+// tried to resolve it). The dispatcher is now installed
+// directly in apps/api/src/index.ts which is Node-only.
+// Vercel never reaches this path; routes proxy to Railway.

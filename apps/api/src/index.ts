@@ -21,7 +21,20 @@ import { startCheckInWorker } from "./services/safety/check-in.worker.js";
 import { startDigestWorker } from "./services/push/digest.worker.js";
 import { startWarmWorker } from "./services/warm/cache.worker.js";
 import { startGradeSanityWorker, getLastReport as getGradeSanityReport } from "./services/audit/grade-sanity.worker.js";
-import { installPooledDispatcher } from "@travelsafe/crime-data/lib/http";
+import { Agent, setGlobalDispatcher } from "undici";
+
+// v90p5 — pooled HTTP dispatcher inlined here (was previously in
+// @travelsafe/crime-data/lib/http but undici's node: scheme imports
+// crashed the Vercel webpack bundle as a transitive dep). apps/api
+// is Node-only so it can import undici directly.
+function installPooledDispatcher(): void {
+  setGlobalDispatcher(new Agent({
+    keepAliveTimeout: 60_000,
+    keepAliveMaxTimeout: 600_000,
+    connections: 10,
+    pipelining: 1,
+  }));
+}
 
 const app = express();
 
@@ -82,7 +95,7 @@ app.use(errorHandler);
 // ~200-400ms TLS handshake every adapter page-fetch previously paid
 // (Node's global fetch defaults to an ephemeral per-call dispatcher).
 // Biggest win on Cleveland (30 pages/cycle) + DC (60 pages/cycle).
-void installPooledDispatcher();
+installPooledDispatcher();
 
 const server = app.listen(env.LISTEN_PORT, () => {
   console.log(`[api] listening on :${env.LISTEN_PORT} (env=${env.NODE_ENV})`);
