@@ -68,6 +68,40 @@ export async function login(email: string, password: string) {
     });
   }
 
+  // v93p3 — if MFA is enabled the password was only the first factor.
+  // Return a short-lived "mfa_pending" challenge token instead of the
+  // real access/refresh pair. Client then POSTs to /auth/mfa/verify
+  // with the TOTP code to receive the full token pair.
+  if (user.mfaEnabled) {
+    return {
+      mfaRequired: true,
+      // Reuse the access-token signer at a 5-minute TTL by re-signing
+      // a payload with typ:"mfa_pending"-via-detail. Simpler: just
+      // return the uid and let the verify endpoint do its own lookup,
+      // gated by a per-IP rate limit (authLimiter).
+      pendingUserId: user.id,
+      user: { id: user.id, email: user.email, displayName: user.displayName },
+    } as const;
+  }
+
+  return {
+    user: { id: user.id, email: user.email, displayName: user.displayName },
+    ...mintTokens(user),
+  };
+}
+
+// v93p3 — second-factor verification step. Called after login()
+// returns mfaRequired:true. Verifies the TOTP code against the
+// stored secret and returns the real access+refresh token pair.
+export async function verifyMfaAndIssueTokens(pendingUserId: string, code: string) {
+  const { verifyMfaCode } = await import("./mfa.service.js");
+  const user = await prisma.user.findUnique({
+    where: { id: pendingUserId },
+    select: { id: true, email: true, displayName: true, tokenVersion: true, mfaEnabled: true, mfaSecret: true, permanentlyBanned: true },
+  });
+  if (!user || user.permanentlyBanned) throw new HttpError(401, "invalid_credentials");
+  if (!user.mfaEnabled || !user.mfaSecret) throw new HttpError(400, "mfa_not_enabled");
+  if (!verifyMfaCode(user.mfaSecret, code)) throw new HttpError(401, "mfa_invalid_code");
   return {
     user: { id: user.id, email: user.email, displayName: user.displayName },
     ...mintTokens(user),

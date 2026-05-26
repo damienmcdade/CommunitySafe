@@ -10,7 +10,10 @@ import { useCity } from "@/lib/use-city";
 //
 // All URLs are at 1920×1080 (Wikimedia's standard 1920px thumb width) for
 // 1080p backdrop quality.
-const PHOTOS: Record<string, string[]> = {
+//
+// v93p3 — exported for the /credits page to render per-photo attribution
+// (CC-BY-SA 4.0 §3(a)(2)).
+export const PHOTOS: Record<string, string[]> = {
   "san-diego": [
     // Downtown skyline (Wikipedia infobox panorama)
     "https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/San_Diego_skyline_18_%28cropped%29.jpg/1920px-San_Diego_skyline_18_%28cropped%29.jpg",

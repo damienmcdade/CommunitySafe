@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { PHOTOS } from "@/components/CityBackdrop";
 
 export const metadata: Metadata = {
   title: "Photo Credits",
@@ -7,12 +8,26 @@ export const metadata: Metadata = {
     "Attribution for the city backdrop photography used in CommunitySafe. All images are sourced from Wikimedia Commons and used under their respective licenses.",
 };
 
-/// Public attribution page for the CityBackdrop photography. Wikimedia
-/// Commons photos are generally CC-BY-SA: free for commercial use with
-/// attribution + share-alike. This page satisfies the attribution
-/// requirement so we can keep using the verified per-city landmark
-/// photography without breaking compliance. Updating the
-/// CityBackdrop URL list? Add the photographer + license here too.
+// v93p3 — derive the per-photo attribution list from PHOTOS at build
+// time. Each entry links to its Wikimedia Commons file page where the
+// canonical photographer name + license version are documented; this
+// satisfies CC-BY-SA 4.0 §3(a)(2) (attribution via URI to a resource
+// that includes the required information).
+function fileNameFromUrl(url: string): string {
+  // Format: https://upload.wikimedia.org/wikipedia/commons/thumb/<hash>/<filename>.jpg/1920px-<filename>.jpg
+  const m = url.match(/\/commons\/thumb\/[^/]+\/([^/]+)\/[^/]+$/);
+  if (m) return decodeURIComponent(m[1]);
+  // Fallback for non-thumb URLs
+  const last = url.split("/").pop() ?? url;
+  return decodeURIComponent(last.replace(/^1920px-/, ""));
+}
+function commonsPage(url: string): string {
+  return `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(fileNameFromUrl(url))}`;
+}
+function prettyCity(slug: string): string {
+  return slug.split("-").map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(" ");
+}
+
 export default function CreditsPage() {
   return (
     <main className="max-w-3xl mx-auto px-4 sm:px-6 py-10 space-y-6">
@@ -25,25 +40,19 @@ export default function CreditsPage() {
           The vast majority are licensed under{" "}
           <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noreferrer" className="text-bay-700 hover:underline">CC-BY-SA 4.0</a>{" "}
           or compatible licenses, which permit commercial use with attribution and
-          share-alike. This page is the attribution surface required by those
-          licenses.
+          share-alike. The links below point to each photo&apos;s canonical
+          Wikimedia Commons page where the photographer&apos;s name and the
+          exact license version are documented — attribution per
+          CC-BY-SA 4.0 §3(a)(2) is by URI to that resource.
         </p>
       </header>
 
       <section className="surface p-5 space-y-3 text-sm text-slate2-700 leading-relaxed">
         <h2 className="font-display text-lg text-slate2-900">License summary</h2>
         <ul className="list-disc pl-5 space-y-2">
-          <li>
-            <strong>CC-BY 2.0 / 3.0 / 4.0</strong> — free commercial use, attribution required.
-          </li>
-          <li>
-            <strong>CC-BY-SA 2.0 / 3.0 / 4.0</strong> — same as CC-BY plus share-alike. Derivative
-            works must be released under a compatible license.
-          </li>
-          <li>
-            <strong>Public domain / CC0</strong> — no attribution required, but credit is
-            customary and we provide it where the source is known.
-          </li>
+          <li><strong>CC-BY 2.0 / 3.0 / 4.0</strong> — free commercial use, attribution required.</li>
+          <li><strong>CC-BY-SA 2.0 / 3.0 / 4.0</strong> — same as CC-BY plus share-alike. Derivative works must be released under a compatible license.</li>
+          <li><strong>Public domain / CC0</strong> — no attribution required, but credit is customary and we provide it where the source is known.</li>
         </ul>
         <p className="text-xs text-slate2-500">
           The CommunitySafe site code itself is unrelated to the photo licenses —
@@ -51,39 +60,45 @@ export default function CreditsPage() {
         </p>
       </section>
 
-      <section className="surface p-5 space-y-3 text-sm text-slate2-700 leading-relaxed">
+      <section className="surface p-5 space-y-4 text-sm text-slate2-700">
         <h2 className="font-display text-lg text-slate2-900">Per-photo attribution</h2>
         <p className="text-xs text-slate2-500">
-          Each city ships four landmark photos. Click any image filename to see
-          its Wikimedia Commons page — the page lists the photographer, the
-          exact license, and the upload history.
+          {Object.keys(PHOTOS).length} cities · {Object.values(PHOTOS).reduce((s, a) => s + a.length, 0)} total photos.
+          Click any filename to open its Wikimedia Commons page (photographer,
+          license, upload history).
         </p>
-        <p>
-          All backdrop photo file names follow the format{" "}
-          <code className="font-mono text-xs">https://upload.wikimedia.org/wikipedia/commons/thumb/&lt;hash&gt;/&lt;filename&gt;.jpg/1920px-&lt;filename&gt;.jpg</code>.
-          The canonical Commons page for each photo is{" "}
-          <code className="font-mono text-xs">https://commons.wikimedia.org/wiki/File:&lt;filename&gt;.jpg</code>.
-        </p>
-        <p>
-          Authoritative source list:{" "}
-          <a
-            href="https://github.com/damienmcdade/CommunitySafe/blob/main/apps/web/src/components/CityBackdrop.tsx"
-            target="_blank"
-            rel="noreferrer"
-            className="text-bay-700 hover:underline"
-          >
-            apps/web/src/components/CityBackdrop.tsx
-          </a>
-          {" "}— every URL is documented with a short caption identifying the landmark.
-        </p>
+        <div className="space-y-5">
+          {Object.entries(PHOTOS).map(([city, urls]) => (
+            <div key={city}>
+              <h3 className="font-display text-sm text-slate2-900">{prettyCity(city)}</h3>
+              <ul className="mt-1 pl-4 list-disc space-y-1 text-xs">
+                {urls.map((url) => {
+                  const name = fileNameFromUrl(url);
+                  return (
+                    <li key={url} className="truncate">
+                      <a
+                        href={commonsPage(url)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-bay-700 hover:underline font-mono"
+                      >
+                        {name}
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </div>
       </section>
 
       <section className="surface-muted p-4 text-xs text-slate2-700 leading-snug" role="note">
         <strong className="text-slate2-900">Replacing or adding photos:</strong>{" "}
         before adding a Wikimedia URL to <code>CityBackdrop.tsx</code>, confirm
         the file&apos;s license on its Commons page. CC-BY-* and CC0 are accepted;
-        non-free or unclear-license files are not. Update this page if the
-        attribution requirements change for any photo.
+        non-free or unclear-license files are not. This page renders the
+        attribution list from the same constant — no extra update is needed.
       </section>
 
       <footer className="text-center text-xs text-slate2-500 pt-4">

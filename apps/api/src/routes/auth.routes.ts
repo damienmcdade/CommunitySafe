@@ -2,7 +2,8 @@ import { Router } from "express";
 import { z } from "zod";
 import { authLimiter } from "../middleware/rate-limit.js";
 import { requireAuth } from "../middleware/auth.js";
-import { register, login, me, refreshAccessToken, logout } from "../services/auth.service.js";
+import { register, login, me, refreshAccessToken, logout, verifyMfaAndIssueTokens } from "../services/auth.service.js";
+import { generateProvisional, verifyAndEnableMfa, disableMfa } from "../services/mfa.service.js";
 import { writeSecurityAudit } from "../lib/audit.js";
 import { HttpError } from "../middleware/error.js";
 
@@ -79,6 +80,61 @@ authRouter.post("/logout", requireAuth, async (req, res, next) => {
   try {
     await logout(req.session!.uid);
     writeSecurityAudit({ event: "auth.token.refresh", userId: req.session!.uid, email: req.session!.email, req, detail: { action: "logout" } });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// v93p3 — MFA enrollment flow. Step 1: caller is authenticated, asks
+// for a provisional secret. We DO NOT store the secret here — caller
+// must verify a code via /auth/mfa/verify-enroll before persistence.
+authRouter.post("/mfa/enroll", requireAuth, async (req, res, next) => {
+  try {
+    const provisional = generateProvisional(req.session!.email);
+    res.json(provisional);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// v93p3 — MFA enrollment Step 2: client returns the secret from
+// Step 1 alongside the user's first code. We re-verify and persist.
+authRouter.post("/mfa/verify-enroll", requireAuth, authLimiter, async (req, res, next) => {
+  try {
+    const { secret, code } = z.object({
+      secret: z.string().min(16).max(200),
+      code: z.string().regex(/^\d{6}$/),
+    }).parse(req.body);
+    await verifyAndEnableMfa(req.session!.uid, secret, code);
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// v93p3 — login second-factor verification. Called after /auth/login
+// returns mfaRequired:true with a pendingUserId. The client POSTs the
+// pendingUserId + the user's current TOTP code.
+authRouter.post("/mfa/verify", authLimiter, async (req, res, next) => {
+  try {
+    const { pendingUserId, code } = z.object({
+      pendingUserId: z.string().min(10).max(100),
+      code: z.string().regex(/^\d{6}$/),
+    }).parse(req.body);
+    const result = await verifyMfaAndIssueTokens(pendingUserId, code);
+    writeSecurityAudit({ event: "auth.login.success", userId: result.user.id, email: result.user.email, req, detail: { mfa: true } });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// v93p3 — disable MFA (requires a current code).
+authRouter.post("/mfa/disable", requireAuth, authLimiter, async (req, res, next) => {
+  try {
+    const { code } = z.object({ code: z.string().regex(/^\d{6}$/) }).parse(req.body);
+    await disableMfa(req.session!.uid, code);
     res.json({ ok: true });
   } catch (err) {
     next(err);
