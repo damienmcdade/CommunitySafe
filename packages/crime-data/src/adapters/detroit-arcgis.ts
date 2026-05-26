@@ -164,6 +164,29 @@ export async function getRowsDetroit(): Promise<Incident[]> {
   }
 }
 
+// v90p9 — bundled polygon set as static seed. Returned by discover()
+// when the in-process row cache is cold (same pattern as Cleveland
+// v89). Each polygon's centroid is approximated from its bbox
+// midpoint. Once warm-worker populates the live row cache, the
+// LKG path takes over and returns adapter-derived centroids.
+import { detroitPolygons } from "../data/detroit-neighborhoods.js";
+const STATIC_DETROIT_AREAS: KnownArea[] = detroitPolygons.map((p) => {
+  let minLat = Infinity, minLng = Infinity, maxLat = -Infinity, maxLng = -Infinity;
+  const rings: number[][][] = p.geometry.type === "Polygon"
+    ? (p.geometry.coordinates as number[][][])
+    : (p.geometry.coordinates as number[][][][]).flat();
+  for (const ring of rings) for (const [lng, lat] of ring) {
+    if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat;
+    if (lng < minLng) minLng = lng; if (lng > maxLng) maxLng = lng;
+  }
+  return {
+    slug: `det-${p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`,
+    label: p.name,
+    jurisdiction: "Detroit",
+    centroid: { lat: (minLat + maxLat) / 2, lng: (minLng + maxLng) / 2 },
+  };
+});
+
 function buildDetroitAreas(rows: Incident[]): KnownArea[] {
   const agg = new Map<string, { latSum: number; lngSum: number; count: number }>();
   for (const r of rows) {
@@ -195,8 +218,12 @@ export async function getDiscoveredAreasDetroit(): Promise<KnownArea[]> {
   if (cache && cache.rows.length > 0) {
     return buildDetroitAreas(cache.rows);
   }
+  // v90p9 — return bundled static seed during cold-cache window
+  // (was returning [] which left the map empty for ~30s after each
+  // container restart). Fire-and-forget refresh so live data takes
+  // over as soon as the warm cycle finishes.
   void getRowsDetroit().catch(() => {});
-  return [];
+  return STATIC_DETROIT_AREAS;
 }
 
 // v69 followup — O(1) slug → label via the cache-time index.
