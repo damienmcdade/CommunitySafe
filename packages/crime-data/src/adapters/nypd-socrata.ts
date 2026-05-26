@@ -191,6 +191,13 @@ async function fetchNypdPage(offset: number): Promise<SodaRow[]> {
   url.searchParams.set("$order", "cmplnt_fr_dt DESC");
   url.searchParams.set("$limit", String(PAGE_SIZE));
   url.searchParams.set("$offset", String(offset));
+  // v88 — bound to last 400 days so we don't pull ancient backfill
+  // rows that safety-score immediately discards (rate window is
+  // capped at 365 days). Pre-v88 NYPD's 200k row fetch routinely
+  // included rows from 5+ years ago; ~60% of bytes were thrown out
+  // downstream. SoQL accepts ISO date literals here.
+  const cutoff = new Date(Date.now() - 400 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  url.searchParams.set("$where", `cmplnt_fr_dt >= '${cutoff}'`);
   const res = await fetch(url, {
     headers: { Accept: "application/json", "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)" },
   });

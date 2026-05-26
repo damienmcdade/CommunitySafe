@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useApi } from "@/lib/api-client";
+import { useCity } from "@/lib/use-city";
 
 interface Tip {
   id: string;
@@ -23,11 +24,16 @@ interface Resp {
 }
 
 export function SafetyTipsPanel({ areaSlug, jurisdictionSlug }: { areaSlug?: string; jurisdictionSlug?: string }) {
+  // v88 — when caller doesn't pass area/jurisdiction, default to the
+  // global city selection instead of hardcoding "san-diego". Pre-v88
+  // a Detroit user opening the panel with no neighborhood selected
+  // would silently see San Diego tips (the audit fallback).
+  const { city } = useCity();
   const path = areaSlug
     ? `/safety/tips?neighborhood=${areaSlug}`
     : jurisdictionSlug
     ? `/safety/tips?jurisdiction=${jurisdictionSlug}`
-    : "/safety/tips?jurisdiction=san-diego";
+    : `/safety/tips?jurisdiction=${city.slug}`;
   const { data, loading, error } = useApi<Resp>(path, [path]);
 
   return (

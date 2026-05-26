@@ -249,17 +249,28 @@ async function fetchBostonFromCSV(): Promise<Incident[]> {
     headers: { "User-Agent": "TravelSafe/1.0 (https://github.com/damienmcdade/TravelSafe)" },
   });
   if (!res.ok) throw new Error(`Boston CSV ${res.status}`);
-  const text = await res.text();
-  const lines = text.split("\n");
-  if (lines.length < 2) throw new Error("Boston CSV: empty");
-  const headers = splitCSVRow(lines[0]);
-  const idx: Record<string, number> = {};
-  for (const [i, h] of headers.entries()) idx[h] = i;
+  if (!res.body) throw new Error("Boston CSV: no body");
+  // v88 — line-stream the 45MB CSV instead of buffering full text +
+  // exploded array (~90MB peak). Use Node's built-in readline over
+  // the Web ReadableStream — no new deps. Peak resident drops to
+  // ~5MB while parsed-row state grows.
+  const { createInterface } = await import("node:readline");
+  const { Readable } = await import("node:stream");
+  // Cast to NodeJS stream — Node 18+ Readable.fromWeb accepts a
+  // ReadableStream<Uint8Array>. The TS bindings still want the older
+  // `any` shape so cast through unknown.
+  const rl = createInterface({ input: Readable.fromWeb(res.body as unknown as import("node:stream/web").ReadableStream), crlfDelay: Infinity });
   type ParsedRow = { ts: number; row: BostonRow };
   const parsed: ParsedRow[] = [];
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i];
+  let headers: string[] | null = null;
+  let idx: Record<string, number> = {};
+  for await (const line of rl) {
     if (!line) continue;
+    if (!headers) {
+      headers = splitCSVRow(line);
+      for (const [i, h] of headers.entries()) idx[h] = i;
+      continue;
+    }
     const f = splitCSVRow(line);
     const dateStr = f[idx.OCCURRED_ON_DATE];
     if (!dateStr) continue;
@@ -282,6 +293,7 @@ async function fetchBostonFromCSV(): Promise<Incident[]> {
       },
     });
   }
+  if (!headers) throw new Error("Boston CSV: empty");
   parsed.sort((a, b) => b.ts - a.ts);
   const top = parsed.slice(0, CSV_ROWS_TO_KEEP);
   return top.map(({ row }, i) => {
