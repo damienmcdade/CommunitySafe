@@ -4,6 +4,7 @@ import { loadPolygonAreas, lookupAreaKm2, totalCityKm2 } from "./polygon-areas.j
 import { HttpError } from "./errors.js";
 import { knownNeighborhoodPopulation } from "./neighborhood-population.js";
 import { CITY_FBI_BASELINES } from "./fbi-baselines.js";
+import { dedupe } from "./lib/inflight.js";
 
 /// Safety Score — compares the user's selected area against the FBI's most
 /// recent national rates per 100,000 residents. Returns the raw local and
@@ -513,6 +514,10 @@ function roundWindowDays(raw: number): number {
 /// city total rather than an even-split per-area approximation, so the
 /// comparison reflects the city's actual reported rate.
 export async function getCitywideSafetyScore(citySlug: string): Promise<SafetyScoreResponse> {
+  return dedupe(`safety-score:${citySlug}`, () => computeCitywideSafetyScore(citySlug));
+}
+
+async function computeCitywideSafetyScore(citySlug: string): Promise<SafetyScoreResponse> {
   const { cityBySlug } = await import("./cities.js");
   const city = cityBySlug(citySlug) ?? cityForArea("");
   const cityPop = CITY_POPULATION[city.slug] ?? 0;

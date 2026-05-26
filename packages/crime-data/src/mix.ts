@@ -1,5 +1,6 @@
 import { crimeData } from "./dispatcher.js";
 import { cityBySlug } from "./cities.js";
+import { dedupe } from "./lib/inflight.js";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 // Per-area cap for citywide aggregation. The single-area path pulls up to
@@ -77,6 +78,10 @@ export async function getCrimeMix(area: string, _windowDays?: number, topN = 12)
 /// Safety Index all-100 regression. The response shape matches the
 /// per-area CrimeMix so the UI renders with one branch.
 export async function getCitywideCrimeMix(citySlug: string, topN = 12): Promise<CrimeMix> {
+  return dedupe(`mix:${citySlug}:${topN}`, () => computeCitywideCrimeMix(citySlug, topN));
+}
+
+async function computeCitywideCrimeMix(citySlug: string, topN: number): Promise<CrimeMix> {
   const city = cityBySlug(citySlug);
   if (!city) return { area: citySlug, windowDays: 0, asOf: null, totalIncidents: 0, topOffenses: [] };
   const areas = await city.discover().catch(() => []);

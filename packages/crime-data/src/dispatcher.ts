@@ -1,5 +1,6 @@
 import { env } from "./env.js";
 import type { AreaRiskAlert, AreaStats, CrimeDataAdapter, Incident } from "./types.js";
+import { dedupe } from "./lib/inflight.js";
 // Adapter modules moved to @travelsafe/crime-data in v34. The three
 // directly-referenced ones here are imported via the package's
 // adapters/ subpath; the rest are pulled in via cities.ts.
@@ -139,6 +140,11 @@ export const crimeData = {
       dominantCategory: "PERSONS" | "PROPERTY" | "SOCIETY" | null;
     }>;
   }> {
+    // v95 — dedupe concurrent same-city composes. See lib/inflight.ts.
+    return dedupe(`citywide:${citySlug}:${opts.offense ?? ""}:${opts.windowDays ?? ""}`, () => this._getCitywide(citySlug, opts));
+  },
+
+  async _getCitywide(citySlug: string = "san-diego", opts: { offense?: string; windowDays?: number } = {}) {
     const { cityBySlug } = await import("./cities.js");
     const city = cityBySlug(citySlug) ?? CITIES[0];
     const areas = await city.discover().catch(() => [] as Awaited<ReturnType<typeof city.discover>>);
@@ -276,6 +282,10 @@ export const crimeData = {
   /// city slug as a neighborhood" anti-pattern that returned null when
   /// the slug wasn't a real area.
   async getCitywideAreaStats(citySlug: string = "san-diego"): Promise<AreaStats | null> {
+    return dedupe(`citywide-area-stats:${citySlug}`, () => this._getCitywideAreaStats(citySlug));
+  },
+
+  async _getCitywideAreaStats(citySlug: string = "san-diego"): Promise<AreaStats | null> {
     const { cityBySlug } = await import("./cities.js");
     const city = cityBySlug(citySlug);
     if (!city) return null;

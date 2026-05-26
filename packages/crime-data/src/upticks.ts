@@ -1,5 +1,6 @@
 import { crimeData } from "./dispatcher.js";
 import { cityBySlug, CITIES } from "./cities.js";
+import { dedupe } from "./lib/inflight.js";
 
 /// Recent uptick detector — flags neighborhoods whose 7-day report count
 /// jumped meaningfully versus the prior 7 days. Used to surface "what's
@@ -30,6 +31,10 @@ export interface UpticksResponse {
 }
 
 export async function getCitywideUpticks(citySlug: string): Promise<UpticksResponse> {
+  return dedupe(`upticks:${citySlug}`, () => computeCitywideUpticks(citySlug));
+}
+
+async function computeCitywideUpticks(citySlug: string): Promise<UpticksResponse> {
   const city = cityBySlug(citySlug) ?? CITIES[0];
   const now = Date.now();
   const recentCutoff = new Date(now - 7 * DAY);

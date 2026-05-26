@@ -5,6 +5,7 @@
 import { crimeData } from "@travelsafe/crime-data/dispatcher";
 import type { Incident } from "@travelsafe/crime-data/types";
 import { cityBySlug } from "@travelsafe/crime-data/cities";
+import { dedupe } from "@travelsafe/crime-data/lib/inflight";
 
 const WEEKS = 12;
 const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
@@ -97,6 +98,10 @@ export async function getAreaInsights(area: string): Promise<AreaInsights> {
 /// Citywide variant — same shape, fans out across every tracked area.
 /// Mirrors apps/web/src/server/services/crime-data/insights.getCitywideInsights.
 export async function getCitywideInsights(citySlug: string): Promise<AreaInsights> {
+  return dedupe(`insights:${citySlug}`, () => computeCitywideInsights(citySlug));
+}
+
+async function computeCitywideInsights(citySlug: string): Promise<AreaInsights> {
   const city = cityBySlug(citySlug);
   if (!city) {
     return { area: citySlug, windowWeeks: WEEKS, totalIncidents: 0, trends: [], brief: buildBrief(citySlug, []) };
