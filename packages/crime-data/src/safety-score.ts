@@ -832,10 +832,10 @@ async function computeCitywideSafetyScore(citySlug: string): Promise<SafetyScore
     ? gradeFromCityFbiBaseline(rows, fbiBaseline)
     : gradeFromNationalDeltas(rows);
   let grade = gradeWithNullGuard(rawGrade, persons + property, confidence.dataConfidence);
-  // v95p3 — also catch the partial-feed scenario where adapter has
-  // a tiny non-zero count that the grader interprets as "way below
-  // baseline = grade A". See gradeWithUndercountGuard for rationale.
-  grade = gradeWithUndercountGuard(grade, rows, fbiBaseline, confidence.dataConfidence, (cfsScale ?? 1) < 1);
+  // Note: gradeWithUndercountGuard runs AFTER the divergence guard
+  // below — the divergence guard upgrades confidence to "low" for
+  // CFS adapters between 3× and 20× divergence, and the under-count
+  // guard reads that updated confidence to decide whether to suppress.
 
   // Calibration divergence guard (v25 audit fix). The score audit
   // caught several cities reporting an A or B grade despite being
@@ -899,6 +899,14 @@ async function computeCitywideSafetyScore(citySlug: string): Promise<SafetyScore
       };
     }
   }
+
+  // v95p3 followup — run the under-count guard AFTER the divergence
+  // guard so it sees the upgraded "low" confidence for CFS cities in
+  // the 3×–20× soft-warn band. Without this ordering, Cleveland (CFS
+  // at 15.6× divergence, ~9.78% of FBI baseline) skipped the under-
+  // count guard because its initial confidence was "medium", then
+  // got upgraded to "low" too late to suppress the misleading A.
+  grade = gradeWithUndercountGuard(grade, rows, fbiBaseline, confidence.dataConfidence, (cfsScale ?? 1) < 1);
 
   const headline = headlineForCity(grade, cityLabel, fbiBaseline ? "city-fbi" : "national");
 
