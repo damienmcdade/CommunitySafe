@@ -177,7 +177,7 @@ function TrendReport({ trend, accent, sectionHeadingLevel = 2, windowDays = 30 }
       )}
 
       {trend.timeOfDay && (
-        <TimeOfDayChart data={trend.timeOfDay} areaLabel={trend.area.label} headingTag={SubHeading} />
+        <TimeOfDayChart data={trend.timeOfDay} areaLabel={trend.area.label} headingTag={SubHeading} windowDays={windowDays} />
       )}
 
       <section className="surface p-5">
@@ -356,10 +356,11 @@ const PERIOD_META: Record<NonNullable<TrendResp["timeOfDay"]>["dominantPeriod"],
   evening:    { label: "Evening",    sublabel: "6pm – 12am", tone: "#DC2626" },
 };
 
-function TimeOfDayChart({ data, areaLabel, headingTag: H = "h3" }: {
+function TimeOfDayChart({ data, areaLabel, headingTag: H = "h3", windowDays = 30 }: {
   data: NonNullable<TrendResp["timeOfDay"]>;
   areaLabel: string;
   headingTag?: "h3" | "h4";
+  windowDays?: number;
 }) {
   const total =
     data.buckets.late_night + data.buckets.morning + data.buckets.afternoon + data.buckets.evening;
@@ -375,7 +376,7 @@ function TimeOfDayChart({ data, areaLabel, headingTag: H = "h3" }: {
     <section className="surface p-5 bg-gradient-to-br from-white to-sand-50">
       <header className="flex items-baseline justify-between flex-wrap gap-1">
         <H className="font-display text-lg text-slate2-900">When reports happen</H>
-        <span className="text-xs text-slate2-500">{areaLabel} · 30-day window</span>
+        <span className="text-xs text-slate2-500">{areaLabel} · {windowDays}-day window</span>
       </header>
       <p className="mt-1 text-xs text-slate2-500">
         Hourly distribution of every report in the window, bucketed into four six-hour periods.
