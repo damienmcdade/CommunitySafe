@@ -299,12 +299,42 @@ const VIOLENT_CACHE = new Map<string, boolean>();
 const PROPERTY_CACHE = new Map<string, boolean>();
 const PART1_CACHE_CAP = 5000;
 
+// v95p1 — explicit Part-1 INCLUDES for unambiguous aggravated indicators
+// that would otherwise be dropped by the EXCLUDE patterns. Cleveland's
+// CFS feed publishes "DOM VIOL ASLT/THREATS" (63k records/yr — clearly
+// aggravated domestic assault) and "PERSON THREATENING W/WEAPON" (25k
+// records — UCR aggravated assault by definition). These got caught by
+// /threaten|threats|domestic|fight/ in PART1_VIOLENT_EXCLUDE even
+// though they describe Part-1 violent offenses. The override list is
+// checked FIRST: if a description matches an explicit indicator, it
+// counts as Part-1 regardless of EXCLUDE matches.
+const PART1_VIOLENT_INCLUDE_OVERRIDE = [
+  // "DOM VIOL ASLT/THREATS" — DV with assault abbreviation. Drops 63k
+  // Cleveland records/yr that match /\bthreats\b/ even though they're
+  // clearly aggravated DV.
+  /dom\b.*viol/i,
+  /domestic.*viol/i,
+  // "PERSON THREATENING W/WEAPON" — UCR aggravated assault by
+  // definition (threat + weapon). Drops 25k Cleveland records/yr that
+  // match /\bthreaten/.
+  /threat.*weapon/i,
+  /threat.*firearm/i,
+  /threat.*gun/i,
+  /threat.*knife/i,
+  /weapon.*threat/i,
+];
+
 function isPart1Violent(desc: string | undefined): boolean {
   if (!desc) return true;
   const cached = VIOLENT_CACHE.get(desc);
   if (cached !== undefined) return cached;
   let result = true;
-  for (const ex of PART1_VIOLENT_EXCLUDE) if (ex.test(desc)) { result = false; break; }
+  // Explicit Part-1 override wins over any EXCLUDE match.
+  let overridden = false;
+  for (const inc of PART1_VIOLENT_INCLUDE_OVERRIDE) if (inc.test(desc)) { overridden = true; break; }
+  if (!overridden) {
+    for (const ex of PART1_VIOLENT_EXCLUDE) if (ex.test(desc)) { result = false; break; }
+  }
   if (VIOLENT_CACHE.size >= PART1_CACHE_CAP) VIOLENT_CACHE.clear();
   VIOLENT_CACHE.set(desc, result);
   return result;

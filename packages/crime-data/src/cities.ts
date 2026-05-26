@@ -41,6 +41,7 @@ import { atlantaAdapter, getDiscoveredAreasAtlanta } from "./adapters/atlanta-ar
 import { indianapolisAdapter, getDiscoveredAreasIndianapolis } from "./adapters/indianapolis-arcgis.js";
 import { raleighAdapter, getDiscoveredAreasRaleigh } from "./adapters/raleigh-arcgis.js";
 import { tucsonAdapter, getDiscoveredAreasTucson } from "./adapters/tucson-arcgis.js";
+import { honoluluAdapter, getDiscoveredAreasHonolulu } from "./adapters/honolulu-socrata.js";
 
 // City registry.
 //
@@ -339,6 +340,17 @@ export const CITIES: CityEntry[] = [
     adapter: tucsonAdapter,
     discover: getDiscoveredAreasTucson,
   },
+  {
+    // Honolulu — 37th city. Citywide-MVP: HPD's open-data feed
+    // publishes blockaddress + offense type but no lat/lng or
+    // neighborhood. Every incident lands in one citywide bucket
+    // until per-neighborhood geocoding lands.
+    slug: "honolulu",
+    label: "Honolulu",
+    bbox: { south: 21.245, west: -158.290, north: 21.711, east: -157.648 },
+    adapter: honoluluAdapter,
+    discover: getDiscoveredAreasHonolulu,
+  },
 ];
 
 export function cityFromLatLng(point: { lat: number; lng: number }): CityEntry | null {
@@ -414,6 +426,7 @@ export function cityForArea(slug: string): CityEntry {
   if (slug.startsWith("indy-") || slug === "indianapolis") return CITIES[33];
   if (slug.startsWith("rdu-")  || slug === "raleigh")      return CITIES[34];
   if (slug.startsWith("tuc-")  || slug === "tucson")       return CITIES[35];
+  if (slug.startsWith("hnl-")  || slug === "honolulu")     return CITIES[36];
   return CITIES[0];
 }
 

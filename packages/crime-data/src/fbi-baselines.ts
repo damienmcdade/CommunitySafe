@@ -64,4 +64,8 @@ export const CITY_FBI_BASELINES: Record<string, CityFbiBaseline> = {
   "indianapolis": { violent: 878,  property: 3336, year: 2024, ori: "INIPD0000" },
   "raleigh":      { violent: 489,  property: 2819, year: 2024, ori: "NC0920100" },
   "tucson":       { violent: 533,  property: 3415, year: 2024, ori: "AZ0100100" },
+  // v95p2 — Honolulu (HPD ORI HI0010100). FBI CDE 2024 reported
+  // rates. Honolulu is structurally lower-crime than mainland peer
+  // cities and these baselines reflect that.
+  "honolulu":     { violent: 305,  property: 2912, year: 2024, ori: "HI0010100" },
 };
