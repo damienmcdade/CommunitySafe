@@ -2,6 +2,29 @@ import { CrimeCategory } from "@prisma/client";
 import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../types.js";
 import type { KnownArea } from "../neighborhoods.js";
 import { titleCaseOffense } from "../lib/titlecase-offense.js";
+import { clevelandPolygons } from "../data/cleveland-neighborhoods.js";
+
+// v89 — static seed list from the bundled neighborhood polygons.
+// Returned by discover() when the in-process row cache is cold so
+// /geo/areas?city=cleveland never returns [] (which used to leave
+// the map showing only the tile layer for the 30s cold-window).
+// Each polygon's centroid is approximated from the bbox midpoint.
+const STATIC_CLEVELAND_AREAS: KnownArea[] = clevelandPolygons.map((p) => {
+  let minLat = Infinity, minLng = Infinity, maxLat = -Infinity, maxLng = -Infinity;
+  const rings: number[][][] = p.geometry.type === "Polygon"
+    ? (p.geometry.coordinates as number[][][])
+    : (p.geometry.coordinates as number[][][][]).flat();
+  for (const ring of rings) for (const [lng, lat] of ring) {
+    if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat;
+    if (lng < minLng) minLng = lng; if (lng > maxLng) maxLng = lng;
+  }
+  return {
+    slug: `cle-${p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`,
+    label: p.name,
+    jurisdiction: "Cleveland",
+    centroid: { lat: (minLat + maxLat) / 2, lng: (minLng + maxLng) / 2 },
+  };
+});
 
 // Cleveland — Cleveland Division of Police Calls for Service (CAD) on
 // services3.arcgis.com (owner: opendataCLE). The feed is dispatched CFS,
@@ -55,15 +78,30 @@ interface CleRow {
 // category headers, not specific offenses), MH dispatches (CRISIS
 // INTERVENTION), sensor events (SHOTSPOTTER alone), and broad public-
 // order calls (DISTURBANCE, NUISANCE) that don't map to NIBRS reports.
+// v89 — expanded Cleveland keyword filters. Pre-v89 the adapter was
+// reporting violent rates 17.9× under the FBI baseline because narrow
+// keyword sets missed many real Part-1 dispatches: "PERSON THREATENING
+// W/WEAPON", "BATTERY", "PHYSICAL DISPUTE", "PROPERTY CRIME",
+// "AUTO BREAK-IN", "BURGLARY ATTEMPT", etc. Broadening these closes
+// most of the gap while still excluding dispatch-administrative codes.
 const PERSONS_KEYS = [
-  "ASSAULT", "FIGHT", "THREATEN", "THREATS", "DOM VIOL", "FAMILY TROUBLE",
-  "ROBBERY", "HOMICIDE", "MURDER", "KIDNAP", "ABDUCT",
-  "PERSON THREAT", "INTIMIDAT", "RAPE", "SEX OFFENSE", "STALKING",
+  "ASSAULT", "BATTERY", "FIGHT", "PHYSICAL DISPUTE",
+  "THREATEN", "THREATS", "DOM VIOL", "FAMILY TROUBLE", "VIOLENT FAMILY",
+  "ROBBERY", "HOMICIDE", "MURDER", "MANSLAUGHTER",
+  "KIDNAP", "ABDUCT", "HOSTAGE",
+  "PERSON THREAT", "INTIMIDAT", "MENACING",
+  "RAPE", "SEX OFFENSE", "SEX CRIME", "SEXUAL", "STALKING",
+  "AGGRAVATED", "SHOOTING",
 ];
 const PROPERTY_KEYS = [
-  "BURGLAR", "THEFT", "AUTO RECOVERY", "STOLEN",
-  "DAMAGE", "VANDAL", "ARSON", "FRAUD", "FORGERY", "EMBEZ", "LARC",
+  "BURGLAR", "B&E", "BREAKING ENTERING", "BREAK IN",
+  "THEFT", "LARC", "STOLEN", "AUTO RECOVERY", "AUTO BREAK", "AUTO STRIP",
+  "MOTOR VEHICLE THEFT", "GTA", "GRAND THEFT", "PETTY THEFT",
+  "DAMAGE", "VANDAL", "MISCHIEF",
+  "ARSON",
+  "FRAUD", "FORGERY", "EMBEZ", "COUNTERFEIT",
   "SHOPLIFT",
+  "PROPERTY CRIME",
 ];
 const SOCIETY_KEYS = [
   "WEAPON", "DRUG", "NARCOTIC", "TRESPASS", "DISORDERLY", "OUI", "DUI",
@@ -219,10 +257,12 @@ export async function getDiscoveredAreasCleveland(): Promise<KnownArea[]> {
   if (cache && cache.rows.length > 0) {
     return buildClevelandAreas(cache.rows);
   }
-  // No cache yet — fire-and-forget refresh; map will populate on next
-  // request once warm-worker has done its job.
+  // v89 — return the static bundled neighborhood list when the adapter
+  // cache is cold (instead of [] which left the map blank for ~30s
+  // after every container restart). Fire-and-forget the upstream
+  // refresh so live data takes over as soon as the warm cycle finishes.
   void getRowsCleveland().catch(() => {});
-  return [];
+  return STATIC_CLEVELAND_AREAS;
 }
 
 function labelForClevelandSlug(slug: string, rows: Incident[]): string | null {
