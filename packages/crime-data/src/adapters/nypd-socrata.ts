@@ -210,23 +210,33 @@ async function fetchNypdPage(offset: number): Promise<SodaRow[]> {
 }
 
 async function fetchNypd(): Promise<Incident[]> {
-  // v89 — serial fetch (was Promise.all over 4 pages). Pre-v89 the
-  // parallel burst routinely hit Socrata 500 ("NYPD SODA 500" all
-  // four offsets) because the anonymous-pool throttle triggered on
-  // simultaneous large queries. Serial adds ~24s to a cycle (4×8s)
-  // but the warm-worker already runs every 4min so the wall-clock
-  // budget is fine; the freshness cost is 0. Once an X-App-Token is
-  // configured, we could safely raise to bounded-concurrency=2 again.
+  // v89 → v93p6 — restored to bounded-concurrency=2. The serial
+  // workaround was necessary because Socrata's anonymous-pool throttle
+  // 500'd all 4 parallel pages simultaneously. With SOCRATA_APP_TOKEN
+  // now configured (Tyler federation, applies to all 17 Socrata
+  // adapters via the X-App-Token header in lib/http.ts), the per-app
+  // rate-limit pool handles 2 concurrent NYPD pages fine. Cuts the
+  // NYPD warm cycle from ~32s back to ~16s.
+  // Kept bounded at 2 (not 4) — going higher tickles upstream
+  // load-balancer rate-limits on the bigger NYPD dataset.
   const rows: SodaRow[] = [];
-  for (let i = 0; i < PAGES_TO_FETCH; i++) {
-    const o = i * PAGE_SIZE;
-    try {
-      const page = await fetchNypdPage(o);
-      rows.push(...page);
-    } catch (err) {
-      console.warn(`[nypd] page offset=${o} failed:`, (err as Error).message);
+  const offsets = Array.from({ length: PAGES_TO_FETCH }, (_, i) => i * PAGE_SIZE);
+  let cursor = 0;
+  const concurrency = 2;
+  const workers = Array.from({ length: Math.min(concurrency, offsets.length) }, async () => {
+    while (true) {
+      const idx = cursor++;
+      if (idx >= offsets.length) return;
+      const o = offsets[idx];
+      try {
+        const page = await fetchNypdPage(o);
+        rows.push(...page);
+      } catch (err) {
+        console.warn(`[nypd] page offset=${o} failed:`, (err as Error).message);
+      }
     }
-  }
+  });
+  await Promise.all(workers);
   // Drop rows with no parseable date BEFORE constructing Incidents. The
   // earlier `new Date(0).toISOString()` fallback survived row mapping
   // but was filtered out by the citywide aggregator's `t > 0` invariant,
