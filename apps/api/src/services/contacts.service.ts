@@ -19,8 +19,16 @@ export async function listContacts(userId: string) {
   });
 }
 
-export async function addContact(userId: string, input: { label: string; email?: string | null; phone?: string | null }) {
+export async function addContact(userId: string, input: { label: string; email?: string | null; phone?: string | null; permissionAcknowledged?: boolean }) {
   if (!input.email && !input.phone) throw new HttpError(400, "email_or_phone_required");
+  // v93p7 — enforce permissionAcknowledged required by the privacy
+  // policy (and by the v93 schema column). Service rejects creates
+  // without affirmative consent that the contact knows they'll be
+  // listed.
+  if (!input.permissionAcknowledged) {
+    throw new HttpError(400, "permission_acknowledgement_required",
+      "Confirm you have this contact's permission to add them before saving.");
+  }
   const count = await prisma.trustedContact.count({ where: { userId } });
   if (count >= MAX_CONTACTS) throw new HttpError(409, "contact_limit_reached", `Max ${MAX_CONTACTS} contacts`);
 
@@ -31,6 +39,7 @@ export async function addContact(userId: string, input: { label: string; email?:
       label: input.label,
       email: input.email ?? null,
       phone: input.phone ?? null,
+      permissionAcknowledged: true,
       confirmationToken: token,
       confirmationSentAt: new Date(),
     },

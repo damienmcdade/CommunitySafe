@@ -7,6 +7,7 @@ import { writeLimiter } from "../middleware/rate-limit.js";
 import { HttpError } from "../middleware/error.js";
 import { env } from "../env.js";
 import { listPendingPosts, reportPost, reviewPost } from "../services/moderation/queue.service.js";
+import { writeSecurityAudit } from "../lib/audit.js";
 
 export const moderationRouter = Router();
 
@@ -63,7 +64,16 @@ moderationRouter.post("/posts/:id/review", requireAuth, async (req, res, next) =
   try {
     await requireModerator(req);
     const body = reviewBody.parse(req.body);
-    res.json(await reviewPost(req.session!.uid, req.params.id, body.action, body));
+    const result = await reviewPost(req.session!.uid, req.params.id, body.action, body);
+    // v93p7 — emit audit event (DISA STIG AU-2 / AU-3).
+    writeSecurityAudit({
+      event: "moderation.review",
+      userId: req.session!.uid,
+      email: req.session!.email,
+      req,
+      detail: { postId: req.params.id, action: body.action, reason: body.reason ?? null },
+    });
+    res.json(result);
   } catch (err) {
     next(err);
   }
@@ -88,6 +98,7 @@ moderationRouter.post("/block", requireAuth, writeLimiter, async (req, res, next
       create: { blockerId, blockedId: userId },
       update: {},
     });
+    writeSecurityAudit({ event: "moderation.suspend", userId: blockerId, email: req.session!.email, req, detail: { action: "block", targetUserId: userId } });
     res.json({ ok: true });
   } catch (err) {
     next(err);

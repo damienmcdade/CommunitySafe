@@ -10,6 +10,9 @@ const newContact = z.object({
   label: z.string().min(1).max(40),
   email: z.string().email().optional().nullable(),
   phone: z.string().min(7).max(20).optional().nullable(),
+  // v93p7 — privacy-policy promise: caller must confirm the contact
+  // gave permission to be listed. Service rejects without this.
+  permissionAcknowledged: z.literal(true),
 });
 
 contactsRouter.get("/", requireAuth, async (req, res, next) => {
