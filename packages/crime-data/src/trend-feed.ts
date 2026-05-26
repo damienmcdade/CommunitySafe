@@ -104,7 +104,6 @@ export async function getCitywideTrend(citySlug: string, opts?: { windowDays?: n
   const areas = await city.discover().catch(() => []);
   const now = Date.now();
   const windowDays = Math.max(1, Math.min(180, opts?.windowDays ?? 30));
-  const cutoff = new Date(now - windowDays * DAY);
 
   // Concatenate the 30-day window across every neighborhood. The adapter
   // cache de-duplicates upstream pulls so this is one fetch per adapter
@@ -125,6 +124,16 @@ export async function getCitywideTrend(citySlug: string, opts?: { windowDays?: n
       rows: await crimeData.getIncidents(a.slug, { limit: 5000 }).catch(() => []),
     })),
   );
+  // v90p7 — anchor window on the freshest available row across the whole
+  // city (or now, whichever is older). Pre-v90p7 a fixed `now - 30d`
+  // cutoff returned 0 bullets whenever the adapter was 30+ days stale.
+  let maxT = 0;
+  for (const { rows } of perArea) for (const r of rows) {
+    const t = +new Date(r.occurredAt);
+    if (Number.isFinite(t) && t > maxT && t <= now) maxT = t;
+  }
+  const anchorMs = maxT > 0 ? maxT : now;
+  const cutoff = new Date(anchorMs - windowDays * DAY);
   // Epoch-0 observability: adapters that hit a date-parse fallback emit
   // occurredAt = "1970-01-01T..." rather than dropping the row. Those rows
   // survive into the cache but the cutoff filter below silently excludes
@@ -247,7 +256,6 @@ export async function getTrendForArea(areaSlug: string, areaLabel: string, opts?
   const city = cityForArea(areaSlug);
   const now = Date.now();
   const windowDays = Math.max(1, Math.min(180, opts?.windowDays ?? 30));
-  const cutoff = new Date(now - windowDays * DAY);
 
   // Pull a generous batch — the adapter cache holds up to 5k rows for the
   // area, which is far more than 30 days for any realistic neighborhood.
@@ -263,13 +271,31 @@ export async function getTrendForArea(areaSlug: string, areaLabel: string, opts?
   if (all.length > 0 && epoch0Count / all.length > 0.1) {
     console.warn(`[trend-feed] ${city.slug}/${areaSlug}: ${epoch0Count}/${all.length} rows had unparseable/epoch-0 timestamps`);
   }
+  // v90p7 — anchor the trend window on the freshest available row
+  // (or now, whichever is older). Pre-v90p7 the window was always
+  // `now - 30d` which made the trend feed return 0 bullets for any
+  // city whose adapter data was 30+ days stale (Sacramento, Phoenix,
+  // Boston, NY, Cambridge, KC). Anchoring on max(occurredAt) makes
+  // the trend always reflect the freshest available data slice,
+  // regardless of upstream publishing lag.
+  let anchorMs = now;
+  if (validRows.length > 0) {
+    let maxT = 0;
+    for (const r of validRows) {
+      const t = +new Date(r.occurredAt);
+      if (t > maxT && t <= now) maxT = t;
+    }
+    if (maxT > 0) anchorMs = maxT;
+  }
+  const cutoff = new Date(anchorMs - windowDays * DAY);
   const inWindow = validRows.filter((i) => new Date(i.occurredAt) >= cutoff);
   inWindow.sort((a, b) => +new Date(b.occurredAt) - +new Date(a.occurredAt));
 
   // Bucket the window into the most recent 7 days vs the 7 days before that,
   // by NIBRS group, so we can emit a week-over-week shift summary.
-  const recentWeek = new Date(now - 7 * DAY);
-  const priorWeek = new Date(now - 14 * DAY);
+  // v90p7 — anchored on the same fresh-data point as the cutoff above.
+  const recentWeek = new Date(anchorMs - 7 * DAY);
+  const priorWeek = new Date(anchorMs - 14 * DAY);
   const bucketed = { recent: { PERSONS: 0, PROPERTY: 0, SOCIETY: 0 },
                      prior:  { PERSONS: 0, PROPERTY: 0, SOCIETY: 0 } };
   for (const i of inWindow) {

@@ -164,8 +164,7 @@ export async function getRowsDetroit(): Promise<Incident[]> {
   }
 }
 
-export async function getDiscoveredAreasDetroit(): Promise<KnownArea[]> {
-  const rows = await getRowsDetroit();
+function buildDetroitAreas(rows: Incident[]): KnownArea[] {
   const agg = new Map<string, { latSum: number; lngSum: number; count: number }>();
   for (const r of rows) {
     if (!r.area || r.area === "Unknown") continue;
@@ -183,6 +182,21 @@ export async function getDiscoveredAreasDetroit(): Promise<KnownArea[]> {
       centroid: { lat: e.latSum / e.count, lng: e.lngSum / e.count },
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
+}
+
+// v90p7 — LKG (last-known-good) pattern. Pre-v90p7 the discover()
+// route blocked synchronously on getRowsDetroit() — Detroit's
+// 30-page bounded ArcGIS fetch routinely takes 30-60s on cold
+// cache, exceeding HTTP-client timeouts. Now returns cached if
+// available, otherwise fires the refresh in the background and
+// returns []. Warm-worker populates within ~30s of container boot.
+// Same fix as Cleveland v77.
+export async function getDiscoveredAreasDetroit(): Promise<KnownArea[]> {
+  if (cache && cache.rows.length > 0) {
+    return buildDetroitAreas(cache.rows);
+  }
+  void getRowsDetroit().catch(() => {});
+  return [];
 }
 
 // v69 followup — O(1) slug → label via the cache-time index.
