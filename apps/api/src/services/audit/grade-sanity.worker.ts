@@ -80,9 +80,35 @@ function classify(snap: GradeSnapshot): GradeFlag[] {
   return flags;
 }
 
+// v80 — read warm-worker's Redis L2 entry first; recompute only if
+// missing. Pre-v80 every sanity tick re-ran the full safety-score
+// computation for all 31 cities (60-300ms each, ~10s+ total even
+// hot) duplicating work the warm-worker just finished. With the
+// Redis short-circuit we read 31 small JSON blobs (<10ms total) in
+// the common case and only spend compute when warm-worker's cycle
+// is mid-flight or a city's L2 entry expired.
 async function probeCity(slug: string, nowMs: number): Promise<GradeSnapshot> {
   try {
-    const s = await getCitywideSafetyScore(slug);
+    const redis = getRedis();
+    let s: Awaited<ReturnType<typeof getCitywideSafetyScore>> | null = null;
+    if (redis) {
+      try {
+        const cached = await redis.get(`citywide:${slug}`);
+        if (cached) {
+          const parsed = JSON.parse(cached) as Awaited<ReturnType<typeof getCitywideSafetyScore>>;
+          // Same sanity gate the route uses — reject degenerate cached
+          // values so we recompute instead of double-flagging on a bad
+          // cached row.
+          const totalCounted = (parsed.rows ?? []).reduce((sum, r) => sum + ((r as { count?: number }).count ?? 0), 0);
+          if (((parsed as { windowDays?: number }).windowDays ?? 0) > 0 && totalCounted > 0) {
+            s = parsed;
+          }
+        }
+      } catch {
+        // Redis fail-soft — fall through to compute below
+      }
+    }
+    if (!s) s = await getCitywideSafetyScore(slug);
     const persons = (s.rows || []).find((r) => r.category === "PERSONS");
     const property = (s.rows || []).find((r) => r.category === "PROPERTY");
     const snap: GradeSnapshot = {
