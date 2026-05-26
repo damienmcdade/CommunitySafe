@@ -78,6 +78,7 @@ model User {
   liveShareLinks    LiveShareLink[]
   reviewActions     PostReviewAction[]
   suspensionEvents  SuspensionEvent[]
+  securityAudits    SecurityAuditLog[]  @relation("UserSecurityAudits")
 
   // "List TRUSTED users", "list new MODERATORs this week" etc.
   // queries become point lookups instead of seq scans. Finding #3
@@ -151,6 +152,11 @@ model TrustedContact {
   confirmationToken   String?       @unique
   confirmationSentAt  DateTime?
   confirmedAt         DateTime?
+  // v92 — required affirmative consent from the adder that the contact
+  // has agreed to be notified. Privacy policy promised we capture this;
+  // the field gives us an audit trail. Service layer rejects creates
+  // without permissionAcknowledged=true.
+  permissionAcknowledged Boolean @default(false)
   createdAt           DateTime      @default(now())
 
   user                User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -440,6 +446,34 @@ model SuspensionEvent {
   user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+}
+
+// v92 — security-event audit log (DISA STIG AU-2, AU-3). Captures
+// auth successes/failures, moderation decisions, account lifecycle
+// (export/delete), permission changes. Written via the
+// `writeSecurityAudit()` helper in apps/api so any new auth or
+// moderation surface that forgets to call it shows up as a
+// coverage gap in the audit-log dashboards.
+//
+// `userId` is nullable so we can record failed-login attempts against
+// non-existent emails without orphaning records. `ip` and `userAgent`
+// are stored short-term for forensics; rotate via a retention job
+// (90d default) — pending operator decision on retention policy.
+model SecurityAuditLog {
+  id        String   @id @default(cuid())
+  event     String   // 'auth.login.success' | 'auth.login.fail.bad_password' | 'auth.login.fail.locked' | 'auth.register' | 'account.export' | 'account.delete' | 'moderation.review' | 'moderation.suspend' etc.
+  userId    String?
+  email     String?
+  ip        String?
+  userAgent String?
+  detail    Json?
+  createdAt DateTime @default(now())
+
+  user      User? @relation("UserSecurityAudits", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([event, createdAt])
+  @@index([createdAt])
 }
 
 // -----------------------------------------------------------------------------

@@ -1,0 +1,29 @@
+# v92 — weekly Dependabot scan. Covers all workspaces via the root
+# package-lock + GitHub Actions versions. PRs auto-grouped by ecosystem
+# so the weekly digest stays reviewable.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    groups:
+      prod-deps:
+        dependency-type: "production"
+        update-types: ["minor", "patch"]
+      dev-deps:
+        dependency-type: "development"
+        update-types: ["minor", "patch"]
+    ignore:
+      # Major bumps require human review; ignore here so they don't
+      # fill the PR queue.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5

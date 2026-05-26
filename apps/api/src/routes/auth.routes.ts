@@ -3,6 +3,8 @@ import { z } from "zod";
 import { authLimiter } from "../middleware/rate-limit.js";
 import { requireAuth } from "../middleware/auth.js";
 import { register, login, me } from "../services/auth.service.js";
+import { writeSecurityAudit } from "../lib/audit.js";
+import { HttpError } from "../middleware/error.js";
 
 export const authRouter = Router();
 
@@ -16,7 +18,9 @@ const credentials = z.object({
 authRouter.post("/register", authLimiter, async (req, res, next) => {
   try {
     const { email, password, displayName } = credentials.parse(req.body);
-    res.status(201).json(await register(email, password, displayName));
+    const result = await register(email, password, displayName);
+    writeSecurityAudit({ event: "auth.register", userId: result.user.id, email, req });
+    res.status(201).json(result);
   } catch (err) {
     next(err);
   }
@@ -25,7 +29,22 @@ authRouter.post("/register", authLimiter, async (req, res, next) => {
 authRouter.post("/login", authLimiter, async (req, res, next) => {
   try {
     const { email, password } = credentials.parse(req.body);
-    res.json(await login(email, password));
+    try {
+      const result = await login(email, password);
+      writeSecurityAudit({ event: "auth.login.success", userId: result.user.id, email, req });
+      res.json(result);
+    } catch (err) {
+      if (err instanceof HttpError) {
+        if (err.code === "account_locked") {
+          writeSecurityAudit({ event: "auth.login.fail.locked", email, req });
+        } else if (err.code === "banned") {
+          writeSecurityAudit({ event: "auth.login.fail.banned", email, req });
+        } else if (err.code === "invalid_credentials") {
+          writeSecurityAudit({ event: "auth.login.fail.bad_password", email, req });
+        }
+      }
+      throw err;
+    }
   } catch (err) {
     next(err);
   }

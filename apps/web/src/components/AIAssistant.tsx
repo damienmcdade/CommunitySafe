@@ -235,6 +235,15 @@ export function AIAssistant() {
             </button>
           </header>
 
+          {/* v92 — persistent AI-content notice inside the chat panel
+              (Colorado AI Act §6-1-1701 + EU AI Act Art. 50). Pre-v92
+              the only "you're talking to AI" notice was the small
+              header tagline, which depending on interpretation may
+              not be "conspicuous" enough. Banner here is unmissable. */}
+          <div className="px-4 py-2 bg-sand-50 border-b border-sand-200 text-[11px] text-slate2-700 flex items-start gap-2">
+            <span aria-hidden="true">⚠️</span>
+            <span>This is an AI assistant. Responses are machine-generated and may be inaccurate. Verify any number, address, or recommendation against the source the assistant cites. Not legal, medical, or safety advice — call 911 for emergencies.</span>
+          </div>
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
             {messages.map((m, i) => (
               <div key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
