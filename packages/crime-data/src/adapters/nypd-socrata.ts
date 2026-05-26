@@ -1,6 +1,7 @@
 import { CrimeCategory } from "@prisma/client";
 import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../types.js";
 import type { KnownArea } from "../neighborhoods.js";
+import { socrataHeaders } from "../lib/http.js";
 
 // City of New York — NYPD Complaint Data Current (Year-To-Date).
 // Socrata dataset 5uac-w243 on data.cityofnewyork.us. We use the YTD feed
@@ -198,22 +199,34 @@ async function fetchNypdPage(offset: number): Promise<SodaRow[]> {
   // downstream. SoQL accepts ISO date literals here.
   const cutoff = new Date(Date.now() - 400 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   url.searchParams.set("$where", `cmplnt_fr_dt >= '${cutoff}'`);
-  const res = await fetch(url, {
-    headers: { Accept: "application/json", "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)" },
-  });
+  // v89 — attach X-App-Token when configured (per-host or generic env
+  // var). Anonymous Socrata throttles aggressively when a single IP
+  // fires 4× 50k-row queries in parallel; with a token NYPD lifts into
+  // the per-app pool with 4-8× higher concurrency budget.
+  const headers = socrataHeaders(url);
+  const res = await fetch(url, { headers });
   if (!res.ok) throw new Error(`NYPD SODA ${res.status} at offset ${offset}`);
   return (await res.json()) as SodaRow[];
 }
 
 async function fetchNypd(): Promise<Incident[]> {
-  const offsets = Array.from({ length: PAGES_TO_FETCH }, (_, i) => i * PAGE_SIZE);
-  const pages = await Promise.all(
-    offsets.map((o) => fetchNypdPage(o).catch((err) => {
+  // v89 — serial fetch (was Promise.all over 4 pages). Pre-v89 the
+  // parallel burst routinely hit Socrata 500 ("NYPD SODA 500" all
+  // four offsets) because the anonymous-pool throttle triggered on
+  // simultaneous large queries. Serial adds ~24s to a cycle (4×8s)
+  // but the warm-worker already runs every 4min so the wall-clock
+  // budget is fine; the freshness cost is 0. Once an X-App-Token is
+  // configured, we could safely raise to bounded-concurrency=2 again.
+  const rows: SodaRow[] = [];
+  for (let i = 0; i < PAGES_TO_FETCH; i++) {
+    const o = i * PAGE_SIZE;
+    try {
+      const page = await fetchNypdPage(o);
+      rows.push(...page);
+    } catch (err) {
       console.warn(`[nypd] page offset=${o} failed:`, (err as Error).message);
-      return [] as SodaRow[];
-    })),
-  );
-  const rows = pages.flat();
+    }
+  }
   // Drop rows with no parseable date BEFORE constructing Incidents. The
   // earlier `new Date(0).toISOString()` fallback survived row mapping
   // but was filtered out by the citywide aggregator's `t > 0` invariant,
