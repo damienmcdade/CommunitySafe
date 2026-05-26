@@ -49,16 +49,40 @@ type Cat = keyof typeof CATEGORY_COLOR;
 // police department prints in their NIBRS column. Both sides get normalized
 // through this table before fuzzy-matching kicks in. Each entry is two
 // names that should be treated as identical.
+//
+// v77 — expanded after the pre-rollout map-data audit. Each cluster of
+// aliases corresponds to a city whose polygon GeoJSON labels diverged
+// from the adapter's published area names (typographic, abbreviation,
+// or punctuation drift). Adding both directions keeps the fuzzy fallback
+// from accidentally matching the wrong neighborhood.
 const NAME_ALIASES: Array<[string, string]> = [
   // San Diego — polygon vs SDPD column spellings.
   ["fairmount", "fairmont"],
   ["tierra santa", "tierrasanta"],
   ["kearney mesa", "kearny mesa"],
   ["ofarrell", "o farrell"],
+  ["mt hope", "mount hope"],
+  ["la jolla", "lajolla"],
+  ["la playa", "laplaya"],
   // Denver — the Stapleton neighborhood was officially renamed "Central Park"
   // in 2020 after community vote. The polygon file still says Stapleton; the
   // adapter receives "central-park" from Denver Open Data.
   ["stapleton", "central park"],
+  // Detroit — typo in the source polygon file (Melvern vs Malvern).
+  ["malvern hill", "melvern hill"],
+  // Detroit — punctuation drift between "/" and " "
+  ["gratiot town ketterring", "gratiot town kettering"],
+  // LA — divisions LAPD prints differently between feeds.
+  ["central", "central la"],
+  // Pittsburgh — period in "Mt. Oliver" vs full "Mount Oliver".
+  ["mt oliver", "mount oliver"],
+  // Cincinnati — "Central Business District" vs "CBD/Riverfront"
+  ["central business district", "cbd riverfront"],
+  ["columbia tusculum", "columbiatusculum"],
+  // SF — "Downtown/Civic Center" punctuation
+  ["downtown civic center", "downtowncivic center"],
+  // New Orleans — polygon source uses "Florida Dev" for Florida Development.
+  ["florida dev", "florida development"],
 ];
 
 function normName(s: string): string {
@@ -252,7 +276,19 @@ export default function CrimeMap() {
     return () => { cancelled = true; };
   }, [city.slug, city.label]);
 
-  const { data: areas } = useApi<KnownArea[]>("/geo/areas");
+  // v77 — was calling `/geo/areas` (no filter) which returns ONLY
+  // the legacy 7 SD areas. For any city other than San Diego, the
+  // downstream jurisdiction filter returned [], no polygon could
+  // resolve to an adapter slug, and every polygon rendered as
+  // "no data" gray with no warning. Pre-rollout map audit caught
+  // this: 0% polygon match rate for ~25 cities. Switching to the
+  // city-scoped endpoint returns the right neighborhood set per city.
+  const areasPath = `/geo/areas?city=${city.slug}`;
+  const { data: areasResp } = useApi<{ areas: KnownArea[] } | KnownArea[]>(areasPath, [areasPath]);
+  const areas = useMemo(
+    () => (Array.isArray(areasResp) ? areasResp : areasResp?.areas) ?? null,
+    [areasResp],
+  );
   const path = `/crime-data/citywide?city=${city.slug}`;
   const { data: citywide, loading: cityLoading, error: cityErr } = useApi<Citywide>(path, [path]);
 
@@ -264,6 +300,9 @@ export default function CrimeMap() {
     const stats = new Map<string, AreaBreakdown | null>();
     const slugByName = new Map<string, string>();
     if (!polygons) return { polygonStats: stats, polygonSlugByName: slugByName };
+    // City-scoped endpoint already returns only the right city's areas,
+    // but keep the jurisdiction belt+suspenders so a future schema
+    // change can't silently break this match.
     const cityAreas = (areas ?? []).filter((a) => a.jurisdiction.toLowerCase() === city.label.toLowerCase());
     const byNormLabel = new Map(cityAreas.map((a) => [normName(a.label), a.slug]));
     const statsBySlug = new Map((citywide?.perArea ?? []).map((p) => [p.slug, p]));
@@ -283,6 +322,21 @@ export default function CrimeMap() {
     }
     return { polygonStats: stats, polygonSlugByName: slugByName };
   }, [polygons, areas, citywide, city.label]);
+
+  // v77 — detect "polygon file ↔ adapter areas" mismatch. Pre-rollout
+  // audit caught Phoenix + Milwaukee using ZIP-code polygons (85003,
+  // 53202, …) while the adapters return neighborhood names (Maryvale,
+  // Sherman Park, …). Every polygon ended up rendering as "no data"
+  // gray with no explanation. When fewer than 25% of polygons match
+  // ANY area, show a banner pointing users at the dropdown picker
+  // (which uses the adapter areas directly and works regardless).
+  const polygonMatchRate = useMemo(() => {
+    if (!polygons || polygons.features.length === 0) return 1;
+    let matched = 0;
+    for (const stats of polygonStats.values()) if (stats) matched++;
+    return matched / polygons.features.length;
+  }, [polygons, polygonStats]);
+  const polygonMismatch = polygons && polygons.features.length > 0 && polygonMatchRate < 0.25 && citywide && (citywide.perArea?.length ?? 0) > 0;
 
   // Polygon areas in km² for the density overlay. Computed once per
   // polygon load via the same shoelace formula the server uses
@@ -429,6 +483,13 @@ export default function CrimeMap() {
         {polyError && (
           <div className="absolute top-3 left-3 right-3 z-[400] surface-muted px-3 py-1.5 text-xs text-coral-700">
             {polyError}
+          </div>
+        )}
+        {polygonMismatch && (
+          <div className="absolute top-3 left-3 right-3 z-[400] bg-amber-50 border border-amber-200 rounded-md px-3 py-2 text-xs text-amber-900">
+            Map boundaries shown ({city.label}) are not the granularity our
+            crime data is aggregated to — pick a neighborhood from the
+            dropdown above to see real safety scores. (Source: <a className="underline" href={`/cities/${city.slug}`}>{city.label} coverage</a>.)
           </div>
         )}
 

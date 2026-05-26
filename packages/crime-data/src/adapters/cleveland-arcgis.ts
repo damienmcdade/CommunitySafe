@@ -179,8 +179,7 @@ export async function getRowsCleveland(): Promise<Incident[]> {
   }
 }
 
-export async function getDiscoveredAreasCleveland(): Promise<KnownArea[]> {
-  const rows = await getRowsCleveland();
+function buildClevelandAreas(rows: Incident[]): KnownArea[] {
   const agg = new Map<string, { latSum: number; lngSum: number; count: number }>();
   for (const r of rows) {
     if (!r.area || r.area === "Unknown") continue;
@@ -198,6 +197,24 @@ export async function getDiscoveredAreasCleveland(): Promise<KnownArea[]> {
       centroid: { lat: e.latSum / e.count, lng: e.lngSum / e.count },
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
+}
+
+// v77 — pre-rollout audit caught the /geo/areas?city=cleveland route
+// returning empty/timing-out on cold cache: the synchronous fetch
+// blocked for ~30s while the bounded 30-page CFS pull ran, and the
+// HTTP client gave up before the response landed. Discover now uses
+// a last-known-good pattern — return what's already in the in-process
+// cache if anything is there, otherwise kick off a refresh in the
+// background and return [] immediately. The warm-worker (which runs
+// 30s after boot) populates the cache before the first user request.
+export async function getDiscoveredAreasCleveland(): Promise<KnownArea[]> {
+  if (cache && cache.rows.length > 0) {
+    return buildClevelandAreas(cache.rows);
+  }
+  // No cache yet — fire-and-forget refresh; map will populate on next
+  // request once warm-worker has done its job.
+  void getRowsCleveland().catch(() => {});
+  return [];
 }
 
 function labelForClevelandSlug(slug: string, rows: Incident[]): string | null {
