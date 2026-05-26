@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { wrap, HttpError } from "@/server/lib/http";
 import { rateLimit } from "@/server/lib/rate-limit";
+import { tryProxy } from "@/server/lib/proxy-to-api";
 import { lookupLocation } from "@/server/services/geo/lookup";
 import { nearestArea } from "@/server/services/crime-data/neighborhoods";
 
@@ -15,6 +16,14 @@ export const dynamic = "force-dynamic";
 export const GET = wrap(async (req: NextRequest) => {
   const limited = rateLimit(req, { scope: "geo" });
   if (limited) return limited;
+  // v87 — proxy to Railway for hot-cache lookups. The local
+  // lookupLocation path fans out all 31 adapter discover() calls
+  // when fuzzy/nearest-area is needed, which routinely exceeds
+  // Vercel's 60s function timeout on cold containers (audit caught
+  // /api/geo/lookup hanging 94s while the Railway equivalent
+  // returned in 660ms). Falls through to local on Railway error.
+  const proxied = await tryProxy(req, "/geo/lookup");
+  if (proxied) return proxied.response;
   const sp = req.nextUrl.searchParams;
   const latStr = sp.get("lat");
   const lngStr = sp.get("lng");
