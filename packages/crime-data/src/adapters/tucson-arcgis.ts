@@ -47,6 +47,13 @@ interface TucRow {
   STATUTDESC?: string;
   CrimeCategory?: string;
   CrimeType?: string;
+  // v95p9 — TPD explicitly tags each row "Part 1" or "Part 2" via
+  // the `Crime` field. Filter on this so the safety-score's Part-1
+  // counter doesn't pick up Part 2 simple-assault / juvenile /
+  // misdemeanor rows. Pre-v95p9 this drove Tucson's adapter rate
+  // 5.2× over the FBI baseline → divergence guard suppressed
+  // (false-positive "over baseline" instead of an honest grade).
+  Crime?: string;
   NEIGHBORHD?: string;  // TPD short code like "T206"
   NHA_NAME?: string;    // display name like "Eastside"
   emdivision?: string;
@@ -59,6 +66,12 @@ interface TucRow {
 }
 
 function classify(row: TucRow): CrimeCategory {
+  // v95p9 — when TPD has tagged this as Part 2 (non-UCR-Part-1),
+  // surface it as SOCIETY so the Part-1 counter in safety-score
+  // doesn't include it. Part 1 rows go through the same
+  // PERSONS/PROPERTY classification as before. Layer 42 stamps
+  // every row "Part 1" or "Part 2" in the `Crime` field.
+  if (row.Crime === "Part 2") return CrimeCategory.SOCIETY;
   const cat = `${row.CrimeCategory ?? ""} ${row.CrimeType ?? ""}`.toLowerCase();
   if (cat.includes("person") || cat.includes("violent")) return CrimeCategory.PERSONS;
   if (cat.includes("property")) return CrimeCategory.PROPERTY;
