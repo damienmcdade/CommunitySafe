@@ -13,6 +13,7 @@ import { TimeOfDayCard } from "@/components/TimeOfDayCard";
 import { NewsPanel } from "@/components/NewsPanel";
 import { CrimeMixCard } from "@/components/CrimeMixCard";
 import { AreaBriefPanel } from "@/components/AreaBriefPanel";
+import { AmberAlertsBanner } from "@/components/AmberAlertsBanner";
 import { TrendPanel } from "@/components/TrendPanel";
 import {
   BlockScoreWidget,
@@ -157,6 +158,7 @@ function NeighborhoodView() {
 
   return (
     <main className="space-y-4">
+      <AmberAlertsBanner />
       <header className="page-hero flex flex-wrap items-center gap-3 justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.18em] text-bay-700 font-medium">Neighborhood Awareness</p>

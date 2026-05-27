@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-05-27T01:07:01.356Z",
+  "generatedAt": "2026-05-27T01:10:48.492Z",
   "source": "OpenStreetMap Nominatim (https://nominatim.openstreetmap.org/)",
-  "addressCount": 2245,
+  "addressCount": 2249,
   "neighborhoodCount": 88,
   "neighborhoods": [
     {
@@ -46,10 +46,10 @@
     },
     {
       "name": "Crestview",
-      "count": 74,
+      "count": 75,
       "centroid": {
-        "lat": 21.395428851351323,
-        "lng": -157.98041928918906
+        "lat": 21.39542880799997,
+        "lng": -157.9804195693332
       }
     },
     {
@@ -389,6 +389,14 @@
       }
     },
     {
+      "name": "Village Park",
+      "count": 9,
+      "centroid": {
+        "lat": 21.3851123,
+        "lng": -158.03306569999998
+      }
+    },
+    {
       "name": "Mehana",
       "count": 8,
       "centroid": {
@@ -458,14 +466,6 @@
       "centroid": {
         "lat": 21.397522233333333,
         "lng": -158.03841249999996
-      }
-    },
-    {
-      "name": "Village Park",
-      "count": 6,
-      "centroid": {
-        "lat": 21.3851123,
-        "lng": -158.03306569999998
       }
     },
     {
@@ -11934,6 +11934,26 @@
       "neighborhood": "Royal Kunia",
       "lat": 21.3973581,
       "lng": -158.0383373
+    },
+    "941000 BLOCK WAIPAHU ST": {
+      "neighborhood": "Village Park",
+      "lat": 21.3851123,
+      "lng": -158.0330657
+    },
+    "941100 BLOCK WAIPAHU ST": {
+      "neighborhood": "Village Park",
+      "lat": 21.3851123,
+      "lng": -158.0330657
+    },
+    "941200 BLOCK FARRINGTON HWY": {
+      "neighborhood": "Crestview",
+      "lat": 21.3954256,
+      "lng": -157.9804403
+    },
+    "941400 BLOCK WAIPAHU ST": {
+      "neighborhood": "Village Park",
+      "lat": 21.3851123,
+      "lng": -158.0330657
     }
   }
 }

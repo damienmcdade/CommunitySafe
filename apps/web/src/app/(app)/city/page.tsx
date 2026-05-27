@@ -9,6 +9,7 @@ import { IncidentSummaryCard } from "@/components/IncidentSummaryCard";
 import { HotspotCard } from "@/components/HotspotCard";
 import { NewsPanel } from "@/components/NewsPanel";
 import { OfficialAlertsPanel } from "@/components/OfficialAlertsPanel";
+import { AmberAlertsBanner } from "@/components/AmberAlertsBanner";
 import { UptickTile } from "@/components/UptickTile";
 import {
   BlockScoreWidget,
@@ -58,6 +59,11 @@ export default function CityAwarenessPage() {
 
   return (
     <main className="space-y-4">
+      {/* v95p19 — AMBER alerts banner renders inline at top when
+          active for the user's state; renders nothing otherwise.
+          Time-critical missing-child surface, distinct from the
+          rolled-up weather/quake feed below. */}
+      <AmberAlertsBanner />
       <header className="page-hero flex flex-wrap items-center gap-3 justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.18em] text-bay-700 font-medium">City Awareness</p>
