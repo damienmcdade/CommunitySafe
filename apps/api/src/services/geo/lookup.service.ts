@@ -1,5 +1,38 @@
 import { SD_AREAS, findArea, nearestArea, type KnownArea } from "../crime-data/neighborhoods.js";
-import { CITIES } from "@travelsafe/crime-data/cities";
+import { CITIES, cityBySlug } from "@travelsafe/crime-data/cities";
+
+// v95p22 — when citySlug is supplied, snap-to-nearest runs against
+// THAT city's discovered neighborhoods, not the SD-only static
+// SD_AREAS. Pre-v95p22 a NYC geocode that successfully resolved
+// "Times Square" → 40.76,-73.99 then fell back to SD_AREAS for the
+// snap, which (correctly) rejected the point as >20km from the
+// nearest SD area → no_match. With per-city discovery the same
+// flow snaps Times Square into NYPD's 14th Precinct.
+async function nearestAreaForCity(point: { lat: number; lng: number }, citySlug: string | undefined): Promise<KnownArea | null> {
+  if (!citySlug) return nearestArea(point);
+  const city = cityBySlug(citySlug);
+  if (!city) return nearestArea(point);
+  try {
+    const areas = await city.discover();
+    if (areas.length === 0) return nearestArea(point);
+    // Reuse haversine via a quick inline (avoid exposing it from
+    // neighborhoods.ts).
+    const R = 6371, toRad = (d: number) => (d * Math.PI) / 180;
+    let best: { area: KnownArea; km: number } | null = null;
+    for (const area of areas) {
+      const dLat = toRad(area.centroid.lat - point.lat);
+      const dLng = toRad(area.centroid.lng - point.lng);
+      const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(point.lat)) * Math.cos(toRad(area.centroid.lat)) * Math.sin(dLng / 2) ** 2;
+      const km = 2 * R * Math.asin(Math.sqrt(s));
+      if (!best || km < best.km) best = { area, km };
+    }
+    // Wider cap (60km) — large cities like LA have neighborhoods
+    // spread 30+km apart; the SD-only 20km cap was conservative.
+    return best && best.km < 60 ? best.area : null;
+  } catch {
+    return nearestArea(point);
+  }
+}
 
 // Layered location lookup for any tracked city.
 //   1) exact slug / name match
@@ -96,7 +129,7 @@ export async function lookupLocation(q: string, citySlug?: string): Promise<Look
   if (hasComma || wordCount >= 3) {
     const geo = await nominatimGeocode(trimmed, citySlug);
     if (geo) {
-      const area = nearestArea(geo);
+      const area = await nearestAreaForCity(geo, citySlug);
       if (area) return { area, matchedVia: "geocode", rawQuery: trimmed };
     }
   }
@@ -106,7 +139,7 @@ export async function lookupLocation(q: string, citySlug?: string): Promise<Look
 
   const geo = await nominatimGeocode(trimmed, citySlug);
   if (geo) {
-    const area = nearestArea(geo);
+    const area = await nearestAreaForCity(geo, citySlug);
     if (area) return { area, matchedVia: "geocode", rawQuery: trimmed };
   }
   return null;
