@@ -43,7 +43,7 @@ const ADSENSE_CLIENT_ID = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
 // metadataBase resolves relative URLs (alternates.canonical, og.images) to
 // absolute. NEXT_PUBLIC_SITE_URL is the canonical override; falls through
 // to the production alias so local builds still emit valid links.
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://travel-safe-chi.vercel.app";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://communitysafe.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

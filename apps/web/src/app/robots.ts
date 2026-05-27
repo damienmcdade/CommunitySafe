@@ -4,7 +4,7 @@ import type { MetadataRoute } from "next";
 /// authentication, moderation, and per-user endpoints so search
 /// engines don't index session-scoped pages.
 export default function robots(): MetadataRoute.Robots {
-  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://travel-safe-chi.vercel.app";
+  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://communitysafe.app";
   return {
     rules: [
       {

@@ -20,7 +20,7 @@ import type { KnownArea } from "@travelsafe/crime-data";
 export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://travel-safe-chi.vercel.app";
+  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://communitysafe.app";
   const now = new Date();
   const tabs = ["/threats", "/map", "/watch", "/community", "/safety", "/safety-score", "/trends", "/route", "/coverage", "/cities"];
   const legal = ["/privacy", "/terms", "/methodology"];

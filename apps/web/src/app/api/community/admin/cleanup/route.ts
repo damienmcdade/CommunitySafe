@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 // Protected by CRON_SECRET so only the operator can call it.
 //
 // Usage:
-//   curl -X POST "https://travel-safe-chi.vercel.app/api/community/admin/cleanup" \
+//   curl -X POST "https://communitysafe.app/api/community/admin/cleanup" \
 //        -H "Authorization: Bearer $CRON_SECRET"
 //
 // What it deletes:

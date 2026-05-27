@@ -16,7 +16,13 @@
 // DO NOT ADD CITIES HERE without first adding them to CITIES — every
 // city in this map must have a working adapter.
 
-export const POPULATION_VINTAGE = "Vintage 2023" as const;
+// v95p13 — was "Vintage 2023" but seven cities added since v70 carry
+// Vintage 2024 in their inline comments. Label widened to reflect the
+// mix so the UI doesn't make a false uniformity claim. The per-entry
+// comments still document each city's exact vintage. When all 37
+// entries are next refreshed against a single vintage release, this
+// constant collapses back to one year.
+export const POPULATION_VINTAGE = "Vintage 2023-2024" as const;
 
 export const CITY_POPULATION: Record<string, number> = {
   "san-diego":     1_381_611,

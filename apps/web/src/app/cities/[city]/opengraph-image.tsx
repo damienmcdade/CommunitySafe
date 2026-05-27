@@ -55,7 +55,7 @@ export default async function CityOgImage({ params }: { params: { city: string }
           }}
         >
           <span>Source: {source.length > 60 ? source.slice(0, 57) + "…" : source}</span>
-          <span>travel-safe-chi.vercel.app/cities/{params.city}</span>
+          <span>communitysafe.app/cities/{params.city}</span>
         </div>
       </div>
     ),

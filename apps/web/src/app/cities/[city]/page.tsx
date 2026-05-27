@@ -75,7 +75,7 @@ export default async function CityLandingPage({ params }: Props) {
   // surface rich snippets (breadcrumb chips, citywide metadata) in
   // results. Inlined as a single <script> in the page body so it
   // ships with the SSR HTML — no extra round trip.
-  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://travel-safe-chi.vercel.app";
+  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://communitysafe.app";
   const jsonLd = {
     "@context": "https://schema.org",
     "@graph": [

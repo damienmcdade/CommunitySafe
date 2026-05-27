@@ -74,7 +74,7 @@ export default function RootOgImage() {
           }}
         >
           <span>Not surveillance. Not a substitute for emergency services.</span>
-          <span>travel-safe-chi.vercel.app</span>
+          <span>communitysafe.app</span>
         </div>
       </div>
     ),

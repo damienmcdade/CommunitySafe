@@ -37,7 +37,7 @@ interface GradeResult { grade: GradeLetter; source: GradeSource }
 function baseUrl(): string {
   return (
     process.env.NEXT_PUBLIC_SITE_URL ??
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://travel-safe-chi.vercel.app")
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://communitysafe.app")
   );
 }
 
@@ -132,7 +132,7 @@ export default async function NeighborhoodOgImage({
             </div>
           </div>
           <div style={{ display: "flex", fontSize: 20, opacity: 0.85 }}>
-            travel-safe-chi.vercel.app/cities/{params.city}/{params.neighborhood}
+            communitysafe.app/cities/{params.city}/{params.neighborhood}
           </div>
         </div>
         {/* Right column: grade tile + caveat caption. The caveat is

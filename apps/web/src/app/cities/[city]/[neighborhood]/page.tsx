@@ -72,7 +72,7 @@ export default async function NeighborhoodLandingPage({ params }: Props) {
   // enough signal to surface rich snippets (breadcrumb chips, place
   // description) for shared neighborhood links. Inlined in SSR HTML so
   // crawlers see it on first paint.
-  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://travel-safe-chi.vercel.app";
+  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://communitysafe.app";
   const jsonLd = {
     "@context": "https://schema.org",
     "@graph": [
