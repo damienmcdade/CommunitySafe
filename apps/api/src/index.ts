@@ -22,6 +22,7 @@ import { startCheckInWorker } from "./services/safety/check-in.worker.js";
 import { startDigestWorker } from "./services/push/digest.worker.js";
 import { startWarmWorker } from "./services/warm/cache.worker.js";
 import { startGradeSanityWorker, getLastReport as getGradeSanityReport } from "./services/audit/grade-sanity.worker.js";
+import { startAuditRetentionWorker } from "./services/audit/retention.worker.js";
 import { Agent, setGlobalDispatcher } from "undici";
 import { globalLimiter } from "./middleware/rate-limit.js";
 
@@ -123,6 +124,7 @@ const server = app.listen(env.LISTEN_PORT, () => {
   startDigestWorker();
   startWarmWorker();
   startGradeSanityWorker();
+  startAuditRetentionWorker();
 });
 
 for (const sig of ["SIGINT", "SIGTERM"] as const) {
