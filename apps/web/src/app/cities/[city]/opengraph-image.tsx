@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 import { cityLabelBySlug } from "@/lib/city-labels";
-import { FBI_DATA_YEAR, FBI_DATA_LABEL } from "@/lib/data-vintage";
+import { FBI_DATA_LABEL } from "@/lib/data-vintage";
 
 /// Programmatic OG image for /cities/[city]. Renders at edge per request,
 /// then cached at Vercel's edge for `revalidate` seconds. Each share of a
@@ -19,51 +19,67 @@ export const contentType = "image/png";
 export const alt = "CommunitySafe city safety overview";
 
 export default async function CityOgImage({ params }: { params: { city: string } }) {
-  const label = cityLabelBySlug(params.city) ?? "City";
-  // CityEntry on the server doesn't carry a `source` string (that lives
-  // on the client-side CITIES catalog in lib/use-city.ts). The line just
-  // labels the dataset on the social card — a generic fallback reads
-  // fine when we don't have a richer label handy.
-  const source = `${label} police open-data feed`;
-  return new ImageResponse(
-    (
-      <div
-        style={{
-          height: "100%",
-          width: "100%",
-          display: "flex",
-          flexDirection: "column",
-          background: "linear-gradient(135deg, #0E4F73 0%, #2563EB 100%)",
-          color: "white",
-          padding: "70px 80px",
-          fontFamily: "system-ui",
-        }}
-      >
-        <div style={{ fontSize: 28, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.85 }}>
-          CommunitySafe · Safety overview
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", flex: 1, justifyContent: "center" }}>
-          <div style={{ fontSize: 96, fontWeight: 700, lineHeight: 1.05 }}>{label}</div>
-          <div style={{ fontSize: 32, marginTop: 20, opacity: 0.9, maxWidth: 920 }}>
-            Neighborhood-level safety data compared to the ${FBI_DATA_LABEL} national average.
-          </div>
-        </div>
+  // v95p27 — wrap in try/catch and console.error the actual exception
+  // so we can see WHY the city OG returns empty 200 (the previous
+  // failure mode was visible in Vercel runtime logs only as "Error:
+  // Ex…" truncated). Also dropped the legacy `${FBI_DATA_LABEL}` JSX
+  // text — it was meant to be `{FBI_DATA_LABEL}` (a JSX expression),
+  // a long-standing pre-v95p26 typo that rendered as a literal
+  // template-string. Same fix on the neighborhood OG.
+  try {
+    const label = cityLabelBySlug(params.city) ?? "City";
+    const source = `${label} police open-data feed`;
+    return new ImageResponse(
+      (
         <div
           style={{
+            height: "100%",
+            width: "100%",
             display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            fontSize: 22,
-            opacity: 0.85,
-            borderTop: "1px solid rgba(255,255,255,0.22)",
-            paddingTop: 22,
+            flexDirection: "column",
+            background: "linear-gradient(135deg, #0E4F73 0%, #2563EB 100%)",
+            color: "white",
+            padding: "70px 80px",
+            fontFamily: "system-ui",
           }}
         >
-          <span>Source: {source.length > 60 ? source.slice(0, 57) + "…" : source}</span>
-          <span>communitysafe.app/cities/{params.city}</span>
+          <div style={{ fontSize: 28, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.85 }}>
+            CommunitySafe · Safety overview
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", flex: 1, justifyContent: "center" }}>
+            <div style={{ fontSize: 96, fontWeight: 700, lineHeight: 1.05 }}>{label}</div>
+            <div style={{ fontSize: 32, marginTop: 20, opacity: 0.9, maxWidth: 920 }}>
+              Neighborhood-level safety data compared to the {FBI_DATA_LABEL} national average.
+            </div>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              fontSize: 22,
+              opacity: 0.85,
+              borderTop: "1px solid rgba(255,255,255,0.22)",
+              paddingTop: 22,
+            }}
+          >
+            <span>Source: {source.length > 60 ? source.slice(0, 57) + "…" : source}</span>
+            <span>communitysafe.app/cities/{params.city}</span>
+          </div>
         </div>
-      </div>
-    ),
-    { ...size },
-  );
+      ),
+      { ...size },
+    );
+  } catch (err) {
+    console.error(`[og:cities/${params.city}] generation failed:`, (err as Error).message, (err as Error).stack);
+    // Minimal fallback PNG so social cards never 0-byte.
+    return new ImageResponse(
+      (
+        <div style={{ display: "flex", height: "100%", width: "100%", alignItems: "center", justifyContent: "center", background: "#0E4F73", color: "white", fontSize: 64, fontFamily: "system-ui" }}>
+          CommunitySafe
+        </div>
+      ),
+      { ...size },
+    );
+  }
 }
