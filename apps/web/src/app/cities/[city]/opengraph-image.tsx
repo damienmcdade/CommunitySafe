@@ -1,27 +1,25 @@
 import { ImageResponse } from "next/og";
-import { cityBySlug } from "@/server/services/crime-data/cities";
+import { cityLabelBySlug } from "@/lib/city-labels";
 import { FBI_DATA_YEAR, FBI_DATA_LABEL } from "@/lib/data-vintage";
 
 /// Programmatic OG image for /cities/[city]. Renders at edge per request,
 /// then cached at Vercel's edge for `revalidate` seconds. Each share of a
 /// city URL gets a tailored social card rather than the generic site
 /// fallback.
-// v95p25 — was "edge" but the bundle now includes the Honolulu
-// 4124-address geocode JSON (~300KB) via the transitive
-// cityBySlug → @travelsafe/crime-data/cities → all adapters chain,
-// pushing the Edge function size over Vercel's 2 MB limit (build
-// errored at 2.01 MB). nodejs runtime has a much larger limit (~50
-// MB) and ImageResponse works there too. Image gen doesn't need
-// edge — it caches at Vercel's edge regardless via `revalidate`.
-export const runtime = "nodejs";
+// v95p26 — back to edge runtime after v95p25's nodejs switch broke
+// ImageResponse at request time (500 errors). The size pressure that
+// drove v95p25 came from importing cityBySlug → transitive crime-data
+// adapters → Honolulu's 4124-address JSON. Now we only need slug →
+// label here, so import the thin CITY_LABEL_BY_SLUG map instead and
+// the Edge bundle drops back well under Vercel's 2 MB limit.
+export const runtime = "edge";
 export const revalidate = 3600;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 export const alt = "CommunitySafe city safety overview";
 
 export default async function CityOgImage({ params }: { params: { city: string } }) {
-  const city = cityBySlug(params.city);
-  const label = city?.label ?? "City";
+  const label = cityLabelBySlug(params.city) ?? "City";
   // CityEntry on the server doesn't carry a `source` string (that lives
   // on the client-side CITIES catalog in lib/use-city.ts). The line just
   // labels the dataset on the social card — a generic fallback reads

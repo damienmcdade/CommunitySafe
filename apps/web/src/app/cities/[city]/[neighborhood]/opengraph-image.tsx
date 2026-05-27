@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { cityBySlug } from "@/server/services/crime-data/cities";
+import { cityLabelBySlug } from "@/lib/city-labels";
 import { FBI_DATA_YEAR, FBI_DATA_LABEL } from "@/lib/data-vintage";
 
 /// Programmatic OG image for /cities/[city]/[neighborhood]. Renders the
@@ -13,11 +13,10 @@ import { FBI_DATA_YEAR, FBI_DATA_LABEL } from "@/lib/data-vintage";
 /// the Node-runtime API route). Falls back to citywide grade when the
 /// area-level lookup returns 404 or any other error so cards still
 /// render for cold-cache or unknown-slug cases.
-// v95p25 — same fix as cities/[city]/opengraph-image. Honolulu
-// JSON pushes the bundle past Edge's 2 MB limit. nodejs runtime
-// has headroom (~50 MB) and image gen still caches at the edge via
-// `revalidate`.
-export const runtime = "nodejs";
+// v95p26 — back to edge after v95p25 nodejs broke ImageResponse.
+// Now imports the thin CITY_LABEL_BY_SLUG map instead of the full
+// crime-data adapter chain → Edge bundle fits under 2 MB.
+export const runtime = "edge";
 export const revalidate = 3600;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
@@ -82,15 +81,27 @@ export default async function NeighborhoodOgImage({
 }: {
   params: { city: string; neighborhood: string };
 }) {
-  const city = cityBySlug(params.city);
-  if (!city) return fallback("Neighborhood overview", "CommunitySafe");
+  const cityLabel = cityLabelBySlug(params.city);
+  if (!cityLabel) return fallback("Neighborhood overview", "CommunitySafe");
 
-  // city.discover() reaches the adapter which may pull a remote feed —
-  // but it's cached aggressively and necessary to resolve the label.
-  // If discover throws (upstream outage), still render a fallback card.
-  const areas = await city.discover().catch(() => []);
+  // v95p26 — fetch the area list via the existing API instead of
+  // importing the adapter chain into the Edge bundle. The /geo/areas
+  // route already returns the per-city neighborhood list with labels
+  // and centroids; OG generation can reuse it. Failure (upstream cold,
+  // 5xx) renders a city-only fallback card.
+  interface Area { slug: string; label: string }
+  interface AreasResp { areas: Area[] }
+  const areasUrl = `${baseUrl()}/api/geo/areas?city=${encodeURIComponent(params.city)}`;
+  let areas: Area[] = [];
+  try {
+    const res = await fetch(areasUrl, { cache: "no-store" });
+    if (res.ok) {
+      const body = (await res.json()) as AreasResp | Area[];
+      areas = Array.isArray(body) ? body : body.areas ?? [];
+    }
+  } catch { /* render fallback below */ }
   const area = areas.find((a) => a.slug === params.neighborhood);
-  if (!area) return fallback(`${city.label} neighborhood`, city.label);
+  if (!area) return fallback(`${cityLabel} neighborhood`, cityLabel);
 
   const gradeResult = await fetchGrade(params.city, area.slug, area.label);
   const grade = gradeResult?.grade ?? null;
@@ -98,7 +109,7 @@ export default async function NeighborhoodOgImage({
   // Caveat copy switches based on whether we got the area-level grade
   // or fell back to citywide. Area-level is now the primary path.
   const gradeCaveat = gradeResult?.source === "city"
-    ? `(${city.label} citywide)`
+    ? `(${cityLabel} citywide)`
     : `(${area.label})`;
 
   return new ImageResponse(
@@ -125,7 +136,7 @@ export default async function NeighborhoodOgImage({
           }}
         >
           <div style={{ display: "flex", fontSize: 26, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.85 }}>
-            CommunitySafe · {city.label}
+            CommunitySafe · {cityLabel}
           </div>
           <div style={{ display: "flex", flexDirection: "column" }}>
             <div style={{ display: "flex", fontSize: 78, fontWeight: 700, lineHeight: 1.04, maxWidth: 720 }}>
