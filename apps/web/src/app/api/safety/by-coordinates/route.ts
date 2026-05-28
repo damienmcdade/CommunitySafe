@@ -2,11 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { wrap } from "@/server/lib/http";
 import { cityFromLatLng } from "@/server/services/crime-data/cities";
-import { crimeData } from "@/server/services/crime-data";
-import {
-  FBI_NATIONAL_PER_100K_2024,
-  getSafetyScore,
-} from "@/server/services/watch/safety-score";
+import { getSafetyScore } from "@/server/services/watch/safety-score";
 
 // GET /api/safety/by-coordinates?latitude=X&longitude=Y
 //

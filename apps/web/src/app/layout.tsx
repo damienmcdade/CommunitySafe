@@ -31,7 +31,7 @@ import { SessionBootstrap } from "@/components/SessionBootstrap";
 import { CookieConsentBanner } from "@/components/CookieConsentBanner";
 import { AgeGate } from "@/components/AgeGate";
 import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/use-theme";
-import { FBI_DATA_YEAR, FBI_DATA_LABEL } from "@/lib/data-vintage";
+import { FBI_DATA_LABEL } from "@/lib/data-vintage";
 
 // v92 — removed the hardcoded "ca-pub-8731629548430880" default. Pre-v92
 // AdSense loaded on every page regardless of operator intent, contradicting

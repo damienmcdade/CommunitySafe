@@ -37,8 +37,6 @@ interface LiveShare {
   revokedAt: string | null;
 }
 
-interface Area { slug: string; label: string; jurisdiction: string }
-
 export default function PersonalSafetyPage() {
   const { city } = useCity();
   // Globally-shared neighborhood selection — Personal Safety follows the

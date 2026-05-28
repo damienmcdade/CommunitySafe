@@ -62,7 +62,7 @@ export function AIAssistant() {
     }
     // launcherRef is intentionally not in deps — restoring focus on
     // close is the only goal; we don't want to refocus on every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [open]);
 
   // Esc closes the panel. Listen at document level so the user can hit

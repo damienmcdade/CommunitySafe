@@ -10,7 +10,7 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
   useEffect(() => {
     // Surface in the console so devs can find the cause; production
     // exceptions also propagate to Vercel's error stream.
-    // eslint-disable-next-line no-console
+     
     console.error("[TravelSafe] page error:", error);
   }, [error]);
 

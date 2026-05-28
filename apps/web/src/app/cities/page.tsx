@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CITIES } from "@/server/services/crime-data/cities";
 import { CityStatusInline } from "@/components/CityStatusInline";
-import { FBI_DATA_YEAR, FBI_DATA_LABEL } from "@/lib/data-vintage";
+import { FBI_DATA_LABEL } from "@/lib/data-vintage";
 
 export const metadata: Metadata = {
   title: "All supported cities",

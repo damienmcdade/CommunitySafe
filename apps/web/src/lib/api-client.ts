@@ -220,7 +220,7 @@ export function useApi<T = unknown>(
     } finally {
       if (myVersion === versionRef.current) setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [path, swrMs]);
 
   useEffect(() => {
@@ -233,6 +233,10 @@ export function useApi<T = unknown>(
     }
     void reload();
     // Bump version on unmount/dep-change AND abort any pending fetch.
+    // The "versionRef.current may change by cleanup time" warning is
+    // the intended behavior — bumping the version is precisely how
+    // we mark prior in-flight responses as stale.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     return () => { versionRef.current++; abortRef.current?.abort(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path, swrMs, ...deps]);

@@ -7,7 +7,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { AIAssistant } from "@/components/AIAssistant";
 import { SavedAreasRail } from "@/components/SavedAreasRail";
 import { DataDisclaimer } from "@/components/DataDisclaimer";
-import { FBI_DATA_YEAR, FBI_DATA_LABEL } from "@/lib/data-vintage";
+import { FBI_DATA_LABEL } from "@/lib/data-vintage";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (

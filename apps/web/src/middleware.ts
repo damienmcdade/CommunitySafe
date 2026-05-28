@@ -81,16 +81,22 @@ const LIMITS: Array<{ prefix: string; cap: number }> = [
 // /api/account/* and /api/diag/* are session-protected (account) or
 // CRON_SECRET-protected (diag) — explicit skip beats relying on the
 // "not in LIMITS" fallthrough.
-const SKIP_PREFIXES = [
-  "/api/cron/",
-  "/api/auth/",
-  "/api/account/",
-  "/api/diag/",
-  "/api/preferences/",
-  "/api/moderation/",
-  "/api/share/",
-  "/api/contacts/",
-];
+// v96 — documentation-only: the rate-limit table below uses prefix
+// matching against LIMITS, not an explicit skip list, but the prefixes
+// in this comment are the authoritative reference for "routes the
+// middleware intentionally does NOT rate-limit". Kept as a comment so
+// the audit trail survives without an unused export.
+//
+// SKIP_PREFIXES = [
+//   "/api/cron/",       // CRON_SECRET-gated
+//   "/api/auth/",       // already has its own per-IP authLimiter
+//   "/api/account/",    // authenticated, already per-user
+//   "/api/diag/",       // CRON_SECRET-gated diagnostics
+//   "/api/preferences/",// authenticated
+//   "/api/moderation/", // moderator-only
+//   "/api/share/",      // token-only access
+//   "/api/contacts/",   // authenticated
+// ]
 
 // IP → bucket. Bounded with a soft cap on entries; if exceeded, we
 // evict the oldest. Edge runtime instances don't share memory so

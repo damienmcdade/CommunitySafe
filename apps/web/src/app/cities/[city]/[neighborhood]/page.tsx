@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { cityBySlug } from "@/server/services/crime-data/cities";
 import { getSafetyScore } from "@/server/services/watch/safety-score";
 import { getTrendForArea } from "@/server/services/watch/trend-feed";
-import { FBI_DATA_YEAR, FBI_DATA_LABEL } from "@/lib/data-vintage";
+import { FBI_DATA_LABEL } from "@/lib/data-vintage";
 
 interface Props {
   params: Promise<{ city: string; neighborhood: string }>;

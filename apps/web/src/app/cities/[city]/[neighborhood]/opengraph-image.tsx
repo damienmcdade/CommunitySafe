@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 import { cityLabelBySlug } from "@/lib/city-labels";
-import { FBI_DATA_YEAR, FBI_DATA_LABEL } from "@/lib/data-vintage";
+import { FBI_DATA_LABEL } from "@/lib/data-vintage";
 
 /// Programmatic OG image for /cities/[city]/[neighborhood]. Renders the
 /// neighborhood label, parent city, and the AREA's per-neighborhood

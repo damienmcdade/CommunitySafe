@@ -75,7 +75,12 @@ export function NewsPanel({ areaSlug }: { areaSlug?: string }) {
     ? `/news?area=${encodeURIComponent(areaSlug)}&city=${city.slug}&windowDays=${windowDays}`
     : `/news?city=${city.slug}&windowDays=${windowDays}`;
   const { data, loading, error } = useApi<Resp>(path, [areaSlug, city.slug, windowDays]);
-  const items = data?.items ?? [];
+  // v96 — was `const items = data?.items ?? []` but the `?? []`
+  // produced a fresh array on every render, which made the two
+  // useMemo dependencies below recompute even when nothing changed.
+  // Wrap in its own useMemo keyed on data so the array identity is
+  // stable while data is stable.
+  const items = useMemo(() => data?.items ?? [], [data]);
 
   const [hidden, setHidden] = useState<Set<string>>(() => new Set());
   const [showPicker, setShowPicker] = useState(false);

@@ -327,7 +327,7 @@ export async function getSafeRoute(
     }
     const safest = scored[0];
     const worst = scored[scored.length - 1];
-    scored.forEach((r, i) => {
+    scored.forEach((r) => {
       const isSafest = scored.length > 1 && r === safest;
       const isWorst = scored.length > 1 && r === worst;
       const hotCrossed = r.passesThrough.filter((n) => hotNeighborhoods.has(n));

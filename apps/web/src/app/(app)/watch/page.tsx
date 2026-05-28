@@ -81,6 +81,11 @@ export default function NeighborhoodWatchPage() {
     }
     setCommittedSlug(null);
     setPendingSlug(null);
+    // v96 — the effect intentionally depends on globalArea.slug (the
+    // string), not the globalArea object. Adding `globalArea` to the
+    // deps would re-run on every reference change (e.g., a new fetch
+    // result whose slug is identical) and reset the wheel state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [globalArea?.slug, city.slug]);
   useEffect(() => {
     if (pendingSlug || cityAreas.length === 0) return;

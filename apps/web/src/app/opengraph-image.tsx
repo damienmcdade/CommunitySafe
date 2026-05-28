@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { FBI_DATA_YEAR, FBI_DATA_LABEL } from "@/lib/data-vintage";
+import { FBI_DATA_LABEL } from "@/lib/data-vintage";
 
 /// Default OG image for every public surface that doesn't ship its
 /// own opengraph-image.tsx. Per-city + per-neighborhood pages override

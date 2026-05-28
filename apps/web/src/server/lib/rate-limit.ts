@@ -75,7 +75,11 @@ export function rateLimit(req: NextRequest, opts: Options = {}): NextResponse | 
     if (firstKey !== undefined) buckets.delete(firstKey);
   }
 
-  const remaining = Math.max(0, limit - bucket.count);
+  // v96 — `remaining` was computed here but only used implicitly
+  // (we hardcode "RateLimit-Remaining: 0" on the 429 path because by
+  // definition the bucket is empty when we hit the limit, and the
+  // success path returns null which can't carry headers). Dropping
+  // the dead local.
   const resetSec = Math.ceil(bucket.resetAt / 1000);
 
   if (bucket.count > limit) {

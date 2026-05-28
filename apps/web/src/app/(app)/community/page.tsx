@@ -13,7 +13,6 @@ import { LiveActivityBadge } from "@/components/LiveActivityBadge";
 import { CommunitySignalsPanel } from "@/components/CommunitySignalsPanel";
 import { useCity } from "@/lib/use-city";
 
-interface Area { slug: string; label: string; jurisdiction: string }
 interface AreaStats { area: string; crimeRate: number | null; riskLevel: 1|2|3|4|5; year?: number; provenance: ProvenanceLike }
 interface PostListItem {
   id: string;

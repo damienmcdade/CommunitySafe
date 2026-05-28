@@ -25,7 +25,7 @@ const TRIGGER_CLS = "inline-flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1
 /// finding Michigan → Detroit on two wheels — the wheel UX was
 /// painful past the SD/LA/SF starter set.
 export function CitySelector() {
-  const { city, setCity } = useCity();
+  const { city } = useCity();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -53,13 +53,9 @@ export function CitySelector() {
     };
   }, [open]);
 
-  function pick(slug: string) {
-    setCity(slug);
-    setOpen(false);
-    // Return focus to the trigger after pick so the user can continue
-    // with keyboard nav from a known location.
-    triggerRef.current?.focus();
-  }
+  // v96 — `pick(slug)` was used by the old per-city dropdown that was
+  // replaced by the WheelCityAreaPicker; safe to remove. setCity comes
+  // straight from useCity() now.
 
   return (
     <div ref={ref} className="relative">

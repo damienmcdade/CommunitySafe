@@ -22,7 +22,14 @@ export default [
     // intentionally uses triple-slash references that
     // @typescript-eslint flags. Keeping it out of lint avoids a
     // permanent CI red without giving up the rule everywhere else.
-    ignores: [".next/", "node_modules/", "dist/", "out/", "public/", "next-env.d.ts", "**/*.config.{js,mjs,ts}"],
+    // android/ and ios/ are Capacitor-generated build trees that
+    // contain vendor JS (native-bridge.js etc.) — never source we
+    // own, so they don't need linting.
+    ignores: [
+      ".next/", "node_modules/", "dist/", "out/", "public/",
+      "next-env.d.ts", "**/*.config.{js,mjs,ts}",
+      "android/", "ios/",
+    ],
   },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
 ];

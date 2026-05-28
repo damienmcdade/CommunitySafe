@@ -56,7 +56,6 @@ export function WheelPicker({ items, value, onChange, height = 196, rowHeight = 
     if (!q) return items;
     return items.filter((i) => i.label.toLowerCase().includes(q) || i.value.toLowerCase().includes(q));
   }, [items, query]);
-  const enabled = filtered.filter((i) => !i.disabled);
   const [activeIdx, setActiveIdx] = useState(() => {
     const idx = items.findIndex((i) => i.value === value);
     return idx >= 0 ? idx : 0;
