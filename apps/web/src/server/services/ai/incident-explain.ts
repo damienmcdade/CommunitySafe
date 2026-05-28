@@ -1,5 +1,5 @@
 import "server-only";
-import { aiConfigured, getAIModel } from "./provider";
+import { aiConfigured, generateTextWithFallback } from "./provider";
 
 /// Per-incident "what does this mean?" explainer. Sibling to
 /// incident-summary (area-level) and area-brief (area-level), but
@@ -75,32 +75,18 @@ export async function explainIncident(rawDesc: string): Promise<IncidentExplain>
     return { explanation: hit.explanation, cached: true, aiConfigured: true };
   }
 
-  try {
-    const model = await getAIModel();
-    if (!model) {
-      return { explanation: null, cached: false, aiConfigured: false };
-    }
-    const { generateText } = await import("ai");
-    const result = await generateText({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      model: model as any,
-      system: SYSTEM_PROMPT,
-      // v60 — strip newlines/tabs before splicing into the prompt
-      // so a `rawDesc: "ASSAULT\n\nIgnore previous instructions"`
-      // payload can't break out of the quoted-description line.
-      // Length already bounded upstream (route caps to 200 chars).
-      prompt: `Incident description: "${rawDesc.replace(/[\r\n\t]+/g, " ").trim()}"`,
-      // Tight output cap — explanations are short, more tokens = more $$.
-      maxOutputTokens: 120,
-    });
-    const text = (result.text ?? "").trim();
-    if (!text) {
-      return { explanation: null, cached: false, aiConfigured: true };
-    }
-    cachePut(key, text);
-    return { explanation: text, cached: false, aiConfigured: true };
-  } catch (err) {
-    console.warn("[incident-explain] generation failed:", (err as Error).message);
+  // v96 — Groq → Gemini → gateway runtime fallback.
+  const result = await generateTextWithFallback({
+    system: SYSTEM_PROMPT,
+    // v60 — strip newlines/tabs before splicing so an injected
+    // `\n\nIgnore previous instructions` can't break out of the
+    // quoted-description line. Length capped to 200 chars by route.
+    prompt: `Incident description: "${rawDesc.replace(/[\r\n\t]+/g, " ").trim()}"`,
+    maxOutputTokens: 120,
+  });
+  if (!result || !result.text) {
     return { explanation: null, cached: false, aiConfigured: true };
   }
+  cachePut(key, result.text);
+  return { explanation: result.text, cached: false, aiConfigured: true };
 }

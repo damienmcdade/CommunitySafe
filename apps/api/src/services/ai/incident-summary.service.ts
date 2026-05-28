@@ -1,4 +1,4 @@
-import { aiConfigured, getAIModel } from "./provider.js";
+import { aiConfigured, generateTextWithFallback } from "./provider.js";
 import { getCrimeMix } from "@travelsafe/crime-data/mix";
 import { crimeData } from "@travelsafe/crime-data/dispatcher";
 import { cityForArea, cityBySlug } from "@travelsafe/crime-data/cities";
@@ -181,24 +181,17 @@ ${offenseList}
 
 Write the one-paragraph summary now.${offensesFromWideWindow ? " Acknowledge plainly that the most recent " + windowDays + "-day window had no published reports yet, then describe what offense categories are characteristic of this area from the longer window." : ""}
 `.trim();
-    try {
-      const model = await getAIModel();
-      if (model) {
-        const { generateText } = await import("ai");
-        const res = await generateText({
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          model: model as any,
-          system: SYSTEM_PROMPT,
-          prompt: userPrompt,
-          temperature: 0.25,
-        });
-        summary = res.text.trim()
-          .replace(/^#+\s*/gm, "")
-          .replace(/\*\*([^*]+)\*\*/g, "$1");
-        if (summary.length > 400) summary = summary.slice(0, 400);
-      }
-    } catch (err) {
-      console.warn("[incident-summary] generation failed:", (err as Error).message);
+    // v96 — real Groq → Gemini → gateway fallback chain at call time.
+    const result = await generateTextWithFallback({
+      system: SYSTEM_PROMPT,
+      prompt: userPrompt,
+      temperature: 0.25,
+    });
+    if (result) {
+      summary = result.text
+        .replace(/^#+\s*/gm, "")
+        .replace(/\*\*([^*]+)\*\*/g, "$1");
+      if (summary.length > 400) summary = summary.slice(0, 400);
     }
   }
 

@@ -1,5 +1,5 @@
 import "server-only";
-import { aiConfigured, getAIModel } from "./provider";
+import { aiConfigured, generateTextWithFallback } from "./provider";
 import { getCrimeMix } from "../crime-data/mix";
 import { cityForArea } from "../crime-data/cities";
 
@@ -93,25 +93,17 @@ ${offenseList}
 Write the two-paragraph brief now.
 `.trim();
 
-  let text = "";
-  try {
-    const model = await getAIModel();
-    if (!model) return null;
-    const { generateText } = await import("ai");
-    const res = await generateText({
-      model: model as Parameters<typeof generateText>[0]["model"],
-      system: SYSTEM_PROMPT,
-      prompt: userPrompt,
-      temperature: 0.3,
-    });
-    text = res.text.trim();
-  } catch (err) {
-    console.warn("[area-brief] generation failed:", (err as Error).message);
-    return null;
-  }
-
-  // Belt-and-suspenders: trim length, strip any model-injected markdown.
-  text = text.replace(/^#+\s*/gm, "").replace(/\*\*([^*]+)\*\*/g, "$1");
+  // v96 — generateTextWithFallback iterates Groq → Gemini → gateway at
+  // call time so a rate-limited primary provider no longer drops the
+  // brief silently. See provider.ts comment for the coverage-probe
+  // finding that motivated this.
+  const result = await generateTextWithFallback({
+    system: SYSTEM_PROMPT,
+    prompt: userPrompt,
+    temperature: 0.3,
+  });
+  if (!result) return null;
+  let text = result.text.replace(/^#+\s*/gm, "").replace(/\*\*([^*]+)\*\*/g, "$1");
   if (text.length > 800) text = text.slice(0, 800);
 
   cache.set(scopedKey(area), { fetchedAt: Date.now(), brief: text });

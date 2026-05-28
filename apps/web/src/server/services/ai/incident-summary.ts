@@ -1,5 +1,5 @@
 import "server-only";
-import { aiConfigured, getAIModel } from "./provider";
+import { aiConfigured, generateTextWithFallback } from "./provider";
 import { getCrimeMix } from "../crime-data/mix";
 import { crimeData } from "../crime-data";
 import { cityForArea, cityBySlug } from "../crime-data/cities";
@@ -205,23 +205,17 @@ ${offenseList}
 
 Write the one-paragraph summary now.
 `.trim();
-    try {
-      const model = await getAIModel();
-      if (model) {
-        const { generateText } = await import("ai");
-        const res = await generateText({
-          model: model as Parameters<typeof generateText>[0]["model"],
-          system: SYSTEM_PROMPT,
-          prompt: userPrompt,
-          temperature: 0.25,
-        });
-        summary = res.text.trim()
-          .replace(/^#+\s*/gm, "")
-          .replace(/\*\*([^*]+)\*\*/g, "$1");
-        if (summary.length > 400) summary = summary.slice(0, 400);
-      }
-    } catch (err) {
-      console.warn("[incident-summary] generation failed:", (err as Error).message);
+    // v96 — Groq → Gemini → gateway runtime fallback.
+    const result = await generateTextWithFallback({
+      system: SYSTEM_PROMPT,
+      prompt: userPrompt,
+      temperature: 0.25,
+    });
+    if (result) {
+      summary = result.text
+        .replace(/^#+\s*/gm, "")
+        .replace(/\*\*([^*]+)\*\*/g, "$1");
+      if (summary.length > 400) summary = summary.slice(0, 400);
     }
   }
 

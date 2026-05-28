@@ -1,6 +1,6 @@
 import "server-only";
 import { z } from "zod";
-import { aiConfigured, getAIModel } from "../ai/provider";
+import { aiConfigured, generateTextWithFallback } from "../ai/provider";
 import { getCrimeMix } from "../crime-data/mix";
 import { cityForArea } from "../crime-data/cities";
 
@@ -148,22 +148,14 @@ ${counts}
 Generate the JSON array now.
 `.trim();
 
-  let raw = "";
-  try {
-    const model = await getAIModel();
-    if (!model) return [];
-    const { generateText } = await import("ai");
-    const res = await generateText({
-      model: model as Parameters<typeof generateText>[0]["model"],
-      system: SYSTEM_PROMPT,
-      prompt: userPrompt,
-      temperature: 0.4,
-    });
-    raw = res.text;
-  } catch (err) {
-    console.warn("[ai-tips] generation failed:", (err as Error).message);
-    return [];
-  }
+  // v96 — Groq → Gemini → gateway runtime fallback.
+  const result = await generateTextWithFallback({
+    system: SYSTEM_PROMPT,
+    prompt: userPrompt,
+    temperature: 0.4,
+  });
+  if (!result) return [];
+  const raw = result.text;
 
   // Strip any accidental markdown fence the model might wrap around the JSON,
   // and pull the first JSON array out of the response (Groq + Llama sometimes

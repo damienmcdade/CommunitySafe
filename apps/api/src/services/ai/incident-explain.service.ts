@@ -1,5 +1,5 @@
 import { getRedis } from "../../lib/redis.js";
-import { aiConfigured, getAIModel } from "./provider.js";
+import { aiConfigured, generateTextWithFallback } from "./provider.js";
 
 // Per-incident "what does this mean?" explainer. Mirrors the apps/web
 // implementation but with a Redis-backed cache so the explanations
@@ -93,30 +93,20 @@ export async function explainIncident(rawDesc: string): Promise<IncidentExplain>
     return { explanation: hit, cached: true, aiConfigured: true };
   }
 
-  try {
-    const model = await getAIModel();
-    if (!model) {
-      return { explanation: null, cached: false, aiConfigured: false };
-    }
-    const { generateText } = await import("ai");
-    const result = await generateText({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      model: model as any,
-      system: SYSTEM_PROMPT,
-      // v60 — strip newlines/tabs so an injected `\n\nIgnore prior...`
-      // can't break out of the quoted-description line. Length already
-      // bounded by the route handler (200-char cap).
-      prompt: `Incident description: "${rawDesc.replace(/[\r\n\t]+/g, " ").trim()}"`,
-      maxOutputTokens: 120,
-    });
-    const text = (result.text ?? "").trim();
-    if (!text) {
-      return { explanation: null, cached: false, aiConfigured: true };
-    }
-    await cachePut(key, text);
-    return { explanation: text, cached: false, aiConfigured: true };
-  } catch (err) {
-    console.warn("[incident-explain] generation failed:", (err as Error).message);
+  // v96 — Groq → Gemini → gateway runtime fallback chain. The helper
+  // logs each provider miss; we only need to know whether anything
+  // produced text.
+  const result = await generateTextWithFallback({
+    system: SYSTEM_PROMPT,
+    // v60 — strip newlines/tabs so an injected `\n\nIgnore prior...`
+    // can't break out of the quoted-description line. Length already
+    // bounded by the route handler (200-char cap).
+    prompt: `Incident description: "${rawDesc.replace(/[\r\n\t]+/g, " ").trim()}"`,
+    maxOutputTokens: 120,
+  });
+  if (!result || !result.text) {
     return { explanation: null, cached: false, aiConfigured: true };
   }
+  await cachePut(key, result.text);
+  return { explanation: result.text, cached: false, aiConfigured: true };
 }

@@ -1,4 +1,4 @@
-import { aiConfigured, getAIModel } from "./provider.js";
+import { aiConfigured, generateTextWithFallback } from "./provider.js";
 import { getCrimeMix } from "@travelsafe/crime-data/mix";
 import { cityForArea } from "@travelsafe/crime-data/cities";
 import { getRedis } from "../../lib/redis.js";
@@ -117,25 +117,17 @@ ${offenseList}
 Write the two-paragraph brief now.
 `.trim();
 
-  let text = "";
-  try {
-    const model = await getAIModel();
-    if (!model) return null;
-    const { generateText } = await import("ai");
-    const res = await generateText({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      model: model as any,
-      system: SYSTEM_PROMPT,
-      prompt: userPrompt,
-      temperature: 0.3,
-    });
-    text = res.text.trim();
-  } catch (err) {
-    console.warn("[area-brief] generation failed:", (err as Error).message);
-    return null;
-  }
-
-  text = text.replace(/^#+\s*/gm, "").replace(/\*\*([^*]+)\*\*/g, "$1");
+  // v96 — generateTextWithFallback handles Groq → Gemini → gateway
+  // chain at call time. Replaced manual single-provider getAIModel
+  // path after the coverage probe found Groq's daily token cap
+  // silently dropped every brief once exhausted.
+  const result = await generateTextWithFallback({
+    system: SYSTEM_PROMPT,
+    prompt: userPrompt,
+    temperature: 0.3,
+  });
+  if (!result) return null;
+  let text = result.text.replace(/^#+\s*/gm, "").replace(/\*\*([^*]+)\*\*/g, "$1");
   if (text.length > 800) text = text.slice(0, 800);
   await cachePut(area, text);
   return text;
