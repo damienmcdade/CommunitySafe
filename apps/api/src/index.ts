@@ -98,9 +98,15 @@ app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
 // v92 — global per-IP rate limit (skips /health + /diag/*).
 app.use(globalLimiter);
 
-app.get("/health", (_req, res) => {
+// /health is Railway's healthcheckPath; /healthz is the
+// kubernetes-style alias an external uptime monitor was hitting and
+// getting 404s every 6s. Both return the same payload so either probe
+// shape is silently supported.
+const healthHandler = (_req: import("express").Request, res: import("express").Response) => {
   res.json({ ok: true, service: "travelsafe-api", time: new Date().toISOString() });
-});
+};
+app.get("/health", healthHandler);
+app.get("/healthz", healthHandler);
 
 app.use("/auth", authRouter);
 app.use("/contacts", contactsRouter);

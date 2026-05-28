@@ -104,12 +104,20 @@ const PROVENANCE: DataProvenance = {
 
 async function fetchPhl(): Promise<Incident[]> {
   const sql = `SELECT objectid,dc_dist,text_general_code,dispatch_date_time,point_x,point_y,location_block,psa FROM ${TABLE} WHERE dispatch_date_time IS NOT NULL ORDER BY dispatch_date_time DESC LIMIT ${ROW_LIMIT}`;
-  const url = `${BASE}?q=${encodeURIComponent(sql)}`;
-  const res = await fetch(url, {
+  // POST the SQL rather than encoding it into the URL. CARTO's openresty
+  // gateway rejects GETs whose request line is too long with an HTML 400
+  // — at LIMIT 30k the encoded query crosses that ceiling and every
+  // build was logging "[phl] fetch failed: PHL CARTO 400". POST has no
+  // such limit, and the API contract is the same either way.
+  const formBody = new URLSearchParams({ q: sql }).toString();
+  const res = await fetch(BASE, {
+    method: "POST",
     headers: {
       Accept: "application/json",
+      "Content-Type": "application/x-www-form-urlencoded",
       "User-Agent": "Mozilla/5.0 CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)",
     },
+    body: formBody,
   });
   if (!res.ok) throw new Error(`PHL CARTO ${res.status}`);
   const body = await res.json() as { rows?: PhlRow[]; error?: unknown };
