@@ -2,6 +2,93 @@
 import { useMemo } from "react";
 import { useApi } from "@/lib/api-client";
 
+// v95p33 — bucket by the *city's* local clock, not the viewer's runtime.
+// `new Date(b.at).getHours()` returned the hour in whatever timezone the
+// renderer is running in — which on Vercel is UTC, so an 11pm Pacific
+// Sacramento incident landed in the 6am bucket on the histogram. Map
+// the area slug to the city's IANA timezone and use Intl.DateTimeFormat.
+const CITY_TZ: Record<string, string> = {
+  "san-diego": "America/Los_Angeles",
+  "los-angeles": "America/Los_Angeles",
+  "san-francisco": "America/Los_Angeles",
+  "oakland": "America/Los_Angeles",
+  "sacramento": "America/Los_Angeles",
+  "seattle": "America/Los_Angeles",
+  "las-vegas": "America/Los_Angeles",
+  "phoenix": "America/Phoenix",
+  "boise": "America/Boise",
+  "denver": "America/Denver",
+  "colorado-springs": "America/Denver",
+  "chicago": "America/Chicago",
+  "minneapolis": "America/Chicago",
+  "saint-paul": "America/Chicago",
+  "milwaukee": "America/Chicago",
+  "kansas-city": "America/Chicago",
+  "dallas": "America/Chicago",
+  "nashville": "America/Chicago",
+  "new-orleans": "America/Chicago",
+  "nola": "America/Chicago",
+  "baton-rouge": "America/Chicago",
+  "atlanta": "America/New_York",
+  "charlotte": "America/New_York",
+  "cincinnati": "America/New_York",
+  "cleveland": "America/New_York",
+  "detroit": "America/Detroit",
+  "pittsburgh": "America/New_York",
+  "philadelphia": "America/New_York",
+  "washington-dc": "America/New_York",
+  "norfolk": "America/New_York",
+  "buffalo": "America/New_York",
+  "new-york": "America/New_York",
+  "cambridge": "America/New_York",
+  "boston": "America/New_York",
+  "honolulu": "Pacific/Honolulu",
+};
+// Mirror cityForArea's slug-prefix scheme without pulling the server-only
+// crime-data package into this client component.
+const SLUG_PREFIXES: Array<[string, string]> = [
+  ["la-", "los-angeles"], ["sf-", "san-francisco"], ["chi-", "chicago"],
+  ["sea-", "seattle"], ["ny-", "new-york"], ["cosp-", "colorado-springs"],
+  ["det-", "detroit"], ["dc-", "washington-dc"], ["sd-", "san-diego"],
+  ["sac-", "sacramento"], ["phx-", "phoenix"], ["bos-", "boston"],
+  ["phl-", "philadelphia"], ["oak-", "oakland"], ["cin-", "cincinnati"],
+  ["nola-", "new-orleans"], ["nash-", "nashville"], ["min-", "minneapolis"],
+  ["cle-", "cleveland"], ["mke-", "milwaukee"], ["lv-", "las-vegas"],
+  ["boi-", "boise"], ["buf-", "buffalo"], ["nor-", "norfolk"],
+  ["kc-", "kansas-city"], ["sp-", "saint-paul"], ["pit-", "pittsburgh"],
+  ["dal-", "dallas"], ["char-", "charlotte"], ["atl-", "atlanta"],
+  ["denv-", "denver"], ["bat-", "baton-rouge"], ["cam-", "cambridge"],
+  ["hon-", "honolulu"],
+];
+
+function tzForAreaSlug(areaSlug: string): string {
+  const direct = CITY_TZ[areaSlug];
+  if (direct) return direct;
+  for (const [prefix, citySlug] of SLUG_PREFIXES) {
+    if (areaSlug.startsWith(prefix)) return CITY_TZ[citySlug] ?? "UTC";
+  }
+  // Default fallback — UTC is still wrong for any US city but at least
+  // it's predictable (and matches the pre-fix behavior on Vercel).
+  return "UTC";
+}
+
+const _hourFormatterCache = new Map<string, Intl.DateTimeFormat>();
+function hourInTz(d: Date, tz: string): number {
+  let fmt = _hourFormatterCache.get(tz);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      hour: "numeric",
+      hour12: false,
+    });
+    _hourFormatterCache.set(tz, fmt);
+  }
+  // Intl can return "24" for midnight in some locales — normalize.
+  const raw = Number(fmt.format(d));
+  if (!Number.isFinite(raw)) return 0;
+  return raw === 24 ? 0 : raw;
+}
+
 interface IncidentDispatch {
   at: string;
   text: string;
@@ -36,18 +123,19 @@ export function TimeOfDayCard({
     let oldest: number | null = null;
     let newest: number | null = null;
     if (!data) return { buckets: out, oldestAt: null, newestAt: null };
+    const tz = tzForAreaSlug(areaSlug);
     for (const b of data.bullets) {
       if (b.kind !== "dispatch") continue;
       const t = new Date(b.at);
       const tMs = t.getTime();
       if (Number.isNaN(tMs)) continue;
-      const hr = t.getHours();
+      const hr = hourInTz(t, tz);
       if (hr >= 0 && hr < 24) out[hr] += 1;
       if (oldest === null || tMs < oldest) oldest = tMs;
       if (newest === null || tMs > newest) newest = tMs;
     }
     return { buckets: out, oldestAt: oldest, newestAt: newest };
-  }, [data]);
+  }, [data, areaSlug]);
 
   const total = buckets.reduce((s, n) => s + n, 0);
   const max = Math.max(1, ...buckets);
