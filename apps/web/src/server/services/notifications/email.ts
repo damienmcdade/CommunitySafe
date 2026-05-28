@@ -26,7 +26,11 @@ export async function sendEmail(
   // (live-share createLiveShare) can show "saved but not sent" in
   // the UI instead of pretending delivery succeeded.
   if (!env.SMTP_URL) {
-    console.log("[email:dev-noop]", { to, subject, preview: text.slice(0, 120) });
+    // v96 — strip the full address; only emit obfuscated to + length
+    // signal. Matches apps/api/src/services/notifications/email.ts so
+    // both runtimes leak the same minimal info in dev logs.
+    const hashedTo = `${to.slice(0, 2)}…@${to.split("@")[1] ?? "?"}`;
+    console.log("[email:dev-noop]", { hashedTo, subject, previewLen: text.length });
     return { ok: false, reason: "smtp_not_configured" };
   }
   try {

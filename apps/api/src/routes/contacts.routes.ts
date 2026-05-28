@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../middleware/auth.js";
-import { writeLimiter } from "../middleware/rate-limit.js";
+import { writeLimiter, tokenLimiter } from "../middleware/rate-limit.js";
 import { addContact, confirmContact, listContacts, removeContact, resendConfirmation } from "../services/contacts.service.js";
 
 export const contactsRouter = Router();
@@ -49,9 +49,12 @@ contactsRouter.delete("/:id", requireAuth, async (req, res, next) => {
 });
 
 // Public — clicked from the confirmation email. No auth.
-contactsRouter.post("/confirm/:token", async (req, res, next) => {
+// v96 — added tokenLimiter (10/min per token). Tokens are 192-bit
+// random and practically unguessable, but if one leaks via a log or
+// HTTP referrer, the per-token cap still forecloses scripted abuse.
+contactsRouter.post("/confirm/:token", tokenLimiter, async (req, res, next) => {
   try {
-    res.json(await confirmContact(req.params.token));
+    res.json(await confirmContact(req.params.token as string));
   } catch (err) {
     next(err);
   }

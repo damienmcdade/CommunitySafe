@@ -90,11 +90,16 @@ export async function generateTextWithFallback(opts: GenOpts): Promise<GenResult
       // would just fail again on the next provider, so bail fast.
       const retryable = /rate.?limit|quota|429|503|502|504|tokens per day|TPD|too many requests/i.test(msg);
       if (!retryable) break;
-      console.warn(`[ai] ${handle.name} failed, trying next provider:`, msg);
+      // v96 — was `${handle.name} failed`, audit flagged provider-name
+      // leak in stdout (could let an attacker triggering failures map
+      // the configured chain). Now opaque ordinal so ops still see
+      // which slot fell through but the failure surface stays
+      // information-symmetric.
+      console.warn(`[ai] tier failed, trying next: ${msg.slice(0, 200)}`);
     }
   }
   if (lastErr) {
-    console.warn("[ai] all providers exhausted, last error:", (lastErr as Error).message);
+    console.warn("[ai] all tiers exhausted:", (lastErr as Error).message.slice(0, 200));
   }
   return null;
 }

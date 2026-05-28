@@ -132,15 +132,19 @@ authRouter.post("/mfa/verify-enroll", requireAuth, authLimiter, async (req, res,
 });
 
 // v93p3 — login second-factor verification. Called after /auth/login
-// returns mfaRequired:true with a pendingUserId. The client POSTs the
-// pendingUserId + the user's current TOTP code.
+// returns mfaRequired:true with an mfaPendingToken. The client POSTs
+// the token (a 5-minute JWT carrying the uid) + the user's current
+// TOTP code.
+// v96 — switched from `pendingUserId` (raw id) to `mfaPendingToken`
+// (signed JWT) so a brute-forcer cannot challenge arbitrary user ids
+// over the distributed-IP rate limit window.
 authRouter.post("/mfa/verify", authLimiter, async (req, res, next) => {
   try {
-    const { pendingUserId, code } = z.object({
-      pendingUserId: z.string().min(10).max(100),
+    const { mfaPendingToken, code } = z.object({
+      mfaPendingToken: z.string().min(10).max(2000),
       code: z.string().regex(/^\d{6}$/),
     }).parse(req.body);
-    const result = await verifyMfaAndIssueTokens(pendingUserId, code);
+    const result = await verifyMfaAndIssueTokens(mfaPendingToken, code);
     writeSecurityAudit({ event: "auth.login.success", userId: result.user.id, email: result.user.email, req, detail: { mfa: true } });
     res.json(result);
   } catch (err) {

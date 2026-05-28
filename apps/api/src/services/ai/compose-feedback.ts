@@ -1,4 +1,5 @@
 import { env } from "../../env.js";
+import { aiConfigured, generateTextWithFallback } from "./provider.js";
 
 // Vercel AI Gateway via the AI SDK v6. Uses the plain "provider/model" string
 // convention so the gateway can route + fail over between providers.
@@ -31,20 +32,26 @@ rephrase. Never repeat the user's full draft back.
 const sanitize = (s: string, max = 800): string =>
   s.replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
 
+// v96 — was AI_GATEWAY_API_KEY-only streamText. The provider audit
+// noted the Railway side couldn't fall through to Gemini when Groq
+// was rate-limited because this path never touched the chain helper.
+// Now mirrors apps/web: generateTextWithFallback iterates Groq →
+// Gemini → gateway, and we drop streaming for a single-chunk
+// text/plain response. Two-to-three sentence coaching tolerates that
+// trade.
 export async function streamComposeFeedback(draft: { what: string; where: string; when: string }) {
-  if (!env.AI_GATEWAY_API_KEY) {
+  if (!aiConfigured() && !env.AI_GATEWAY_API_KEY) {
     return { configured: false as const };
   }
-  const { streamText } = await import("ai");
-  const result = await streamText({
-    // Vercel AI Gateway routes "anthropic/claude-haiku-4-5" without provider-specific imports.
-    model: "anthropic/claude-haiku-4-5",
+  const result = await generateTextWithFallback({
     system: SYSTEM_PROMPT,
     prompt:
       `What: ${sanitize(draft.what, 800)}\n` +
       `Where: ${sanitize(draft.where, 200)}\n` +
       `When: ${sanitize(draft.when, 200)}\n\n` +
       `Coach this draft.`,
+    temperature: 0.4,
   });
-  return { configured: true as const, stream: result };
+  if (!result) return { configured: true as const, text: null };
+  return { configured: true as const, text: result.text };
 }

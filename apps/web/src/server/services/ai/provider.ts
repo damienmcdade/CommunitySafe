@@ -103,11 +103,13 @@ export async function generateTextWithFallback(opts: GenOpts): Promise<GenResult
       const msg = (err as Error).message ?? "";
       const retryable = /rate.?limit|quota|429|503|502|504|tokens per day|TPD|too many requests/i.test(msg);
       if (!retryable) break;
-      console.warn(`[ai] ${handle.name} failed, trying next provider:`, msg);
+      // v96 — see apps/api/src/services/ai/provider.ts; provider-name
+      // leaked into stdout. Now opaque + truncated.
+      console.warn(`[ai] tier failed, trying next: ${msg.slice(0, 200)}`);
     }
   }
   if (lastErr) {
-    console.warn("[ai] all providers exhausted, last error:", (lastErr as Error).message);
+    console.warn("[ai] all tiers exhausted:", (lastErr as Error).message.slice(0, 200));
   }
   return null;
 }

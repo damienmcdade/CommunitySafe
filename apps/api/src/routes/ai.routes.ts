@@ -126,15 +126,16 @@ aiRouter.post("/compose-feedback", writeLimiter, async (req, res, next) => {
     const draft = composeBody.parse(req.body);
     const result = await streamComposeFeedback(draft);
     if (!result.configured) {
-      return res.status(503).json({ error: "ai_disabled", message: "AI_GATEWAY_API_KEY not configured" });
+      return res.status(503).json({ error: "ai_disabled", message: "No AI provider configured" });
+    }
+    if (result.text === null) {
+      return res.status(503).json({ error: "ai_unavailable", message: "AI providers temporarily exhausted" });
     }
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     res.setHeader("Cache-Control", "no-store");
-    // ai SDK v6 streamText returns an object with `textStream` (AsyncIterable<string>).
-    for await (const chunk of result.stream.textStream) {
-      res.write(chunk);
-    }
-    res.end();
+    // v96 — single-chunk text/plain; see compose-feedback.ts header
+    // comment for why the streamText pipe was retired.
+    res.send(result.text);
   } catch (err) {
     next(err);
   }

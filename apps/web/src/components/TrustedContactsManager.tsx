@@ -105,35 +105,49 @@ export function TrustedContactsManager({ embedded = false }: Props) {
         </ul>
       )}
 
+      {/* v96 — added visible label elements via htmlFor (sr-only so the
+          visual layout is unchanged) per the a11y audit. Aria-labels
+          alone don't reliably register with mobile voice-input or
+          some screen-reader configurations; explicit <label htmlFor>
+          pairing fixes WCAG 1.3.1 + 3.3.2 conformance. */}
       <form
         className={`${embedded || contacts.length > 0 ? "mt-3" : ""} grid grid-cols-1 sm:grid-cols-3 gap-2`}
         onSubmit={add}
       >
-        <input
-          required disabled={atLimit || busy}
-          aria-label="Contact label, for example Roommate"
-          placeholder="Label (e.g. Roommate)"
-          value={label} onChange={(e) => setLabel(e.target.value)}
-          className="px-3 py-2 surface text-sm"
-        />
-        <input
-          disabled={atLimit || busy}
-          type="email"
-          aria-label="Contact email address"
-          autoComplete="email"
-          placeholder="Email"
-          value={email} onChange={(e) => setEmail(e.target.value)}
-          className="px-3 py-2 surface text-sm"
-        />
-        <input
-          disabled={atLimit || busy}
-          type="tel"
-          aria-label="Contact phone number"
-          autoComplete="tel"
-          placeholder="Phone"
-          value={phone} onChange={(e) => setPhone(e.target.value)}
-          className="px-3 py-2 surface text-sm"
-        />
+        <div>
+          <label htmlFor="tc-label" className="sr-only">Contact label, for example Roommate</label>
+          <input
+            id="tc-label"
+            required disabled={atLimit || busy}
+            placeholder="Label (e.g. Roommate)"
+            value={label} onChange={(e) => setLabel(e.target.value)}
+            className="w-full px-3 py-2 surface text-sm"
+          />
+        </div>
+        <div>
+          <label htmlFor="tc-email" className="sr-only">Contact email address</label>
+          <input
+            id="tc-email"
+            disabled={atLimit || busy}
+            type="email"
+            autoComplete="email"
+            placeholder="Email"
+            value={email} onChange={(e) => setEmail(e.target.value)}
+            className="w-full px-3 py-2 surface text-sm"
+          />
+        </div>
+        <div>
+          <label htmlFor="tc-phone" className="sr-only">Contact phone number</label>
+          <input
+            id="tc-phone"
+            disabled={atLimit || busy}
+            type="tel"
+            autoComplete="tel"
+            placeholder="Phone"
+            value={phone} onChange={(e) => setPhone(e.target.value)}
+            className="w-full px-3 py-2 surface text-sm"
+          />
+        </div>
         <button
           type="submit" disabled={atLimit || busy}
           className="sm:col-span-3 btn-secondary text-sm disabled:opacity-50"

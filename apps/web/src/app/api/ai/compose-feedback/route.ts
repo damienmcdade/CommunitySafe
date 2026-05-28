@@ -30,20 +30,14 @@ export async function POST(req: NextRequest) {
   if (!result.configured) {
     return NextResponse.json({ error: "ai_disabled", message: "No AI provider configured. Set GOOGLE_GENERATIVE_AI_API_KEY (free at aistudio.google.com)." }, { status: 503 });
   }
-  const enc = new TextEncoder();
-  const stream = new ReadableStream({
-    async start(controller) {
-      try {
-        for await (const chunk of result.stream.textStream) {
-          controller.enqueue(enc.encode(chunk));
-        }
-        controller.close();
-      } catch (err) {
-        controller.error(err);
-      }
-    },
-  });
-  return new Response(stream, {
+  if (result.text === null) {
+    return NextResponse.json({ error: "ai_unavailable", message: "AI providers are temporarily exhausted; try again in a few minutes." }, { status: 503 });
+  }
+  // v96 — single-chunk text/plain response (was an SDK-driven stream
+  // before the provider fallback rewrite). useTextStream consumes any
+  // length of body, so a one-shot chunk keeps the existing client
+  // wiring intact.
+  return new Response(result.text, {
     headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
   });
 }

@@ -1,12 +1,10 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
-import { PostStatus, PostKind, ReactionKind } from "@prisma/client";
+import { PostStatus, ReactionKind } from "@prisma/client";
 import { requireAuth, optionalAuth } from "../middleware/auth.js";
 import { writeLimiter } from "../middleware/rate-limit.js";
-import { HttpError } from "../middleware/error.js";
-import { preVetPost, POST_RATE_LIMIT_PER_DAY } from "../services/moderation/post-prevet.js";
-import { isSuspended } from "../services/moderation/suspension.service.js";
+import { preVetPost } from "../services/moderation/post-prevet.js";
 import { communityEvents } from "../services/community/events.js";
 
 export const communityRouter = Router();
@@ -32,25 +30,6 @@ communityRouter.get("/stream", (req, res) => {
     res.end();
   });
 });
-
-// Structured composer fields — per the anti-pattern guardrail spec, the
-// composer steers authors to describe BEHAVIOR + PLACE + TIME instead of a
-// free-text box that invites "suspicious person who looked..." narratives.
-const newPostBody = z.object({
-  areaSlug: z.string().min(1),
-  kind: z.nativeEnum(PostKind),
-  what:  z.string().min(15).max(500).describe("What happened — the behavior you observed"),
-  where: z.string().min(3).max(120).describe("Where in the area — a landmark, NOT a street address"),
-  when:  z.string().min(3).max(120).describe("Roughly when — e.g. 'Tuesday around 9pm'"),
-  acceptedDefamationNotice: z.literal(true, {
-    errorMap: () => ({ message: "Must acknowledge the truthfulness / defamation notice before posting" }),
-  }),
-  acceptedText: z.string().min(10),
-});
-
-function composeBody(input: { what: string; where: string; when: string }) {
-  return `What: ${input.what.trim()}\nWhere: ${input.where.trim()}\nWhen: ${input.when.trim()}`;
-}
 
 communityRouter.get("/posts", optionalAuth, async (req, res, next) => {
   try {
@@ -88,49 +67,24 @@ communityRouter.get("/posts/mine", requireAuth, async (req, res, next) => {
   }
 });
 
-communityRouter.post("/posts", requireAuth, writeLimiter, async (req, res, next) => {
-  try {
-    const userId = req.session!.uid;
-    if (await isSuspended(userId)) throw new HttpError(403, "user_suspended");
-
-    const input = newPostBody.parse(req.body);
-
-    const area = await prisma.area.findUnique({ where: { slug: input.areaSlug } });
-    if (!area) throw new HttpError(404, "unknown_area");
-
-    // Daily rate limit
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const todays = await prisma.post.count({ where: { authorId: userId, createdAt: { gte: since } } });
-    if (todays >= POST_RATE_LIMIT_PER_DAY) throw new HttpError(429, "daily_post_limit_reached");
-
-    const body = composeBody(input);
-    const vet = preVetPost(body);
-    if (vet.block) {
-      return res.status(422).json({
-        error: "post_rejected",
-        guidance: vet.inlineGuidance,
-        flags: vet.flags.map((f) => f.kind),
-      });
-    }
-
-    const post = await prisma.post.create({
-      data: {
-        authorId: userId,
-        areaId: area.id,
-        kind: input.kind,
-        body,
-        status: PostStatus.PENDING,
-        flags: { create: vet.flags.map((f) => ({ kind: f.kind, detail: f.detail })) },
-        acknowledgement: {
-          create: { userId, acceptedText: input.acceptedText },
-        },
-      },
-      include: { flags: true },
-    });
-    res.status(201).json({ post, heldForReview: vet.hold });
-  } catch (err) {
-    next(err);
-  }
+// v96 — DELETED. The E2E audit surfaced that this handler diverged
+// hard from the canonical Vercel route at apps/web/src/app/api/
+// community/posts (which the SPA actually hits): anon allowed +
+// auto-publish vs. auth-required + manual review, with different
+// validation shapes. No live client called this Railway handler —
+// every grep hit for "community/posts" routes through the Vercel
+// wrapper — but leaving it as silently divergent dead code was a
+// future-foot-gun if anyone ever wired tryProxy() to it. The 410
+// Gone preserves discoverability for any forgotten integration so
+// they fail loud instead of getting "weird" behavior.
+communityRouter.post("/posts", (_req, res) => {
+  res.status(410).json({
+    error: "gone",
+    message:
+      "POST /community/posts on the Railway origin is deprecated. " +
+      "All clients should use POST /api/community/posts on communitysafe.app " +
+      "(anonymous posting with auto-publish, see web route for current schema).",
+  });
 });
 
 communityRouter.post("/posts/:id/react", requireAuth, async (req, res, next) => {

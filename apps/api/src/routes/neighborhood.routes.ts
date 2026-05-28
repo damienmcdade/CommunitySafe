@@ -9,11 +9,20 @@ import { crimeData } from "@travelsafe/crime-data/dispatcher";
 
 export const neighborhoodRouter = Router();
 
+// v96 — audit flagged this as an unbounded findMany. At the 30-city
+// target rollout the Area.NEIGHBORHOOD slice approaches ~5k rows and
+// the list call previously shipped the entire set on every hit. Cap
+// at 1000 (covers every single-city slice; LA tops out around 270).
+// Response shape kept as a bare array so we don't break unknown
+// clients — pagination can be added behind ?cursor= later if a
+// caller genuinely needs the tail.
+const NEIGHBORHOOD_LIST_CAP = 1000;
 neighborhoodRouter.get("/", optionalAuth, async (_req, res, next) => {
   try {
     const areas = await prisma.area.findMany({
       where: { kind: AreaKind.NEIGHBORHOOD },
       orderBy: { name: "asc" },
+      take: NEIGHBORHOOD_LIST_CAP,
     });
     res.json(areas);
   } catch (err) {

@@ -16,6 +16,11 @@ export interface SessionPayload {
 // tokenVersion still matches.
 const ACCESS_TTL = "15m";
 const REFRESH_TTL = "30d";
+// v96 — short-lived ticket returned by /auth/login when MFA is
+// required. Carries only the userId so /auth/mfa/verify can identify
+// the challenge without trusting a body-supplied id. 5 minutes is
+// generous for code entry; outside that window the user re-logs in.
+const MFA_PENDING_TTL = "5m";
 
 export function signAccessToken(payload: Omit<SessionPayload, "typ">): string {
   const options: SignOptions = { expiresIn: ACCESS_TTL };
@@ -25,6 +30,24 @@ export function signAccessToken(payload: Omit<SessionPayload, "typ">): string {
 export function signRefreshToken(payload: Omit<SessionPayload, "typ">): string {
   const options: SignOptions = { expiresIn: REFRESH_TTL };
   return jwt.sign({ ...payload, typ: "refresh" }, env.JWT_SECRET, options);
+}
+
+// v96 — sign + verify the MFA-pending ticket. Holds only the uid so
+// the body can't be tampered to challenge a different user; the
+// authLimiter on /auth/mfa/verify still rate-limits per-IP on top.
+export function signMfaPendingToken(uid: string): string {
+  const options: SignOptions = { expiresIn: MFA_PENDING_TTL };
+  return jwt.sign({ uid, typ: "mfa_pending" }, env.JWT_SECRET, options);
+}
+
+export function verifyMfaPendingToken(token: string): { uid: string } {
+  const decoded = jwt.verify(token, env.JWT_SECRET);
+  if (typeof decoded !== "object" || !decoded) throw new Error("Invalid mfa pending token");
+  const p = decoded as { uid?: unknown; typ?: unknown };
+  if (p.typ !== "mfa_pending" || typeof p.uid !== "string") {
+    throw new Error("Invalid mfa pending token");
+  }
+  return { uid: p.uid };
 }
 
 // Legacy alias for callers that still want a one-shot token. Mints an

@@ -15,7 +15,7 @@
 // existing user passwords keep verifying without a re-hash cycle.
 import bcrypt from "bcryptjs";
 import { prisma } from "../lib/prisma.js";
-import { signAccessToken, signRefreshToken, verifySession } from "../lib/jwt.js";
+import { signAccessToken, signRefreshToken, verifySession, signMfaPendingToken, verifyMfaPendingToken } from "../lib/jwt.js";
 import { env } from "../env.js";
 import { HttpError } from "../middleware/error.js";
 
@@ -94,11 +94,12 @@ export async function login(email: string, password: string) {
   if (user.mfaEnabled) {
     return {
       mfaRequired: true,
-      // Reuse the access-token signer at a 5-minute TTL by re-signing
-      // a payload with typ:"mfa_pending"-via-detail. Simpler: just
-      // return the uid and let the verify endpoint do its own lookup,
-      // gated by a per-IP rate limit (authLimiter).
-      pendingUserId: user.id,
+      // v96 — was `pendingUserId: user.id` (raw). A distributed
+      // brute-force could enumerate TOTP codes against arbitrary user
+      // ids since authLimiter is per-IP. Now a JWT (5min ttl, typ
+      // pinned to "mfa_pending") so only ids that actually completed
+      // password-auth in the last 5 minutes are challengeable.
+      mfaPendingToken: signMfaPendingToken(user.id),
       user: { id: user.id, email: user.email, displayName: user.displayName },
     } as const;
   }
@@ -112,10 +113,19 @@ export async function login(email: string, password: string) {
 // v93p3 — second-factor verification step. Called after login()
 // returns mfaRequired:true. Verifies the TOTP code against the
 // stored secret and returns the real access+refresh token pair.
-export async function verifyMfaAndIssueTokens(pendingUserId: string, code: string) {
+// v96 — accepts the signed mfaPendingToken returned by login()
+// instead of a raw user id so an attacker cannot challenge a userId
+// they didn't legitimately receive from a prior password-auth.
+export async function verifyMfaAndIssueTokens(mfaPendingToken: string, code: string) {
+  let uid: string;
+  try {
+    ({ uid } = verifyMfaPendingToken(mfaPendingToken));
+  } catch {
+    throw new HttpError(401, "invalid_mfa_pending_token");
+  }
   const { verifyMfaCode } = await import("./mfa.service.js");
   const user = await prisma.user.findUnique({
-    where: { id: pendingUserId },
+    where: { id: uid },
     select: { id: true, email: true, displayName: true, tokenVersion: true, mfaEnabled: true, mfaSecret: true, permanentlyBanned: true },
   });
   if (!user || user.permanentlyBanned) throw new HttpError(401, "invalid_credentials");

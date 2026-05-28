@@ -1,4 +1,4 @@
-import { aiConfigured, getAIModel } from "./provider";
+import { aiConfigured, generateTextWithFallback } from "./provider";
 
 // AI SDK v6 streamText with whichever provider provider.ts resolves to.
 // Default: Google Gemini 2.0 Flash (free tier, 15 RPM / 1,500 RPD). Falls
@@ -34,21 +34,27 @@ rephrase. Never repeat the user's full draft back.
 const sanitize = (s: string, max = 800): string =>
   s.replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
 
+// v96 — was a single-provider streamText. The audit flagged that the
+// streaming path skipped the new Groq → Gemini → gateway fallback
+// helper (which only existed for generateText). When Groq's daily
+// TPD exhausted, the coaching panel went null even though Gemini was
+// configured. Trading mid-typing animation for real provider
+// resilience is the right call for a 2–3 sentence response; the
+// client renders the body as a single chunk and the panel still
+// updates atomically.
 export async function streamComposeFeedback(draft: { what: string; where: string; when: string }) {
   if (!aiConfigured()) {
     return { configured: false as const };
   }
-  const model = await getAIModel();
-  if (!model) return { configured: false as const };
-  const { streamText } = await import("ai");
-  const result = await streamText({
-    model: model as Parameters<typeof streamText>[0]["model"],
+  const result = await generateTextWithFallback({
     system: SYSTEM_PROMPT,
     prompt:
       `What: ${sanitize(draft.what, 800)}\n` +
       `Where: ${sanitize(draft.where, 200)}\n` +
       `When: ${sanitize(draft.when, 200)}\n\n` +
       `Coach this draft.`,
+    temperature: 0.4,
   });
-  return { configured: true as const, stream: result };
+  if (!result) return { configured: true as const, text: null };
+  return { configured: true as const, text: result.text };
 }

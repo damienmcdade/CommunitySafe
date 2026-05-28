@@ -29,3 +29,18 @@ export const globalLimiter = rateLimit({
   // Don't 429 on health checks (Railway probes every 30s) or diag.
   skip: (req) => req.path === "/health" || req.path === "/healthz" || req.path.startsWith("/diag/"),
 });
+
+// v96 — per-token throttle for endpoints that validate a secret in
+// the URL (contact confirmation, share redemption). Tokens are
+// 192-bit random so practically unguessable, but defense-in-depth:
+// if a token ever leaks via a log or referrer it shouldn't be
+// brute-forceable into a working confirmation. 10/min per-token is
+// tight enough to defeat scripted abuse without blocking a user who
+// double-clicks the email link.
+export const tokenLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 10,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  keyGenerator: (req) => `token:${req.params.token ?? req.ip}`,
+});
