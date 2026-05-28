@@ -98,6 +98,17 @@ safezoneRouter.get("/safety-score", async (req, res, next) => {
     }
     return res.json(result);
   } catch (err) {
+    // v96 — convert the explicit "city_not_supported" thrown by
+    // getCitywideSafetyScore into a clean 404 instead of leaking it
+    // through to the 500 handler. The prior silent fallback to
+    // San Diego made this masquerade as a 200, which produced the
+    // identical-payloads-across-different-cities data bleed.
+    if (err instanceof Error && err.message.startsWith("city_not_supported:")) {
+      return res.status(404).json({
+        error: "city_not_supported",
+        message: `No adapter configured for city "${err.message.slice("city_not_supported:".length).trim()}". Pass a known city slug.`,
+      });
+    }
     next(err);
   }
 });

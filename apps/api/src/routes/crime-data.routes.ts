@@ -75,6 +75,13 @@ crimeDataRouter.get("/citywide", optionalAuth, async (req, res, next) => {
     }
     res.json(result);
   } catch (err) {
+    // v96 — same city_not_supported handling as the safety-score route.
+    if (err instanceof Error && err.message.startsWith("city_not_supported:")) {
+      return res.status(404).json({
+        error: "city_not_supported",
+        message: `No adapter configured for city "${err.message.slice("city_not_supported:".length).trim()}". Pass a known city slug.`,
+      });
+    }
     next(err);
   }
 });

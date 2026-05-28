@@ -146,7 +146,14 @@ export const crimeData = {
 
   async _getCitywide(citySlug: string = "san-diego", opts: { offense?: string; windowDays?: number } = {}) {
     const { cityBySlug } = await import("./cities.js");
-    const city = cityBySlug(citySlug) ?? CITIES[0];
+    // v96 — same fix as safety-score: stop silently falling back to
+    // San Diego for unknown slugs. houston / austin / portland all
+    // came back from /crime-data/citywide with SD's numbers during
+    // the audit. Throw and let the route handler 404 instead.
+    const city = cityBySlug(citySlug);
+    if (!city) {
+      throw new Error(`city_not_supported: ${citySlug}`);
+    }
     const areas = await city.discover().catch(() => [] as Awaited<ReturnType<typeof city.discover>>);
     const offenseFilter = opts.offense?.toLowerCase().trim();
     // Wall-clock window. Anchored to Date.now() so the cutoff doesn't

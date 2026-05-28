@@ -590,7 +590,18 @@ export async function getCitywideSafetyScore(citySlug: string): Promise<SafetySc
 
 async function computeCitywideSafetyScore(citySlug: string): Promise<SafetyScoreResponse> {
   const { cityBySlug } = await import("./cities.js");
-  const city = cityBySlug(citySlug) ?? cityForArea("");
+  // v96 — the prior `?? cityForArea("")` silently fell back to
+  // CITIES[0] (San Diego) for any slug not in the registry. That
+  // meant a user asking for houston / austin / portland (none of
+  // which have adapters yet) got an HTTP 200 with San Diego's
+  // numbers — same windowDays, same total counts — and the bug
+  // was invisible until a side-by-side audit. Now throw an
+  // explicit error; callers (route handlers, warm-worker) can
+  // catch and convert to a 404.
+  const city = cityBySlug(citySlug);
+  if (!city) {
+    throw new Error(`city_not_supported: ${citySlug}`);
+  }
   const cityPop = CITY_POPULATION[city.slug] ?? 0;
   const areas = await city.discover().catch(() => []);
 
