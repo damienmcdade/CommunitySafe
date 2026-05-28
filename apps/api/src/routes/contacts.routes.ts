@@ -34,7 +34,7 @@ contactsRouter.post("/", requireAuth, writeLimiter, async (req, res, next) => {
 
 contactsRouter.post("/:id/resend", requireAuth, writeLimiter, async (req, res, next) => {
   try {
-    res.json(await resendConfirmation(req.session!.uid, req.params.id));
+    res.json(await resendConfirmation(req.session!.uid, req.params.id as string));
   } catch (err) {
     next(err);
   }
@@ -42,7 +42,7 @@ contactsRouter.post("/:id/resend", requireAuth, writeLimiter, async (req, res, n
 
 contactsRouter.delete("/:id", requireAuth, async (req, res, next) => {
   try {
-    res.json(await removeContact(req.session!.uid, req.params.id));
+    res.json(await removeContact(req.session!.uid, req.params.id as string));
   } catch (err) {
     next(err);
   }

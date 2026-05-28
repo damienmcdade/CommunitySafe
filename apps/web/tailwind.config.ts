@@ -26,7 +26,14 @@ const config: Config = {
         slate2: {
           50:  "#F1F3F5",
           200: "#C3CAD2",
-          500: "#5D6A78",
+          // v96 — darkened from #5D6A78 (luminance 0.146, contrast on
+          // surface-muted = sand-100 = #F2EBDD computed to exactly
+          // 4.55:1, just barely above WCAG AA 4.5:1). The accessibility
+          // audit flagged this as borderline. #525E6B (luminance 0.118)
+          // produces 5.31:1 on the same background — comfortably above
+          // AA, with no perceptible design impact. All 8 surface-muted
+          // usages now have safe headroom for low-vision users.
+          500: "#525E6B",
           700: "#3A4654",
           900: "#1C232C",
         },

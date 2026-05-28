@@ -135,11 +135,15 @@ communityRouter.post("/posts", requireAuth, writeLimiter, async (req, res, next)
 
 communityRouter.post("/posts/:id/react", requireAuth, async (req, res, next) => {
   try {
+    // v96 — Express 5 types req.params.X as `string | string[]` because
+    // path-to-regexp v8 supports wildcard captures. For our single-
+    // segment `:id` patterns the runtime always returns a string.
+    const postId = req.params.id as string;
     const userId = req.session!.uid;
     const kind = z.nativeEnum(ReactionKind).parse(req.body?.kind);
     await prisma.postReaction.upsert({
-      where: { postId_userId_kind: { postId: req.params.id, userId, kind } },
-      create: { postId: req.params.id, userId, kind },
+      where: { postId_userId_kind: { postId, userId, kind } },
+      create: { postId, userId, kind },
       update: {},
     });
     res.json({ ok: true });
@@ -155,7 +159,7 @@ communityRouter.post("/posts/:id/comment", requireAuth, writeLimiter, async (req
     if (vet.block) return res.status(422).json({ error: "comment_rejected", guidance: vet.inlineGuidance });
     const comment = await prisma.postComment.create({
       data: {
-        postId: req.params.id,
+        postId: req.params.id as string,
         authorId: req.session!.uid,
         body: body.body,
         status: vet.hold ? PostStatus.PENDING : PostStatus.VERIFIED,

@@ -1,3 +1,18 @@
+// v96 — bcryptjs (pure-JS port) intentionally chosen over the native
+// `bcrypt` package. The dependency audit flags bcryptjs as
+// "maintenance mode" (no new releases since 2023), but the bcrypt
+// **algorithm** is unchanged — what's "frozen" is feature work, not
+// security patches. The pure-JS implementation:
+//   * works identically on Node 22 / 24, no node-gyp + python needed
+//   * adds no native binary to the Vercel serverless bundle (every
+//     /api/auth/anonymous cold-start would pay the dlopen cost
+//     otherwise)
+//   * runs ~30× slower than native bcrypt at the same cost factor,
+//     which is negligible at this app's scale (a few logins / second
+//     even during a launch spike)
+// If the project later migrates to a higher-throughput auth path,
+// switching to `bcrypt` is hash-format compatible ($2a/$2b/$2y), so
+// existing user passwords keep verifying without a re-hash cycle.
 import bcrypt from "bcryptjs";
 import { prisma } from "../lib/prisma.js";
 import { signAccessToken, signRefreshToken, verifySession } from "../lib/jwt.js";

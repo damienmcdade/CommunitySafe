@@ -27,7 +27,7 @@ safetyRouter.post("/check-in", requireAuth, writeLimiter, async (req, res, next)
 
 safetyRouter.post("/check-in/:id/safe", requireAuth, writeLimiter, async (req, res, next) => {
   try {
-    res.json(await markSafe(req.session!.uid, req.params.id));
+    res.json(await markSafe(req.session!.uid, req.params.id as string));
   } catch (err) {
     next(err);
   }
@@ -58,7 +58,7 @@ safetyRouter.post("/live-share", requireAuth, writeLimiter, async (req, res, nex
 
 safetyRouter.delete("/live-share/:id", requireAuth, writeLimiter, async (req, res, next) => {
   try {
-    res.json(await revokeLiveShare(req.session!.uid, req.params.id));
+    res.json(await revokeLiveShare(req.session!.uid, req.params.id as string));
   } catch (err) {
     next(err);
   }

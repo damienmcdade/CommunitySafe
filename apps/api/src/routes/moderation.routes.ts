@@ -64,14 +64,15 @@ moderationRouter.post("/posts/:id/review", requireAuth, async (req, res, next) =
   try {
     await requireModerator(req);
     const body = reviewBody.parse(req.body);
-    const result = await reviewPost(req.session!.uid, req.params.id, body.action, body);
+    const postId = req.params.id as string;
+    const result = await reviewPost(req.session!.uid, postId, body.action, body);
     // v93p7 — emit audit event (DISA STIG AU-2 / AU-3).
     writeSecurityAudit({
       event: "moderation.review",
       userId: req.session!.uid,
       email: req.session!.email,
       req,
-      detail: { postId: req.params.id, action: body.action, reason: body.reason ?? null },
+      detail: { postId, action: body.action, reason: body.reason ?? null },
     });
     res.json(result);
   } catch (err) {
@@ -82,7 +83,7 @@ moderationRouter.post("/posts/:id/review", requireAuth, async (req, res, next) =
 moderationRouter.post("/posts/:id/report", requireAuth, writeLimiter, async (req, res, next) => {
   try {
     const body = z.object({ reason: z.string().max(500).optional() }).parse(req.body ?? {});
-    res.json(await reportPost(req.session!.uid, req.params.id, body.reason));
+    res.json(await reportPost(req.session!.uid, req.params.id as string, body.reason));
   } catch (err) {
     next(err);
   }
