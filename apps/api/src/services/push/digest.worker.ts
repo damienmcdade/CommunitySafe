@@ -68,8 +68,10 @@ async function tick() {
 export function startDigestWorker() {
   if (timer) return;
   console.log(`[digest-worker] starting (daily fire at ${DIGEST_HOUR_UTC}:00 UTC, tick every ${TICK_INTERVAL_MS / 1000}s)`);
-  timer = setInterval(() => void tick(), TICK_INTERVAL_MS);
-  void tick();
+  timer = setInterval(() => {
+    tick().catch((err) => console.error("[digest-worker] tick threw:", err));
+  }, TICK_INTERVAL_MS);
+  tick().catch((err) => console.error("[digest-worker] boot tick threw:", err));
 }
 
 export function stopDigestWorker() {

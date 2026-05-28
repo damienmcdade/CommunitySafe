@@ -58,6 +58,10 @@ export function startAuditRetentionWorker(): void {
   };
   console.log(`[audit-retention] starting (retention=${retentionDays()}d, tick every ${TICK_INTERVAL_MS / 1000}s)`);
   // First tick after a short delay so it doesn't run during cold-start.
-  setTimeout(() => { void tick(); }, 30 * 1000);
-  setInterval(() => { void tick(); }, TICK_INTERVAL_MS);
+  setTimeout(() => {
+    tick().catch((err) => console.error("[audit-retention] boot tick threw:", err));
+  }, 30 * 1000);
+  setInterval(() => {
+    tick().catch((err) => console.error("[audit-retention] tick threw:", err));
+  }, TICK_INTERVAL_MS);
 }

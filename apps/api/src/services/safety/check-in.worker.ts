@@ -25,8 +25,10 @@ export function startCheckInWorker() {
   if (timer) return;
   const intervalMs = Math.max(5, env.CHECKIN_WORKER_INTERVAL_SECONDS) * 1000;
   console.log(`[checkin-worker] starting (every ${intervalMs / 1000}s)`);
-  timer = setInterval(() => void tick(), intervalMs);
-  void tick();
+  timer = setInterval(() => {
+    tick().catch((err) => console.error("[checkin-worker] tick threw:", err));
+  }, intervalMs);
+  tick().catch((err) => console.error("[checkin-worker] boot tick threw:", err));
 }
 
 export function stopCheckInWorker() {

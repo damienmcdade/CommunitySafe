@@ -55,6 +55,16 @@ function installPooledDispatcher(): void {
     keepAliveMaxTimeout: 600_000,
     connections: 10,
     pipelining: 1,
+    // v96 — cap header + body wait at 30s each. undici's defaults are
+    // 5 minutes, which meant a single hung upstream (Cleveland ArcGIS,
+    // KC Socrata) would hold a multi-MB row buffer alive for the full
+    // 5 min while the next warm-worker cycle started piling more buffers
+    // on top. Repeated Railway container OOM kills (RSS ~2.9 GB → SIGABRT
+    // → restart loop) traced back to this. 30 s is much longer than any
+    // legitimate upstream and well below the 4-min warm cycle, so failures
+    // get released back to the GC instead of accumulating.
+    headersTimeout: 30_000,
+    bodyTimeout: 30_000,
   }));
 }
 

@@ -206,12 +206,17 @@ function buildCharlotteAreas(rows: Incident[]): KnownArea[] {
 // timed out HTTP clients on cold cache. Now returns cached areas if any,
 // otherwise fires the refresh in the background and returns []. Warm-worker
 // fills the cache within ~30s of container boot.
+// v96 — same fix as atlanta-arcgis: await row fetch on cold cache.
+// Charlotte was hitting the identical "windowDays=0 totalCounted=0"
+// loop in every warm cycle. Without a static area fallback the only
+// correct answer is to block discover() until row cache is populated.
 export async function getDiscoveredAreasCharlotte(): Promise<KnownArea[]> {
   if (cache && cache.rows.length > 0) {
     return buildCharlotteAreas(cache.rows);
   }
-  void getRowsCharlotte().catch(() => {});
-  return [];
+  const rows = await getRowsCharlotte().catch(() => [] as Incident[]);
+  if (rows.length === 0) return [];
+  return buildCharlotteAreas(rows);
 }
 
 function labelForCharlotteSlug(slug: string, rows: Incident[]): string | null {

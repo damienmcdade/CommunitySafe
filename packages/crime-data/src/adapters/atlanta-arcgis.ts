@@ -126,14 +126,22 @@ function buildAtlantaAreas(rows: Incident[]): KnownArea[] {
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
-// LKG pattern — return cached if any, fire refresh + return [] otherwise.
-// Warm-worker populates within ~30s of container boot.
+// v96 — fire-and-forget on cold cache produced a persistent
+// "windowDays=0 totalCounted=0" degenerate result for Atlanta on every
+// warm-worker cycle: discover returned [] → safety-score iterated 0
+// areas → wrote no rows → next cycle hit the same empty cache, repeat.
+// Without a STATIC_<city>_AREAS fallback (Phoenix has one; Atlanta does
+// not), the only correct answer is to AWAIT the row fetch on cold cache.
+// The user-facing cost is a single ~5-30 s blocking call on a true
+// cold-start (no warm-worker has run yet); the warm-worker runs every
+// 4 min, so steady-state requests always see warm cache.
 export async function getDiscoveredAreasAtlanta(): Promise<KnownArea[]> {
   if (cache && cache.rows.length > 0) {
     return buildAtlantaAreas(cache.rows);
   }
-  void getRowsAtlanta().catch(() => {});
-  return [];
+  const rows = await getRowsAtlanta().catch(() => [] as Incident[]);
+  if (rows.length === 0) return [];
+  return buildAtlantaAreas(rows);
 }
 
 function labelForAtlSlug(slug: string, rows: Incident[]): string | null {

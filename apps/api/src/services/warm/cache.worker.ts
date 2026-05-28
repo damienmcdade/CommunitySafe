@@ -156,7 +156,15 @@ async function tick() {
 export function startWarmWorker() {
   if (timer) return;
   console.log(`[warm-worker] starting (cycle every ${WARM_INTERVAL_MS / 1000}s)`);
-  timer = setInterval(() => void tick(), WARM_INTERVAL_MS);
+  // v96 — `void tick()` swallowed any rejection that escaped tick()'s
+  // own try/catch (e.g., a Prisma connection drop before the try block).
+  // The setInterval keeps firing, but the unhandled rejection is logged
+  // by the process-level handler and the user sees no specific signal
+  // about which worker is degrading. Explicit .catch on every fire
+  // surfaces the worker name in the log line.
+  timer = setInterval(() => {
+    tick().catch((err) => console.error("[warm-worker] tick threw:", err));
+  }, WARM_INTERVAL_MS);
   // v71 followup — fire an initial warm cycle on boot rather than
   // waiting the full 4 min. Pre-v71 the audit caught Cleveland
   // serving 503 warming_up for ~4 min on every container restart.
@@ -164,7 +172,9 @@ export function startWarmWorker() {
   // handle initial /health probes + first user requests before the
   // memory-hungry adapter fetches kick off (a prior container was
   // OOM-killed during the boot-tick storm).
-  setTimeout(() => void tick(), 30_000);
+  setTimeout(() => {
+    tick().catch((err) => console.error("[warm-worker] boot tick threw:", err));
+  }, 30_000);
 }
 
 export function stopWarmWorker() {

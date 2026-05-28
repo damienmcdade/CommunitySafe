@@ -248,7 +248,9 @@ export function startGradeSanityWorker(): void {
   // Wait one full cycle before first probe so the warm-worker has a
   // chance to populate the adapter cache. Otherwise the first sanity
   // pass would flag every adapter as cold/empty.
-  timer = setInterval(() => void tick(), TICK_INTERVAL_MS);
+  timer = setInterval(() => {
+    tick().catch((err) => console.error("[grade-sanity] tick threw:", err));
+  }, TICK_INTERVAL_MS);
 }
 
 export function stopGradeSanityWorker(): void {
