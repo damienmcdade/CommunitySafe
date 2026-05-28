@@ -143,7 +143,11 @@ export async function getNews(query: string = DEFAULT_QUERY, windowDays: number 
     });
     if (!res.ok) return cache?.items ?? [];
     const xml = await res.text();
-    const items = dedupeNews(parseGoogleNewsRss(xml));
+    // v95p35 — Google News RSS sometimes returns items by relevance,
+    // not date, so the news card was appearing out of chronological
+    // order. Force newest-first sort on publishedAt before caching.
+    const items = dedupeNews(parseGoogleNewsRss(xml))
+      .sort((a, b) => +new Date(b.publishedAt) - +new Date(a.publishedAt));
     cache = { fetchedAt: now, query: cacheKey, items };
     return items;
   } catch {

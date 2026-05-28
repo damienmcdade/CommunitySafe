@@ -280,6 +280,10 @@ export const milwaukeeAdapter: CrimeDataAdapter = {
     if (!c) return [];
     const label = labelForMkeSlug(area);
     const filtered = c.rows.filter((r) => r.area === label);
+    // v95p35 — sort newest-first so the Recent-Incidents card renders
+    // in chronological order. Sister adapters all sort here; Phoenix
+    // + Milwaukee were the only outliers.
+    filtered.sort((a, b) => +new Date(b.occurredAt) - +new Date(a.occurredAt));
     return filtered.slice(0, opts?.limit ?? 50);
   },
 };
