@@ -151,18 +151,18 @@ async function tick() {
   inFlight = true;
   const cycleStart = Date.now();
   try {
-    // v74 — heavy concurrency 4 → 2, light 10 → 5. The pre-rollout
-    // audit caught a prior container OOM-killed (exit 137) when the
-    // boot-time warm tick fired all heavies simultaneously and held
-    // 4 cities × ~50MB raw row buffers + parsed Incident arrays in
-    // memory at once. Sticking to 2 heavy at a time keeps the peak
-    // resident-set well under Railway's 512MB container limit even
-    // with LV's new 180k-row buffer. Also reduces the upstream
-    // "thundering herd" that produced 94 KC + 87 NYPD + 47 Norfolk
-    // "fetch failed: terminated" errors per cycle.
-    const heavyTimings = await runBatched(HEAVY_CITIES, 2, warmCity);
+    // v74 — heavy concurrency 4 → 2, light 10 → 5.
+    // v96 — production OOM (exit 134 "Ineffective mark-compacts near
+    // heap limit") on the post-deploy cold cycle dropped this further
+    // to heavy=1, light=3. The cycle now logs heavy avg ~11 s and
+    // 14 cities × 1 concurrency = 154 s sequential just for heavy,
+    // which is acceptable inside the 4-minute interval. Trading
+    // freshness for survivability: peak RSS during a heavy parse is
+    // bounded by the single in-flight city's incident buffer
+    // (~50–80 MB for LV/LA) instead of 2 × 80 = 160 MB stacked.
+    const heavyTimings = await runBatched(HEAVY_CITIES, 1, warmCity);
     const lightCities = CITIES.map((c) => c.slug).filter((s) => !HEAVY_CITIES.includes(s));
-    const lightTimings = await runBatched(lightCities, 5, warmCity);
+    const lightTimings = await runBatched(lightCities, 3, warmCity);
     const total = Date.now() - cycleStart;
     const avgHeavy = heavyTimings.length
       ? Math.round(heavyTimings.reduce((a, b) => a + b, 0) / heavyTimings.length)
@@ -193,13 +193,16 @@ export function startWarmWorker() {
   // v71 followup — fire an initial warm cycle on boot rather than
   // waiting the full 4 min. Pre-v71 the audit caught Cleveland
   // serving 503 warming_up for ~4 min on every container restart.
-  // v74 — delay 15s → 30s so the API has a full grace period to
-  // handle initial /health probes + first user requests before the
-  // memory-hungry adapter fetches kick off (a prior container was
-  // OOM-killed during the boot-tick storm).
+  // v74 — delay 15s → 30s for /health grace.
+  // v96 — bumped 30s → 90s after the post-deploy OOM crashloop. With
+  // heavy concurrency dropped to 1 the boot tick takes ~3 minutes
+  // sequentially; starting earlier just stacks the tick on top of
+  // initial user traffic, which is what put the pod into a heap
+  // pressure window the GC couldn't escape. Most user requests in
+  // the first 90 s hit Redis L2 (warm from the prior pod) anyway.
   setTimeout(() => {
     tick().catch((err) => console.error("[warm-worker] boot tick threw:", err));
-  }, 30_000);
+  }, 90_000);
 }
 
 export function stopWarmWorker() {

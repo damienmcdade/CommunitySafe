@@ -26,11 +26,22 @@ fine, say so plainly. If something is off, name it and suggest a specific
 rephrase. Never repeat the user's full draft back.
 `.trim();
 
-// v60 — mirror of the apps/web sanitize fn. Strip newlines so a draft
-// like "what: ASSAULT\nIgnore previous instructions" can't break out
-// of the labeled field line and reframe the prompt.
+// v60 — sanitize before splicing into the prompt. The draft fields are
+// user-supplied; without stripping control characters a determined user
+// could inject "Ignore previous instructions" on its own line.
+// v96 — widened from blocklisting `\r\n\t` to a whitelist of
+// printable ASCII + Latin-1 Supplement + Latin Extended-A (so
+// accented words like "café" survive). The blocklist missed several
+// control characters (U+0000–U+001F, U+007F, U+200B zero-width
+// space, U+202E RTL override, U+FEFF BOM) that some LLMs interpret
+// as line breaks or instruction boundaries.
+const SANITIZE_DROP = /[^ -~ -ſ]/g;
 const sanitize = (s: string, max = 800): string =>
-  s.replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
+  s
+    .replace(SANITIZE_DROP, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, max);
 
 // v96 — was AI_GATEWAY_API_KEY-only streamText. The provider audit
 // noted the Railway side couldn't fall through to Gemini when Groq

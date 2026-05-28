@@ -28,11 +28,21 @@ rephrase. Never repeat the user's full draft back.
 `.trim();
 
 // v60 — sanitize before splicing into the prompt. The draft fields are
-// user-supplied; without stripping newlines + tab/CR a determined user
-// could inject "Ignore previous instructions" on its own line. The
-// SYSTEM_PROMPT is adversarially framed, but defense-in-depth.
+// user-supplied; without stripping control characters a determined user
+// could inject "Ignore previous instructions" on its own line.
+// v96 — widened from blocklisting `\r\n\t` to a whitelist of
+// printable ASCII + Latin-1 Supplement + Latin Extended-A (so
+// accented words like "café" survive). The blocklist missed control
+// characters (U+0000–U+001F, U+007F, U+200B zero-width space, U+202E
+// RTL override, U+FEFF BOM) that some LLMs interpret as line breaks
+// or instruction boundaries.
+const SANITIZE_DROP = /[^ -~ -ſ]/g;
 const sanitize = (s: string, max = 800): string =>
-  s.replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
+  s
+    .replace(SANITIZE_DROP, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, max);
 
 // v96 — was a single-provider streamText. The audit flagged that the
 // streaming path skipped the new Groq → Gemini → gateway fallback
