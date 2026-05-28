@@ -62,7 +62,11 @@ export default function RouteMap({ from, to, routes, selectedIdx, ratingStrokes,
           onToggle={() => setHeatVisible((v) => !v)}
         />
       )}
-      <MapContainer center={[from.lat, from.lng]} zoom={13} scrollWheelZoom className="h-[55vh] min-h-[420px] w-full">
+      <MapContainer
+        center={[from.lat, from.lng]} zoom={13} scrollWheelZoom
+        className="h-[55vh] min-h-[420px] w-full"
+        aria-label="Walking route map. Use arrow keys to pan and the plus and minus keys to zoom. The colored line shows the path with safety-graded segments."
+      >
         <TileLayer
           url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>; routes via <a href="https://project-osrm.org/">OSRM</a>'

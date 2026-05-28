@@ -632,7 +632,11 @@ export default function CrimeMap() {
             )}
           </div>
         )}
-        <MapContainer center={[city.centroid.lat, city.centroid.lng]} zoom={11} scrollWheelZoom className="h-[62vh] min-h-[460px] max-h-[720px] w-full">
+        <MapContainer
+          center={[city.centroid.lat, city.centroid.lng]} zoom={11} scrollWheelZoom
+          className="h-[62vh] min-h-[460px] max-h-[720px] w-full"
+          aria-label={`Crime map of ${city.label}. Use arrow keys to pan and the plus and minus keys to zoom. Tab to neighborhood markers for individual safety scores.`}
+        >
           <TileLayer
             url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'

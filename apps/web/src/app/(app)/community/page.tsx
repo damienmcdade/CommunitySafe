@@ -343,10 +343,10 @@ function PostComposer({ areaSlug, onPosted }: { areaSlug: string; onPosted: () =
       <p className="mt-1 text-sm text-slate2-500">
         No sign-in needed. Describe <strong>what you saw</strong>, <strong>where</strong>, and <strong>when</strong>. The application blocks only posts that contain profanity, slurs, or threats of violence — everything else publishes immediately.
       </p>
-      <form className="mt-4 space-y-3" onSubmit={submit}>
+      <form className="mt-4 space-y-3" onSubmit={submit} aria-describedby={guidance ? "post-guidance" : undefined}>
         <div>
-          <label className="text-sm text-slate2-700">Category</label>
-          <select value={kind} onChange={(e) => setKind(e.target.value as PostListItem["kind"])} className="mt-1 input">
+          <label htmlFor="post-kind" className="text-sm text-slate2-700">Category</label>
+          <select id="post-kind" name="kind" value={kind} onChange={(e) => setKind(e.target.value as PostListItem["kind"])} className="mt-1 input">
             <option value="HEADS_UP">Heads-up — something to be aware of</option>
             <option value="AREA_HAZARD">Area hazard — physical / environmental</option>
             <option value="LOST_FOUND">Lost / found — items or pets only</option>
@@ -355,24 +355,24 @@ function PostComposer({ areaSlug, onPosted }: { areaSlug: string; onPosted: () =
         </div>
         <div>
           <div className="flex items-baseline justify-between">
-            <label className="text-sm text-slate2-700">What happened (behavior)</label>
+            <label htmlFor="post-what" className="text-sm text-slate2-700">What happened (behavior)</label>
             {/* Inline character counter — turns amber/coral as the user
                 approaches the 800-char cap the server enforces. Without
                 this users could compose a wall of text the moderator
                 would then reject. */}
-            <span className={`text-[11px] tabular-nums ${what.length > 800 ? "text-coral-700 font-medium" : what.length > 700 ? "text-amber2-700" : "text-slate2-500"}`}>
+            <span aria-live="polite" aria-atomic="true" className={`text-[11px] tabular-nums ${what.length > 800 ? "text-coral-700 font-medium" : what.length > 700 ? "text-amber2-700" : "text-slate2-500"}`}>
               {what.length} / 800
             </span>
           </div>
-          <textarea required value={what} onChange={(e) => setWhat(e.target.value)} maxLength={800} className="mt-1 input" rows={3} placeholder="e.g. multiple cars had their windows smashed overnight" />
+          <textarea id="post-what" name="what" required value={what} onChange={(e) => setWhat(e.target.value)} maxLength={800} className="mt-1 input" rows={3} placeholder="e.g. multiple cars had their windows smashed overnight" />
         </div>
         <div>
-          <label className="text-sm text-slate2-700">Where (landmark, not address)</label>
-          <input required value={where} onChange={(e) => setWhere(e.target.value)} className="mt-1 input" placeholder="e.g. parking lot behind the Belmont Park area" />
+          <label htmlFor="post-where" className="text-sm text-slate2-700">Where (landmark, not address)</label>
+          <input id="post-where" name="where" required value={where} onChange={(e) => setWhere(e.target.value)} className="mt-1 input" placeholder="e.g. parking lot behind the Belmont Park area" />
         </div>
         <div>
-          <label className="text-sm text-slate2-700">When</label>
-          <input required value={when} onChange={(e) => setWhen(e.target.value)} className="mt-1 input" placeholder="e.g. Tuesday around 9pm" />
+          <label htmlFor="post-when" className="text-sm text-slate2-700">When</label>
+          <input id="post-when" name="when" required value={when} onChange={(e) => setWhen(e.target.value)} className="mt-1 input" placeholder="e.g. Tuesday around 9pm" />
         </div>
         {(aiStatus === "streaming" || aiStatus === "done") && aiFeedback && (
           <div className="surface-muted p-3 text-sm text-slate2-700">
@@ -387,8 +387,8 @@ function PostComposer({ areaSlug, onPosted }: { areaSlug: string; onPosted: () =
         <button type="submit" disabled={busy} className="btn-primary disabled:opacity-50">
           {busy ? "Posting…" : "Post anonymously"}
         </button>
-        {guidance && <p className="text-sm text-amber2-700">{guidance}</p>}
-        {success && <p className="text-sm text-sage-700">{success}</p>}
+        {guidance && <p id="post-guidance" role="alert" className="text-sm text-amber2-700">{guidance}</p>}
+        {success && <p role="status" aria-live="polite" className="text-sm text-sage-700">{success}</p>}
       </form>
     </section>
   );

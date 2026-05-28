@@ -75,20 +75,22 @@ export default function AlertPreferencesPage() {
         <p className="text-sm text-slate2-500 mt-1">
           We default to a once-daily digest. Real-time pings are capped to prevent fatigue.
         </p>
-        <div className="mt-4 space-y-2 text-sm">
+        <div role="radiogroup" aria-label="Notification cadence" className="mt-4 space-y-2 text-sm">
           <label className="flex items-center gap-2">
-            <input type="radio" name="freq" checked={freq === "DIGEST_DAILY"} onChange={() => setFreq("DIGEST_DAILY")} />
+            <input id="freq-daily" type="radio" name="freq" checked={freq === "DIGEST_DAILY"} onChange={() => setFreq("DIGEST_DAILY")} />
             <span>Daily digest (recommended)</span>
           </label>
           <label className="flex items-center gap-2">
-            <input type="radio" name="freq" checked={freq === "REAL_TIME"} onChange={() => setFreq("REAL_TIME")} />
+            <input id="freq-realtime" type="radio" name="freq" checked={freq === "REAL_TIME"} onChange={() => setFreq("REAL_TIME")} />
             <span>Real-time</span>
           </label>
         </div>
         {freq === "REAL_TIME" && (
           <div className="mt-3 text-sm">
-            <label className="text-slate2-700">Max real-time pings per day (hard cap: 10)</label>
+            <label htmlFor="cap-input" className="text-slate2-700">Max real-time pings per day (hard cap: 10)</label>
             <input
+              id="cap-input"
+              name="cap"
               type="number" min={1} max={10}
               value={cap}
               onChange={(e) => setCap(Math.min(10, Math.max(1, Number(e.target.value))))}
@@ -98,7 +100,7 @@ export default function AlertPreferencesPage() {
         )}
       </section>
 
-      {error && <p className="mt-4 text-sm text-dusk-700">{error}</p>}
+      {error && <p role="alert" className="mt-4 text-sm text-dusk-700">{error}</p>}
       <button onClick={onSave} disabled={busy} className="mt-6 px-4 py-2 bg-slate2-900 text-sand-50 rounded-xl disabled:opacity-50">
         {busy ? "Saving…" : "Save and continue"}
       </button>
