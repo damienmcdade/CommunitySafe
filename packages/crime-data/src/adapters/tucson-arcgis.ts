@@ -188,6 +188,11 @@ export async function getDiscoveredAreasTucson(): Promise<KnownArea[]> {
   const agg = new Map<string, { latSum: number; lngSum: number; count: number }>();
   for (const r of rows) {
     if (!r.area || r.area === "Unknown") continue;
+    // v95p38 — drop purely-numeric labels. Tucson's adapter falls back
+    // to the TPD ward/division code when the named-neighborhood join
+    // misses, producing rows like "106" or "401" that are
+    // unrecognizable to users. Mirrors the Cincinnati filter.
+    if (/^\d+$/.test(r.area.trim())) continue;
     if (r.lat == null || r.lng == null) continue;
     const e = agg.get(r.area) ?? { latSum: 0, lngSum: 0, count: 0 };
     e.latSum += r.lat; e.lngSum += r.lng; e.count += 1;

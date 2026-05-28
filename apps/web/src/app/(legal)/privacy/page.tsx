@@ -7,7 +7,7 @@ export const metadata: Metadata = {
     "CommunitySafe privacy practices — what's stored on your device, what's stored on our servers when you create a Safety account, what's transmitted to third parties, and how to control it.",
 };
 
-const LAST_UPDATED = "2026-05-26";
+const LAST_UPDATED = "2026-05-27";
 
 export default function PrivacyPage() {
   return (
@@ -24,7 +24,7 @@ export default function PrivacyPage() {
           <li>No demographic data — race, ethnicity, religion, age, gender, sexual orientation are not stored, displayed, or analyzed anywhere in the app.</li>
           <li>No individual identification from public data — police-incident data is aggregated to neighborhood-level only; names, addresses below the block level, plates, and photos are never surfaced.</li>
           <li>No persistent background tracking. Geolocation is requested only when you tap &quot;Use my location&quot; OR when you arm a Check-In timer / Live Share link (both opt-in). The mobile shells (iOS / Android) declare permissions for background-location, contacts, and camera so that <em>if</em> you opt into Check-In, Live Share, Trusted Contact import, or photo attachment, the OS allows it — none of these run without an explicit user action.</li>
-          <li>No data sales, no third-party advertising or profiling cookies on this site (CommunitySafe ad slots are disabled by default; deployment can opt-in via the <code className="text-xs">NEXT_PUBLIC_ADSENSE_CLIENT_ID</code> env var, in which case a cookie banner appears at the bottom of every page until you choose).</li>
+          <li>No data sales. The site shows Google AdSense ads to fund hosting; see the <strong>Advertising</strong> section below for what AdSense receives, what it doesn&apos;t, and how to opt out of personalised ads.</li>
           <li>Browsing the map / safety scores / community feed does NOT require an account. Account-required features are explicitly labeled (Personal Safety, CommunitySafe posts).</li>
         </ul>
       </section>
@@ -65,7 +65,31 @@ export default function PrivacyPage() {
           <li>Standard server logs from our hosting provider (IP address, user-agent, request path, timestamp). Retained per the provider&apos;s default retention.</li>
           <li>Anonymous rate-limiting state: a short-lived in-memory counter keyed by IP+endpoint to throttle abuse. Not persisted.</li>
         </ul>
-        <p>We do not sell, license, or share user data with third parties for advertising or marketing.</p>
+        <p>We do not sell, license, or share user-account data with third parties for advertising or marketing. CommunitySafe accounts, contacts, check-in timers, and posts are never transmitted to ad networks. AdSense&apos;s collection is limited to what the browser sends directly to Google when an ad slot loads (described in the <strong>Advertising</strong> section below).</p>
+      </section>
+
+      <section className="surface p-6 space-y-3 text-sm text-slate2-700 leading-relaxed">
+        <h2 className="font-display text-xl text-slate2-900">Advertising</h2>
+        <p>CommunitySafe displays ads served by <strong>Google AdSense</strong> (publisher <code className="text-xs">ca-pub-8731629548430880</code>) to cover hosting costs. AdSense is a Google product; its data practices are governed by{" "}
+          <a href="https://policies.google.com/technologies/ads" target="_blank" rel="noreferrer" className="text-bay-700 hover:underline">Google&apos;s ad-policy disclosures</a>.</p>
+        <p>What CommunitySafe sends to AdSense:</p>
+        <ul className="list-disc pl-5 space-y-1">
+          <li>Nothing from our backend. Account records, contacts, timers, posts, and the personal-safety surfaces are not transmitted to AdSense.</li>
+        </ul>
+        <p>What your browser sends to Google when an ad slot loads (we do not control these):</p>
+        <ul className="list-disc pl-5 space-y-1">
+          <li>The URL of the page you&apos;re viewing (so the ad context can be matched).</li>
+          <li>Your IP address, user-agent, language, and screen size.</li>
+          <li>Google&apos;s own advertising / measurement cookies, if you&apos;ve previously consented under Google&apos;s consent prompt.</li>
+        </ul>
+        <p>How to opt out of personalised ads:</p>
+        <ul className="list-disc pl-5 space-y-1">
+          <li>Use Google&apos;s{" "}
+            <a href="https://adssettings.google.com/" target="_blank" rel="noreferrer" className="text-bay-700 hover:underline">Ads Settings</a>{" "}
+            to turn off personalisation for your Google account.</li>
+          <li>Use your browser&apos;s tracking-protection / cookie-blocking features. Ads will still show but won&apos;t be tailored to you.</li>
+          <li>For EU/UK/Swiss users, Google&apos;s consent prompt will appear before personalisation begins.</li>
+        </ul>
       </section>
 
       <section className="surface p-6 space-y-3 text-sm text-slate2-700 leading-relaxed">

@@ -139,6 +139,12 @@ export async function getDiscoveredAreasCincinnati(): Promise<KnownArea[]> {
   const agg = new Map<string, { latSum: number; lngSum: number; count: number }>();
   for (const r of rows) {
     if (!r.area || r.area === "Unknown") continue;
+    // v95p38 — drop purely-numeric labels. Cincinnati's upstream feed
+    // occasionally returns the SNA's internal numeric code instead of
+    // the name (rows where the SNA join failed). Surfacing "1" or
+    // "259" as a "neighborhood" is unrecognizable to users — we'd
+    // rather show fewer, named areas.
+    if (/^\d+$/.test(r.area.trim())) continue;
     if (r.lat == null || r.lng == null) continue;
     const e = agg.get(r.area) ?? { latSum: 0, lngSum: 0, count: 0 };
     e.latSum += r.lat; e.lngSum += r.lng; e.count += 1;

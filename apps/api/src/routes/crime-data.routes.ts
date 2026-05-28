@@ -39,11 +39,41 @@ function resolveArea(q: z.infer<typeof areaQuery>): string | null {
   return null;
 }
 
+// v95p39 — timeout + graceful 503 instead of hanging the client when
+// the upstream city ArcGIS is slow. Mirrors the pattern safezone.routes
+// uses for /safety-score. The sync-drift CI was flagging Detroit
+// because both Vercel and Railway hung on this endpoint (both wait on
+// the same upstream); returning a clean 503 lets the client show a
+// retry-in-a-moment surface and lets CI distinguish "upstream slow"
+// from "drift between our two runtimes".
+const CITYWIDE_TIMEOUT_MS = 45_000;
+const CITYWIDE_TIMEOUT = Symbol("citywide-timeout");
+function withCitywideTimeout<T>(p: Promise<T>): Promise<T | typeof CITYWIDE_TIMEOUT> {
+  return Promise.race([
+    p,
+    new Promise<typeof CITYWIDE_TIMEOUT>((resolve) =>
+      setTimeout(() => resolve(CITYWIDE_TIMEOUT), CITYWIDE_TIMEOUT_MS),
+    ),
+  ]);
+}
+
 crimeDataRouter.get("/citywide", optionalAuth, async (req, res, next) => {
   try {
     const q = areaQuery.parse(req.query);
     const city = q.city ?? "san-diego";
-    res.json(await crimeData.getCitywide(city, { offense: q.offense, windowDays: q.windowDays }));
+    const result = await withCitywideTimeout(
+      crimeData.getCitywide(city, { offense: q.offense, windowDays: q.windowDays }),
+    );
+    if (result === CITYWIDE_TIMEOUT) {
+      return res.status(503).json({
+        error: "upstream_timeout",
+        message:
+          `${city}'s public crime feed is slow right now. The page will retry — ` +
+          "this typically clears once the warm cycle finishes.",
+        retryAfterSeconds: 60,
+      });
+    }
+    res.json(result);
   } catch (err) {
     next(err);
   }
