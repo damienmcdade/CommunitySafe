@@ -22,7 +22,7 @@ export default function NotFound() {
         <p className="text-xs uppercase tracking-[0.18em] text-bay-700 font-medium">404</p>
         <h1 className="mt-1 font-display text-2xl text-slate2-900">This page doesn&apos;t exist</h1>
         <p className="mt-2 text-sm text-slate2-700 leading-snug">
-          The URL you opened isn&apos;t a CommunitySafe route. It may have been moved or the link
+          The URL you opened isn&apos;t a TravelSafe route. It may have been moved or the link
           may have a typo. Here&apos;s where you can go from here:
         </p>
         <ul className="mt-4 grid gap-2 sm:grid-cols-2">
@@ -36,7 +36,7 @@ export default function NotFound() {
             <Link href="/coverage" className="btn-secondary block text-sm px-4 py-2 text-center">Coverage &amp; system status</Link>
           </li>
           <li>
-            <Link href="/methodology" className="btn-secondary block text-sm px-4 py-2 text-center">How CommunitySafe works</Link>
+            <Link href="/methodology" className="btn-secondary block text-sm px-4 py-2 text-center">How TravelSafe works</Link>
           </li>
         </ul>
       </section>

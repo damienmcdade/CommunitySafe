@@ -90,7 +90,7 @@ const PROVENANCE: DataProvenance = {
   granularity: "neighborhood",
   disclaimer:
     "Incidents are reported by the Tucson Police Department and grouped by NEIGHBORHD. " +
-    "Not live, not street-level. CommunitySafe does not track individuals.",
+    "Not live, not street-level. TravelSafe does not track individuals.",
 };
 
 interface TucFeature {

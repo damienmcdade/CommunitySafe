@@ -66,7 +66,7 @@ export default function PersonalSafetyPage() {
         <div className="surface p-5 border-amber2-500/40">
           <h2 className="font-display text-lg text-slate2-900">Before you use this tab</h2>
           <p className="mt-2 text-sm text-slate2-700">
-            CommunitySafe&apos;s personal-safety tools may fail due to network, device, or service issues
+            TravelSafe&apos;s personal-safety tools may fail due to network, device, or service issues
             and are <strong>not a substitute for 911 or professional emergency services</strong>.
             The application does not contact emergency services on your behalf. In an emergency, call 911.
           </p>
@@ -99,7 +99,7 @@ export default function PersonalSafetyPage() {
       />
 
       {/* Official registries — moved here from Connections (former
-          CommunitySafe) per v7 directive. Lookup is a personal-safety
+          TravelSafe) per v7 directive. Lookup is a personal-safety
           tool, lives on a personal-safety surface. We never re-host
           or render individuals; this is a deep link out to the
           official state registry. */}
@@ -124,7 +124,7 @@ function OfficialRegistryCard() {
     <section className="surface p-5 border-amber2-500/30">
       <h2 className="font-display text-lg text-slate2-900">Official registries</h2>
       <p className="mt-1 text-sm text-slate2-700">
-        For sex-offender information, CommunitySafe links to the official public registry for {city.state}. We do not re-host or display individuals here.
+        For sex-offender information, TravelSafe links to the official public registry for {city.state}. We do not re-host or display individuals here.
       </p>
       <a href={registry.url} target="_blank" rel="noreferrer" className="mt-3 inline-block underline text-slate2-900 hover:text-bay-700 transition-colors">
         Open {registry.label} →
@@ -234,7 +234,7 @@ function AccountPanel() {
       <section className="surface p-6" role="status" aria-live="polite">
         <h2 className="font-display text-xl text-slate2-900">Account deleted</h2>
         <p className="mt-2 text-sm text-slate2-700">
-          Your account and all associated data have been removed from CommunitySafe&apos;s servers. Returning to home…
+          Your account and all associated data have been removed from TravelSafe&apos;s servers. Returning to home…
         </p>
       </section>
     );
@@ -244,7 +244,7 @@ function AccountPanel() {
     <section className="surface p-6">
       <h2 className="font-display text-xl text-slate2-900">Your account &amp; data</h2>
       <p className="mt-1 text-sm text-slate2-700">
-        CommunitySafe stores a session for your device so check-ins, contacts, and posts can be associated with you. Below are the controls the <a href="/privacy" className="text-bay-700 hover:underline">privacy policy</a> describes.
+        TravelSafe stores a session for your device so check-ins, contacts, and posts can be associated with you. Below are the controls the <a href="/privacy" className="text-bay-700 hover:underline">privacy policy</a> describes.
       </p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -335,7 +335,7 @@ function EmergencyPanel() {
       <h2 className="font-display text-xl text-slate2-900">In an emergency</h2>
       <p className="mt-2 text-slate2-700">
         Call {EMERGENCY_DIAL} directly. The button below opens your device&apos;s dialer —
-        it does not route through CommunitySafe&apos;s servers and works even if the app backend is down.
+        it does not route through TravelSafe&apos;s servers and works even if the app backend is down.
       </p>
       <a
         href={`tel:${EMERGENCY_DIAL}`}

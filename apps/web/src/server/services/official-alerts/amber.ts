@@ -47,7 +47,7 @@ export async function getAmberAlerts(state: string | null): Promise<OfficialAler
     const res = await fetch(path, {
       headers: {
         Accept: "application/geo+json",
-        "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)",
+        "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)",
       },
     });
     if (!res.ok) return hit?.alerts ?? [];

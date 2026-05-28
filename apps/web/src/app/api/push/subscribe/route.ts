@@ -9,7 +9,7 @@ import { prisma } from "@/server/lib/prisma";
 // hostname blocks the attack the security audit flagged: an attacker
 // could otherwise register an endpoint pointing at their own VAPID
 // listener under the victim's user, then receive any push the app
-// sends — which on CommunitySafe would include alert notifications
+// sends — which on TravelSafe would include alert notifications
 // targeted at the victim's saved areas.
 //
 // The list below covers the three major push gateways: Google

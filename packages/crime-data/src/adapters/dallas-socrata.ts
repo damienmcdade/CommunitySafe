@@ -90,7 +90,7 @@ const PROVENANCE: DataProvenance = {
   granularity: "neighborhood",
   disclaimer:
     "Incidents are reported by the Dallas Police Department and geocoded by " +
-    "CommunitySafe to a named neighborhood using city-published polygons. CommunitySafe " +
+    "TravelSafe to a named neighborhood using city-published polygons. TravelSafe " +
     "explicitly excludes the suspect / complainant demographic columns published " +
     "by DPD from every request.",
 };

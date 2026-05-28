@@ -68,7 +68,7 @@ export async function getUsgsEarthquakes(
     const res = await fetch(`https://earthquake.usgs.gov/fdsnws/event/1/query?${params}`, {
       headers: {
         Accept: "application/json",
-        "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)",
+        "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)",
       },
     });
     if (!res.ok) return hit?.alerts ?? [];

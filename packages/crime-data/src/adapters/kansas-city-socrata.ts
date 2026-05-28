@@ -160,7 +160,7 @@ const PROVENANCE: DataProvenance = {
   granularity: "neighborhood",
   disclaimer:
     "Incidents are reported by the Kansas City MO Police Department. " +
-    "CommunitySafe explicitly excludes the victim/suspect demographic columns " +
+    "TravelSafe explicitly excludes the victim/suspect demographic columns " +
     "(race, sex) published by KCPD from every request — they never reach our " +
     "server. Geocoded through 145 named Kansas City neighborhoods (blackmad/" +
     "neighborhoods) since KCPD's `area` field has only 6 patrol divisions.",

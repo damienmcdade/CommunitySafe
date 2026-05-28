@@ -2,7 +2,7 @@
 import Script from "next/script";
 import { useEffect, useRef } from "react";
 
-// Mirrors the default in root layout — CommunitySafe publisher ID.
+// Mirrors the default in root layout — TravelSafe publisher ID.
 // Env var override available for staging/preview environments.
 const ADSENSE_CLIENT_ID = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID ?? "ca-pub-8731629548430880";
 

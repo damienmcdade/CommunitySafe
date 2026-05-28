@@ -62,7 +62,7 @@ export function RouteHeatLayer({
       max: 1.0,
       // Calm gradient — sage at low density, sand at moderate,
       // coral at peak. No alarm-red anywhere; matches the rest of
-      // CommunitySafe's "don't monetize fear" palette posture.
+      // TravelSafe's "don't monetize fear" palette posture.
       gradient: {
         0.2: "#7BA86E",
         0.5: "#E5C28B",

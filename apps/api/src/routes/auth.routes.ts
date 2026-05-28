@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { authLimiter } from "../middleware/rate-limit.js";
 import { requireAuth } from "../middleware/auth.js";
-import { register, login, me, refreshAccessToken, logout, verifyMfaAndIssueTokens } from "../services/auth.service.js";
+import { register, login, me, refreshAccessToken, logout, verifyMfaAndIssueTokens, softDeleteAccount } from "../services/auth.service.js";
 import { generateProvisional, verifyAndEnableMfa, disableMfa } from "../services/mfa.service.js";
 import { writeSecurityAudit } from "../lib/audit.js";
 import { HttpError } from "../middleware/error.js";
@@ -80,6 +80,22 @@ authRouter.post("/logout", requireAuth, async (req, res, next) => {
   try {
     await logout(req.session!.uid);
     writeSecurityAudit({ event: "auth.token.refresh", userId: req.session!.uid, email: req.session!.email, req, detail: { action: "logout" } });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// v96 — GDPR / CCPA right-to-be-forgotten path. Soft-delete the
+// caller's own account: obfuscate email, null the display name, bump
+// tokenVersion to invalidate every active token. The row stays in
+// the DB until the retention worker hard-deletes past the grace
+// window. Service-layer enforces the auth check; the caller can
+// only delete their OWN account.
+authRouter.post("/account/delete", requireAuth, async (req, res, next) => {
+  try {
+    await softDeleteAccount(req.session!.uid);
+    writeSecurityAudit({ event: "account.delete", userId: req.session!.uid, email: req.session!.email, req, detail: { action: "soft-delete" } });
     res.json({ ok: true });
   } catch (err) {
     next(err);

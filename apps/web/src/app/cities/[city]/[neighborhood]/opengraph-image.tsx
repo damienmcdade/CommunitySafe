@@ -20,7 +20,7 @@ export const runtime = "edge";
 export const revalidate = 3600;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const alt = "CommunitySafe neighborhood safety overview";
+export const alt = "TravelSafe neighborhood safety overview";
 
 /// Grade → background gradient + text accent. Matches the in-app palette
 /// without alarming reds: even the worst grade reads "noteworthy" rather
@@ -82,7 +82,7 @@ export default async function NeighborhoodOgImage({
   params: { city: string; neighborhood: string };
 }) {
   const cityLabel = cityLabelBySlug(params.city);
-  if (!cityLabel) return fallback("Neighborhood overview", "CommunitySafe");
+  if (!cityLabel) return fallback("Neighborhood overview", "TravelSafe");
 
   // v95p26 — fetch the area list via the existing API instead of
   // importing the adapter chain into the Edge bundle. The /geo/areas
@@ -136,7 +136,7 @@ export default async function NeighborhoodOgImage({
           }}
         >
           <div style={{ display: "flex", fontSize: 26, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.85 }}>
-            CommunitySafe · {cityLabel}
+            TravelSafe · {cityLabel}
           </div>
           <div style={{ display: "flex", flexDirection: "column" }}>
             <div style={{ display: "flex", fontSize: 78, fontWeight: 700, lineHeight: 1.04, maxWidth: 720 }}>
@@ -213,7 +213,7 @@ function fallback(line1: string, line2: string) {
         }}
       >
         <div style={{ display: "flex", fontSize: 24, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.85 }}>
-          CommunitySafe
+          TravelSafe
         </div>
         <div style={{ display: "flex", fontSize: 72, fontWeight: 700, marginTop: 12 }}>{line1}</div>
         <div style={{ display: "flex", fontSize: 30, marginTop: 14, opacity: 0.9 }}>{line2}</div>

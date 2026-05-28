@@ -47,7 +47,7 @@ export function AgeGate() {
       <div className="surface bg-white max-w-md w-full p-6 space-y-4 animate-pop-in">
         <h2 className="font-display text-xl text-slate2-900">Confirm your age</h2>
         <p className="text-sm text-slate2-700 leading-relaxed">
-          CommunitySafe is built for adults to understand neighborhood safety
+          TravelSafe is built for adults to understand neighborhood safety
           in their city. It is not intended for children under 13. To continue,
           please confirm you&apos;re at least 13 years old.
         </p>

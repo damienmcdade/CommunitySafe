@@ -36,6 +36,10 @@ export async function login(email: string, password: string) {
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) throw new HttpError(401, "invalid_credentials");
   if (user.permanentlyBanned) throw new HttpError(403, "banned");
+  // v96 — soft-deleted accounts present as "invalid_credentials" so
+  // we don't leak the deletion state to an attacker. The recovery
+  // path lives in the account-settings UI behind a confirmation flow.
+  if (user.deletedAt) throw new HttpError(401, "invalid_credentials");
 
   if (user.lockedUntil && user.lockedUntil > new Date()) {
     const minsRemaining = Math.ceil((+user.lockedUntil - Date.now()) / 60_000);
@@ -143,6 +147,24 @@ export async function me(userId: string) {
       suspendedUntil: true,
       permanentlyBanned: true,
       alertPreference: true,
+    },
+  });
+}
+
+// v96 — soft-delete the user's own account. Obfuscates email so the
+// row no longer occupies the user's real address (frees them to
+// re-register later if they want) and bumps tokenVersion so every
+// active token is rejected on next request. The retention worker
+// hard-deletes any row whose deletedAt is past the grace window.
+export async function softDeleteAccount(userId: string): Promise<void> {
+  const obfuscatedEmail = `deleted-${userId}-${Date.now().toString(36)}@deleted.travelsafe.local`;
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      deletedAt: new Date(),
+      email: obfuscatedEmail,
+      displayName: null,
+      tokenVersion: { increment: 1 },
     },
   });
 }

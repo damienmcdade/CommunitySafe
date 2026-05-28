@@ -83,7 +83,7 @@ const PROVENANCE: DataProvenance = {
   granularity: "neighborhood",
   disclaimer:
     "Incidents are reported by the Chicago Police Department and aggregated " +
-    "to Chicago's 77 Community Areas — not live, not street-level. CommunitySafe " +
+    "to Chicago's 77 Community Areas — not live, not street-level. TravelSafe " +
     "does not track individuals.",
 };
 

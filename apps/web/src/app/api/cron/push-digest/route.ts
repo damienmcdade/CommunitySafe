@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
   const userIds = candidates.map((u) => u.id);
   const result = userIds.length > 0
     ? await sendToMany(userIds, {
-        title: "CommunitySafe — today's digest",
+        title: "TravelSafe — today's digest",
         body: "Check what's happening in your areas. Tap to open.",
         tag: "digest-daily",
         // SW's notificationclick handler reads notification.data.url

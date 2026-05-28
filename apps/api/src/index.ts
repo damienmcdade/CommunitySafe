@@ -44,6 +44,7 @@ import { startGradeSanityWorker, getLastReport as getGradeSanityReport } from ".
 import { startAuditRetentionWorker } from "./services/audit/retention.worker.js";
 import { Agent, setGlobalDispatcher } from "undici";
 import { globalLimiter } from "./middleware/rate-limit.js";
+import { csrfGuard } from "./middleware/csrf.js";
 
 // v90p5 — pooled HTTP dispatcher inlined here (was previously in
 // @travelsafe/crime-data/lib/http but undici's node: scheme imports
@@ -107,6 +108,10 @@ app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
 
 // v92 — global per-IP rate limit (skips /health + /diag/*).
 app.use(globalLimiter);
+// v96 — Sec-Fetch-Site CSRF guard on POST/PUT/PATCH/DELETE. Reads
+// always pass; writes from cross-site origins are blocked. Documented
+// in middleware/csrf.ts.
+app.use(csrfGuard);
 
 // /health is Railway's healthcheckPath; /healthz is the
 // kubernetes-style alias an external uptime monitor was hitting and

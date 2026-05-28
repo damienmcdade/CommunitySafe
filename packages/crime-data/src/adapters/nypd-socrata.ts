@@ -64,7 +64,7 @@ const PROVENANCE: DataProvenance = {
     "Incidents are reported by the New York City Police Department and " +
     "aggregated by NYPD precinct, then surfaced under each precinct's " +
     "primary-coverage neighborhood (per nyc.gov/site/nypd) — not live, " +
-    "not street-level. CommunitySafe does not track individuals and " +
+    "not street-level. TravelSafe does not track individuals and " +
     "intentionally ignores victim-demographic columns published by NYPD.",
 };
 

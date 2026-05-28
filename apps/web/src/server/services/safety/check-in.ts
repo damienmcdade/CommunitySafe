@@ -56,13 +56,13 @@ export async function triggerExpiry(timerId: string): Promise<DeliveryReceipt[]>
   if (!timer || timer.status !== CheckInStatus.ACTIVE) return [];
   const confirmed = await getConfirmedContacts(timer.userId);
 
-  const subject = "CommunitySafe — a contact didn't check in";
+  const subject = "TravelSafe — a contact didn't check in";
   const location =
     timer.lastLat != null && timer.lastLng != null
       ? `Last known location: https://www.google.com/maps?q=${timer.lastLat},${timer.lastLng}`
       : "Last known location: unavailable";
   const note = timer.message ? `\nUser note: ${timer.message}` : "";
-  const body = `Your contact set a CommunitySafe check-in timer that just expired without confirmation. They may need help.\n\n${location}${note}\n\nThis is an automated notification.`;
+  const body = `Your contact set a TravelSafe check-in timer that just expired without confirmation. They may need help.\n\n${location}${note}\n\nThis is an automated notification.`;
 
   const receipts: DeliveryReceipt[] = [];
   for (const c of confirmed) {

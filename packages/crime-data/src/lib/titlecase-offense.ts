@@ -3,7 +3,7 @@
 // Multiple upstream feeds (Boston, Buffalo, Chicago, Cleveland, Dallas,
 // Detroit, Oakland) publish offense names in SHOUTING ALL CAPS — they
 // look great in a 1990s mainframe CAD report and absolutely awful in
-// CommunitySafe's ThreatFeed. Adapters that pass them through verbatim
+// TravelSafe's ThreatFeed. Adapters that pass them through verbatim
 // surface things like "ALARM - BURGLAR" and "AGG ASSAULT - NFV" to
 // users.
 //

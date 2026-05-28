@@ -5,7 +5,7 @@ import { PHOTOS } from "@/components/CityBackdrop";
 export const metadata: Metadata = {
   title: "Photo Credits",
   description:
-    "Attribution for the city backdrop photography used in CommunitySafe. All images are sourced from Wikimedia Commons and used under their respective licenses.",
+    "Attribution for the city backdrop photography used in TravelSafe. All images are sourced from Wikimedia Commons and used under their respective licenses.",
 };
 
 // v93p3 — derive the per-photo attribution list from PHOTOS at build
@@ -35,7 +35,7 @@ export default function CreditsPage() {
         <p className="text-xs uppercase tracking-[0.18em] text-bay-700 font-medium">Attribution</p>
         <h1 className="font-display text-3xl sm:text-4xl text-slate2-900">Photo Credits</h1>
         <p className="text-sm text-slate2-700 leading-relaxed">
-          Every city backdrop on CommunitySafe is a real photograph of the
+          Every city backdrop on TravelSafe is a real photograph of the
           named city, sourced from <a href="https://commons.wikimedia.org" target="_blank" rel="noreferrer" className="text-bay-700 hover:underline">Wikimedia Commons</a>.
           The vast majority are licensed under{" "}
           <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noreferrer" className="text-bay-700 hover:underline">CC-BY-SA 4.0</a>{" "}
@@ -55,7 +55,7 @@ export default function CreditsPage() {
           <li><strong>Public domain / CC0</strong> — no attribution required, but credit is customary and we provide it where the source is known.</li>
         </ul>
         <p className="text-xs text-slate2-500">
-          The CommunitySafe site code itself is unrelated to the photo licenses —
+          The TravelSafe site code itself is unrelated to the photo licenses —
           our use of an image does not transitively license our application code.
         </p>
       </section>

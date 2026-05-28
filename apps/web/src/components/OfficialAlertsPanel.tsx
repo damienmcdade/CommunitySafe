@@ -69,7 +69,7 @@ export function OfficialAlertsPanel() {
         <span className="text-xs text-slate2-500">National Weather Service</span>
       </header>
       <p className="mt-1 text-xs text-slate2-500">
-        Active NWS alerts for {city.label} — watches, warnings, and advisories from the official US weather agency. Independent of CommunitySafe community posts.
+        Active NWS alerts for {city.label} — watches, warnings, and advisories from the official US weather agency. Independent of TravelSafe community posts.
         {wx?.feelsLikeF != null && (
           <span> Feels like {Math.round(wx.feelsLikeF)}°F.</span>
         )}

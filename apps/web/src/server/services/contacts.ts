@@ -39,8 +39,8 @@ export async function addContact(userId: string, input: { label: string; email?:
   if (contact.email) {
     await sendEmail(
       contact.email,
-      "CommunitySafe — please confirm you can receive safety alerts",
-      `Someone added you as a trusted contact on CommunitySafe.\n\n` +
+      "TravelSafe — please confirm you can receive safety alerts",
+      `Someone added you as a trusted contact on TravelSafe.\n\n` +
         `If you agree to receive check-in and live-share notifications from them,\n` +
         `confirm here: ${buildConfirmUrl(token)}\n\n` +
         `If you don't recognize this, ignore this email — you will not be contacted further.`,
@@ -72,7 +72,7 @@ export async function resendConfirmation(userId: string, contactId: string) {
   if (updated.email) {
     await sendEmail(
       updated.email,
-      "CommunitySafe — confirmation re-sent",
+      "TravelSafe — confirmation re-sent",
       `Confirm here: ${buildConfirmUrl(token)}`,
     );
   }

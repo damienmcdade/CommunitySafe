@@ -40,6 +40,17 @@ model User {
   suspendedUntil    DateTime?
   permanentlyBanned Boolean   @default(false)
 
+  // v96 — soft-delete for the GDPR / CCPA "right to be forgotten"
+  // path. The prior model deleted the User row outright, which
+  // cascaded across every relation in this schema and made
+  // accidental-click recovery impossible. Now the account API marks
+  // deletedAt + obfuscates personally identifiable columns; every
+  // User read filters `deletedAt IS NULL` so the row is invisible
+  // to the rest of the app. A separate retention worker pass (out
+  // of scope here) hard-deletes any row with deletedAt older than
+  // the configured grace window.
+  deletedAt         DateTime?
+
   // v92 — account lockout for failed-auth burst protection (DISA STIG
   // AC-7 / NIST 800-53 AC-7). Login service increments failedAttempts
   // on bad password; at 5 fails sets lockedUntil = now + 15 min and
@@ -101,6 +112,10 @@ model User {
   // queries become point lookups instead of seq scans. Finding #3
   // in docs/schema-review.md.
   @@index([trustLevel])
+  // v96 — every authenticated read filters `deletedAt IS NULL`. Index
+  // is sparse (most rows have deletedAt = null) so the planner uses it
+  // to short-circuit the soft-delete check.
+  @@index([deletedAt])
 }
 
 // -----------------------------------------------------------------------------
@@ -223,7 +238,7 @@ enum PostStatus {
   REJECTED      // never visible
 }
 
-/// CommunitySafe post categories. These are intentionally original names —
+/// TravelSafe post categories. These are intentionally original names —
 /// do not mirror Ring/Nextdoor/Citizen taxonomy.
 enum PostKind {
   HEADS_UP        // suspicious activity / something off

@@ -8,12 +8,12 @@ import { findArea } from "../neighborhoods.js";
 // as authoritative.
 
 const PROVENANCE: DataProvenance = {
-  source: "CommunitySafe sample data (not a real source)",
+  source: "TravelSafe sample data (not a real source)",
   datasetUrl: "about:blank",
   recency: "Static sample; refreshed only on developer rebuild",
   granularity: "neighborhood",
   disclaimer:
-    "This is illustrative sample data shipped with CommunitySafe so the UI renders " +
+    "This is illustrative sample data shipped with TravelSafe so the UI renders " +
     "without an internet connection. It is NOT real crime data. Configure " +
     "CRIME_DATA_ADAPTER=auto and provide network access to use SANDAG / SDPD feeds.",
 };

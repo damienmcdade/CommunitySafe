@@ -10,9 +10,9 @@ export default function RegisterPage() {
     <main className="max-w-md mx-auto px-6 py-16 animate-rise-in">
       <h1 className="font-display text-3xl text-slate2-900">No account needed</h1>
       <p className="mt-3 text-slate2-700 text-sm">
-        CommunitySafe doesn&apos;t require sign-up. Every device gets an anonymous
+        TravelSafe doesn&apos;t require sign-up. Every device gets an anonymous
         session automatically on first visit, and that session powers
-        CommunitySafe posts, the Check-In timer, Live Share, and saved
+        TravelSafe posts, the Check-In timer, Live Share, and saved
         neighborhoods — all without an email address or password.
       </p>
       <p className="mt-3 text-slate2-700 text-sm">

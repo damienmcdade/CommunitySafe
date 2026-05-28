@@ -33,7 +33,7 @@ interface TabDef {
 //   1. City Awareness         — citywide-only cards
 //   2. Neighborhood Awareness — area cards + Personal Safety sub-tab
 //   3. Overwatch              — Crime Map + Safe Route sub-tabs
-//   4. CommunitySafe          — standalone
+//   4. TravelSafe          — standalone
 //
 // Vigilance retired (Personal Safety moved into Neighborhood Awareness
 // as a sub-tab). Crime Map and Safe Route relocated into Overwatch.

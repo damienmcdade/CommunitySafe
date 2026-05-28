@@ -1,7 +1,7 @@
 // v89 — shared User-Agent so every adapter identifies itself uniformly
 // to upstream open-data portals (Socrata, ArcGIS, CKAN). Several portals
 // rate-limit anonymous traffic differently from identified traffic.
-export const USER_AGENT = "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)";
+export const USER_AGENT = "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)";
 
 // v89 — Socrata X-App-Token lookup. Anonymous SoQL queries share a
 // global throttle pool; adding an app token moves the calling app

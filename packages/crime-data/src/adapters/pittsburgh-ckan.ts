@@ -65,7 +65,7 @@ const PROVENANCE: DataProvenance = {
     "Incidents are reported by the City of Pittsburgh Bureau of Police and " +
     "aggregated to one of 90 named city neighborhoods. The NIBRS group " +
     "(Person/Property/Society/Group B) is published per row by PBP. " +
-    "Society + Group B are collapsed into SOCIETY for CommunitySafe's three- " +
+    "Society + Group B are collapsed into SOCIETY for TravelSafe's three- " +
     "category breakdown.",
 };
 
@@ -97,7 +97,7 @@ async function fetchPittsburgh(): Promise<Incident[]> {
   });
   const url = `${SEARCH_BASE}?${params.toString()}`;
   const res = await fetch(url, {
-    headers: { Accept: "application/json", "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)" },
+    headers: { Accept: "application/json", "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
   });
   if (!res.ok) throw new Error(`Pittsburgh CKAN ${res.status}`);
   const body = await res.json() as { result?: { records?: PghRow[] } };

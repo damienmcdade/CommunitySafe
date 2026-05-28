@@ -14,7 +14,7 @@ import { generateSecret, generateURI, verifySync } from "otplib";
 import { prisma } from "../lib/prisma.js";
 import { HttpError } from "../middleware/error.js";
 
-const ISSUER = "CommunitySafe";
+const ISSUER = "TravelSafe";
 
 export interface EnrollProvisional {
   secret: string;          // base32 secret to render as QR

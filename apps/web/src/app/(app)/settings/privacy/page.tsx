@@ -85,7 +85,7 @@ export default function PrivacyDashboardPage() {
           What we store, what you control
         </h1>
         <p className="mt-2 text-slate2-700 max-w-2xl text-sm">
-          CommunitySafe is privacy-first by design. Nothing about you is sent to our server unless you take an explicit action (post, save an area, enable notifications). Everything else lives in your browser&apos;s local storage on this device only.
+          TravelSafe is privacy-first by design. Nothing about you is sent to our server unless you take an explicit action (post, save an area, enable notifications). Everything else lives in your browser&apos;s local storage on this device only.
         </p>
       </header>
 
@@ -144,7 +144,7 @@ export default function PrivacyDashboardPage() {
       <section className="surface p-6 space-y-3">
         <h2 className="font-display text-xl text-slate2-900">Browser permissions</h2>
         <p className="text-sm text-slate2-700">
-          These are granted at the browser level — CommunitySafe can only request them, your browser decides whether to honor the request. To change them, use your browser&apos;s site-settings page for this domain.
+          These are granted at the browser level — TravelSafe can only request them, your browser decides whether to honor the request. To change them, use your browser&apos;s site-settings page for this domain.
         </p>
         <dl className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
           <div>
@@ -185,7 +185,7 @@ export default function PrivacyDashboardPage() {
 const PERSIST_AREA_KEY = "travelsafe.location.persistArea";
 const PERSIST_CITY_KEY = "travelsafe.location.persistCity";
 
-/// Granular controls for what CommunitySafe is allowed to remember about
+/// Granular controls for what TravelSafe is allowed to remember about
 /// your location across sessions. Browser permission state itself is
 /// surfaced above — these toggles control what we DO with a grant.
 ///
@@ -232,7 +232,7 @@ function LocationControls() {
     <section className="surface p-6 space-y-3">
       <h2 className="font-display text-xl text-slate2-900">Location controls</h2>
       <p className="text-sm text-slate2-700">
-        CommunitySafe never tracks your live location. These switches control whether your <em>chosen</em> city and neighborhood are remembered between visits, or whether each session starts fresh.
+        TravelSafe never tracks your live location. These switches control whether your <em>chosen</em> city and neighborhood are remembered between visits, or whether each session starts fresh.
       </p>
       <ul className="mt-3 divide-y divide-sand-200">
         <li className="py-3 flex items-baseline justify-between gap-3 text-sm">
@@ -276,7 +276,7 @@ function AppearanceControls() {
     <section className="surface p-6 space-y-3">
       <h2 className="font-display text-xl text-slate2-900">Appearance</h2>
       <p className="text-sm text-slate2-700">
-        Choose how CommunitySafe looks. &ldquo;System&rdquo; follows your device&apos;s light/dark preference and updates live when you change it.
+        Choose how TravelSafe looks. &ldquo;System&rdquo; follows your device&apos;s light/dark preference and updates live when you change it.
       </p>
       <div role="radiogroup" aria-label="App theme" className="mt-3 flex flex-wrap gap-1 text-sm">
         {options.map((o) => (

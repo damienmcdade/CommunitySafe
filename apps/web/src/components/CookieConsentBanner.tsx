@@ -42,7 +42,7 @@ export function CookieConsentBanner() {
     >
       <div className="max-w-4xl mx-auto px-4 py-3 sm:py-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
         <p className="flex-1 text-xs sm:text-sm text-slate2-700 leading-snug">
-          We use third-party advertising cookies for measurement. CommunitySafe never sells your personal information.
+          We use third-party advertising cookies for measurement. TravelSafe never sells your personal information.
           See our <a href="/privacy" className="text-bay-700 hover:underline">Privacy Policy</a>.
           You can change this anytime in <a href="/settings/privacy" className="text-bay-700 hover:underline">Privacy Settings</a>.
         </p>

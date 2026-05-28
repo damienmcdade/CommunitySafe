@@ -50,7 +50,7 @@ const PROVENANCE: DataProvenance = {
   granularity: "neighborhood",
   disclaimer:
     "Incidents are reported by the Atlanta Police Department and grouped by NPU/Neighborhood. " +
-    "Not live, not street-level. CommunitySafe does not track individuals.",
+    "Not live, not street-level. TravelSafe does not track individuals.",
 };
 
 async function fetchPage(offset: number): Promise<AtlRow[]> {

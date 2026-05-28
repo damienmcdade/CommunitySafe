@@ -34,16 +34,16 @@ Built natively in **React Native (Expo)** and decoupled via an **API-first backe
 ## 📁 Repository Structure
 
 ```text
-├── .github/              # CI/CD workflows and deployment pipelines
-├── backend/              # Decoupled API & Automated Scraping Engine
-│   ├── src/controllers/  # Score calculation and data aggregation algorithms
-│   └── src/jobs/         # Scheduled Cron tasks for municipal open-data fetching
-├── frontend/             # Cross-platform UI layout
-│   ├── app/              # Expo Router path handling
-│   └── components/       # UI Elements
-│       └── SafeZoneTab/  # Fully self-contained, drop-in safety map module
-├── app.json              # Native device & permission handling setups
-└── eas.json              # Production environment distribution configurations
+├── .github/                    # CI/CD workflows
+├── apps/
+│   ├── web/                    # Next.js App Router frontend (Vercel)
+│   └── api/                    # Express + Prisma backend (Railway)
+├── packages/
+│   ├── crime-data/             # 37-city open-data adapters + safety-score
+│   └── db/                     # Prisma schema + client
+├── workers/
+│   └── boston-proxy/           # Cloudflare-style CKAN proxy
+└── docs/                       # Architecture, methodology, audits
 ```
 
 ---
@@ -51,35 +51,50 @@ Built natively in **React Native (Expo)** and decoupled via an **API-first backe
 ## 🚀 Quick Start (Local Development)
 
 ### Prerequisites
-* Node.js (v18+)
-* Expo CLI (`npm install -g expo-cli`)
-* EAS CLI (`npm install -g eas-cli`)
+* Node.js v22 (see `package.json` engines)
+* npm 9+ with workspace support
+* PostgreSQL (Neon free tier works) + Redis (Upstash free tier works)
 
 ### Setup & Installation
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com
-   cd safezone-engine
+   git clone https://github.com/damienmcdade/TravelSafe.git
+   cd TravelSafe
    ```
 
 2. **Configure environment variables:**
-   Create a `.env` file in both the frontend and backend root folders using the provided `.env.example` templates. Ensure you map your Google Maps / Apple Maps SDK credentials correctly.
+   Copy `.env.example` to `.env.local` at the repo root and fill in the
+   `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, and AI provider keys. Both
+   `apps/web` and `apps/api` read the root `.env.local` by default.
 
-3. **Install dependencies & launch frontend:**
+3. **Install + generate Prisma client + build packages:**
    ```bash
-   cd frontend
    npm install
-   npx expo start
+   npm run db:generate
+   npm run build --workspace packages/crime-data
+   ```
+
+4. **Run both apps in parallel:**
+   ```bash
+   npm run dev          # api on :8080, web on :3000
    ```
 
 ---
 
-## 📦 Production Deployment & Build Commands
+## 📦 Production Deployment
 
-This project is configured to bypass heavy local compiler configurations by leveraging cloud orchestration services.
+| Surface | Platform | Trigger |
+|---|---|---|
+| `apps/web` | Vercel | git push to `main` (auto) |
+| `apps/api` | Railway | git push to `main` (auto) |
+| Database | Neon | managed |
+| Redis | Railway plugin | managed |
 
-### Cross-Platform Native Bundling via EAS:
+The legacy build commands below are kept only for reference — the live
+deploy path is `git push origin main`.
+
+### Cross-Platform Native Bundling via EAS (legacy / historical):
 ```bash
 # Compile and build iOS Production Target
 eas build --platform ios --profile production
@@ -268,9 +283,9 @@ See [`.env.example`](./.env.example) for the full annotated list. Highlights:
 | Register / login | `/register`, `/login` | `POST /auth/register`, `POST /auth/login` — only needed for posting / trusted contacts / check-in timer |
 | Awareness (citywide by default) | `/threats` | `GET /crime-data/citywide`, `GET /crime-data/insights?…`, location search via `GET /geo/lookup`, geo opt-in |
 | Crime Map | `/map` | Leaflet + OpenStreetMap, circle markers per neighborhood sized by incident volume + calm color bands |
-| Official alerts sidebar | (on CommunitySafe + Neighborhood Watch) | `GET /official-alerts` — currently National Weather Service; SDPD press releases and CHP TODO |
-| Live community pulse | (on CommunitySafe) | `GET /community/stream` (SSE) — new VERIFIED posts insert in real time |
-| AI compose coach | (in CommunitySafe composer) | `POST /ai/compose-feedback` streams from `anthropic/claude-haiku-4-5` via Vercel AI Gateway; falls back silently when `AI_GATEWAY_API_KEY` is unset |
+| Official alerts sidebar | (on TravelSafe + Neighborhood Watch) | `GET /official-alerts` — currently National Weather Service; SDPD press releases and CHP TODO |
+| Live community pulse | (on TravelSafe) | `GET /community/stream` (SSE) — new VERIFIED posts insert in real time |
+| AI compose coach | (in TravelSafe composer) | `POST /ai/compose-feedback` streams from `anthropic/claude-haiku-4-5` via Vercel AI Gateway; falls back silently when `AI_GATEWAY_API_KEY` is unset |
 | Onboarding — alert categories | `/onboarding/alert-preferences` | `PUT /preferences/alerts` |
 | Onboarding — trusted contacts | `/onboarding/trusted-contacts` | `POST /contacts`, `GET /contacts` (max 5) |
 | Threat Detection | `/threats` | `GET /crime-data/alerts?neighborhood=…` + push when entering higher-incident area |
@@ -280,7 +295,7 @@ See [`.env.example`](./.env.example) for the full annotated list. Highlights:
 | &nbsp;&nbsp;↳ Live share | | `POST /safety/live-share`, `GET /share/:token` (web), `DELETE /safety/live-share/:id` |
 | &nbsp;&nbsp;↳ Safe route | | `POST /safety/safe-route` (area-risk flagged, area-level only) |
 | Trusted contact opt-in | `/contacts/confirm/:token` | `POST /contacts/:id/confirm`, `POST /contacts/:id/resend` |
-| CommunitySafe — City Scanner | `/community` | `GET /crime-data/area-stats?jurisdiction=…`, `GET /community/posts` |
+| TravelSafe — City Scanner | `/community` | `GET /crime-data/area-stats?jurisdiction=…`, `GET /community/posts` |
 | Official registry link-out | `/community` (panel) | static link, never re-displays individuals |
 | Submit warning | `/community` (modal) | `POST /community/posts` → pre-vetter → verification queue |
 | Report / block / mute | `/community` | `POST /moderation/reports`, `POST /moderation/block`, `POST /moderation/mute` |
@@ -303,4 +318,11 @@ See [`.env.example`](./.env.example) for the full annotated list. Highlights:
 
 ## License
 
-TBD.
+Source code: All Rights Reserved (proprietary). Public crime-data
+adapters wrap third-party open-data sources; their terms are described
+in `THIRD_PARTY_NOTICES.md`. No license is granted to use, copy,
+modify, or distribute this code without explicit written permission
+from the project owner.
+
+For inquiries: open an issue at
+https://github.com/damienmcdade/TravelSafe/issues

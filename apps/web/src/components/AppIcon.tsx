@@ -1,4 +1,4 @@
-// v65 — CommunitySafe icon system. Angel above the city: silhouetted
+// v65 — TravelSafe icon system. Angel above the city: silhouetted
 // skyscrapers under a hovering guardian figure with glowing wings + a
 // subtle halo. Optimized for 16px → 1024px scaling — at the smallest
 // sizes only the silhouette + halo glow read; at full size the
@@ -49,7 +49,7 @@ interface Props {
 
 /// Full-detail icon. Use for app launcher (1024×1024), OG image,
 /// hero header. Renders cleanly down to ~64px.
-export function AppIcon({ theme = "dark", className, width, height, title = "CommunitySafe" }: Props) {
+export function AppIcon({ theme = "dark", className, width, height, title = "TravelSafe" }: Props) {
   const isDark = theme === "dark";
   const bg = isDark ? PALETTE.nightDeep : PALETTE.daySky;
   const bgTop = isDark ? PALETTE.nightMid : "#FFFFFF";
@@ -178,7 +178,7 @@ export function AppIcon({ theme = "dark", className, width, height, title = "Com
 
 /// Favicon-safe simplified version. No windows, simpler wings, no
 /// halo glow. Reads at 16×16 down to 32×32 favicon slots.
-export function AppIconSimple({ theme = "dark", className, width, height, title = "CommunitySafe" }: Props) {
+export function AppIconSimple({ theme = "dark", className, width, height, title = "TravelSafe" }: Props) {
   const isDark = theme === "dark";
   const bg = isDark ? PALETTE.nightDeep : PALETTE.daySky;
   const city = isDark ? PALETTE.citySilh : PALETTE.dayCity;

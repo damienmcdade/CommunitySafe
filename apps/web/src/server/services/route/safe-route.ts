@@ -145,7 +145,7 @@ async function osrmRoute(
     : `${from.lng},${from.lat};${to.lng},${to.lat}`;
   const url = `${OSRM_BASE}/${profile}/${coords}?overview=full&geometries=geojson&alternatives=3`;
   const res = await fetch(url, {
-    headers: { "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)" },
+    headers: { "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
     // Public OSRM demo can be slow; cap so a hung server doesn't hang us.
     signal: AbortSignal.timeout(15_000),
   });

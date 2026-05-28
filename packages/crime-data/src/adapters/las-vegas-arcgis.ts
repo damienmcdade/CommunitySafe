@@ -136,7 +136,7 @@ const PROVENANCE: DataProvenance = {
   granularity: "neighborhood",
   disclaimer:
     "These are LVMPD dispatched calls for service rather than closed NIBRS " +
-    "reports. CommunitySafe drops administrative dispatches (traffic stops, alarms, " +
+    "reports. TravelSafe drops administrative dispatches (traffic stops, alarms, " +
     "follow-ups, assist calls, suspicious-person calls, unhoused-disturbance " +
     "entries) at ingest and only keeps rows that name an actual reported " +
     "offense. Some incidents may later be reclassified or unfounded by LVMPD " +
@@ -161,7 +161,7 @@ async function fetchPage(offset: number): Promise<LvRow[]> {
   url.searchParams.set("cacheHint", "true"); // v87 — Esri edge cache
   url.searchParams.set("f", "json");
   const res = await fetch(url, {
-    headers: { Accept: "application/json", "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/CommunitySafe)" },
+    headers: { Accept: "application/json", "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
   });
   if (!res.ok) throw new Error(`Las Vegas ArcGIS ${res.status} offset=${offset}`);
   const body = await res.json() as { features?: Array<{ attributes: LvRow }> };

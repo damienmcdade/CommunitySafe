@@ -16,7 +16,7 @@ import { socrataHeaders } from "../lib/http.js";
 // Part I/II heuristic — accuracy improves as a side effect.
 //
 // IMPORTANT: The dataset publishes incident metadata only.
-// CommunitySafe's spec forbids displaying or storing victim/suspect
+// TravelSafe's spec forbids displaying or storing victim/suspect
 // demographic data; we just don't request those columns.
 
 // v70 — switched primary to the "2026-to-Present" dataset (k7nn-b2ep)
@@ -117,7 +117,7 @@ const PROVENANCE: DataProvenance = {
   granularity: "neighborhood",
   disclaimer:
     "Incidents are reported by the Los Angeles Police Department and aggregated to " +
-    "LAPD patrol division — not live, not street-level. CommunitySafe does not track " +
+    "LAPD patrol division — not live, not street-level. TravelSafe does not track " +
     "individuals and intentionally ignores victim/suspect-demographic columns " +
     "published by LAPD.",
 };

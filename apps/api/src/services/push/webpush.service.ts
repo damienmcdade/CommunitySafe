@@ -4,7 +4,7 @@ import { env } from "../../env.js";
 
 // Web Push fan-out helpers. Ported from apps/web's webpush.ts so the
 // digest worker can run on Railway without a network round-trip back
-// to Vercel. Same VAPID config (CommunitySafe owns one keypair shared
+// to Vercel. Same VAPID config (TravelSafe owns one keypair shared
 // across both runtimes).
 
 let vapidReady = false;

@@ -23,7 +23,7 @@ the migration that would address it.
 Every city-page query filters areas by `parentSlug` (e.g.
 `Area.where(parentSlug: "san-diego")`). Without an index the query does a
 sequential scan. As the area table grows (5,000+ neighborhoods at full
-30-city rollout), this gets visible in p95 latency.
+37-city rollout), this gets visible in p95 latency.
 
 **Migration:** add `@@index([parentSlug])` to the `Area` model.
 

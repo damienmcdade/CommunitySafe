@@ -71,7 +71,7 @@ const PROVENANCE: DataProvenance = {
   granularity: "neighborhood",
   disclaimer:
     "Incidents are reported by the Cincinnati Police Department and aggregated to " +
-    "CPD's named neighborhoods. CommunitySafe does NOT request or display any " +
+    "CPD's named neighborhoods. TravelSafe does NOT request or display any " +
     "victim / suspect demographic columns — only neighborhood, offense, date, and " +
     "coordinates.",
 };

@@ -46,7 +46,7 @@ export async function planSafeRoute(from: { lat: number; lng: number }, to: { la
     segments,
     flaggedHigherRiskAreas: segments.filter((s) => s.riskLevel >= 4).map((s) => s.area),
     disclaimer:
-      "CommunitySafe does not provide turn-by-turn routing. Risk is shown at the neighborhood level using public crime data and is illustrative only. Use a navigation app for directions.",
+      "TravelSafe does not provide turn-by-turn routing. Risk is shown at the neighborhood level using public crime data and is illustrative only. Use a navigation app for directions.",
   };
 }
 

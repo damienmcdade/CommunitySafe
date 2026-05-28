@@ -3,14 +3,14 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Pricing",
-  description: "CommunitySafe is free to use. Pro tier coming soon for advanced safety features.",
+  description: "TravelSafe is free to use. Pro tier coming soon for advanced safety features.",
 };
 
 /// Public /pricing page. Scaffold only — no payment integration. The
 /// tier comparison reflects the current set of features that COULD be
 /// gated; final pricing + actual gate enforcement are deferred pending
 /// product decisions. This page exists so:
-///   1. Search engines + curious users see CommunitySafe has a clear
+///   1. Search engines + curious users see TravelSafe has a clear
 ///      free-to-use posture.
 ///   2. The infrastructure is in place to flip features into Pro
 ///      without scrambling for a pricing page when revenue lands.
@@ -25,7 +25,7 @@ export default function PricingPage() {
           Free to use, today and for the foreseeable future
         </h1>
         <p className="text-slate2-700 max-w-2xl mx-auto">
-          CommunitySafe&apos;s core mission is calm, accurate neighborhood safety awareness for travelers
+          TravelSafe&apos;s core mission is calm, accurate neighborhood safety awareness for travelers
           and residents — that core stays free. A Pro tier may arrive later for power-user
           conveniences, but it will <em>never</em> gate the safety information itself.
         </p>
@@ -41,12 +41,12 @@ export default function PricingPage() {
             "City & neighborhood Safety Scores across 30 US cities",
             "Live crime feeds + analytical baselines",
             "Crime Map, Safe Route, Trend Feed",
-            "Community posts (CommunitySafe)",
+            "Community posts (TravelSafe)",
             "Daily digest notifications",
             "Saved areas + dark mode",
             "Privacy controls + data export",
           ]}
-          cta={{ label: "Start using CommunitySafe", href: "/now" }}
+          cta={{ label: "Start using TravelSafe", href: "/now" }}
         />
         <PricingCard
           name="Pro"
@@ -61,7 +61,7 @@ export default function PricingPage() {
             "Custom alert geo-fences",
             "Priority access to new city adapters",
           ]}
-          cta={{ label: "Join the waitlist", href: "mailto:hello@example.com?subject=CommunitySafe%20Pro%20waitlist" }}
+          cta={{ label: "Join the waitlist", href: "mailto:hello@example.com?subject=TravelSafe%20Pro%20waitlist" }}
         />
       </section>
 
@@ -70,7 +70,7 @@ export default function PricingPage() {
         <ul className="text-sm text-slate2-700 space-y-2 list-disc pl-5">
           <li>The Safety Score, Crime Map, Trend Feed, and core neighborhood data <strong>stay free</strong>. We will never put basic safety information behind a paywall.</li>
           <li>We will <strong>never monetize fear</strong>: no urgency tactics, no scarcity copy, no &ldquo;upgrade or be unsafe&rdquo; framing.</li>
-          <li>We will <strong>never sell your data</strong>. CommunitySafe doesn&apos;t collect demographic data and doesn&apos;t track individuals. Pricing tiers will gate convenience features, never user data.</li>
+          <li>We will <strong>never sell your data</strong>. TravelSafe doesn&apos;t collect demographic data and doesn&apos;t track individuals. Pricing tiers will gate convenience features, never user data.</li>
           <li>Pro features will be additions, not subtractions — nothing the Free tier offers today gets removed when Pro ships.</li>
         </ul>
       </section>

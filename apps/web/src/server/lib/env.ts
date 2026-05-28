@@ -2,7 +2,7 @@ import "server-only";
 import { z } from "zod";
 
 // Validated server env, used only inside Route Handlers and server services.
-// The CommunitySafe API used to live in apps/api; everything here was migrated to
+// The TravelSafe API used to live in apps/api; everything here was migrated to
 // run as Next.js Route Handlers on Vercel.
 
 const Env = z.object({

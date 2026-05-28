@@ -51,7 +51,7 @@ const PROVENANCE: DataProvenance = {
   granularity: "neighborhood",
   disclaimer:
     "Incidents are reported by the San Francisco Police Department and aggregated " +
-    "to analysis neighborhood. Not live, not street-level. CommunitySafe does not " +
+    "to analysis neighborhood. Not live, not street-level. TravelSafe does not " +
     "track individuals.",
 };
 

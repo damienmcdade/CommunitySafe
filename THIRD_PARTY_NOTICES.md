@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-CommunitySafe (the "Software") incorporates the open-source components
+TravelSafe (the "Software") incorporates the open-source components
 listed below. This document satisfies attribution + notice requirements
 for the cited licenses. For full license text see each package's
 own LICENSE file under `node_modules/<package>/`.
@@ -10,7 +10,7 @@ own LICENSE file under `node_modules/<package>/`.
 | Package | License | Notes |
 |---|---|---|
 | `@img/sharp-libvips-darwin-arm64` (and friends) | LGPL-3.0-or-later (via libvips) | Dynamically linked native lib used by Next/Image. Per LGPL §4 we acknowledge libvips and confirm the lib is not statically linked. Source: <https://github.com/libvips/libvips>. |
-| `web-push` | MPL-2.0 | File-level copyleft. We use the package unmodified; if you fork CommunitySafe, preserve the original MPL-2.0 headers on any web-push file you modify. Source: <https://github.com/web-push-libs/web-push>. |
+| `web-push` | MPL-2.0 | File-level copyleft. We use the package unmodified; if you fork TravelSafe, preserve the original MPL-2.0 headers on any web-push file you modify. Source: <https://github.com/web-push-libs/web-push>. |
 
 ## Permissive (MIT / Apache-2.0 / BSD)
 
@@ -31,7 +31,7 @@ this provenance via `apps/web/src/components/DataProvenanceBanner.tsx`
 on every safety-score and neighborhood page.
 
 Specific city portals require attribution to the publishing agency
-when redistributing data. CommunitySafe satisfies this by:
+when redistributing data. TravelSafe satisfies this by:
 
 - Naming each city's police agency in the user-facing source line.
 - Linking to the underlying dataset page in the provenance banner.

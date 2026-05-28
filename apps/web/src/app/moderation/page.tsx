@@ -34,7 +34,7 @@ export default function ModerationActivityPage() {
       <header>
         <h1 className="font-display text-3xl text-slate2-900">Moderation activity</h1>
         <p className="mt-2 text-sm text-slate2-700">
-          CommunitySafe posts publish automatically after the profanity and threat checks pass. This page lists recently reported posts so a moderator can take them down if needed. Set <code>MODERATOR_EMAILS</code> in the API environment to grant access.
+          TravelSafe posts publish automatically after the profanity and threat checks pass. This page lists recently reported posts so a moderator can take them down if needed. Set <code>MODERATOR_EMAILS</code> in the API environment to grant access.
         </p>
       </header>
       {(data ?? []).length === 0 && <p className="text-slate2-500 text-sm">No reported or pending posts.</p>}

@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description: `Neighborhood-level safety data for ${city.label} — official police-feed coverage compared to the ${FBI_DATA_LABEL} national average.`,
     alternates: { canonical: `/cities/${slug}` },
     openGraph: {
-      title: `${city.label} safety overview · CommunitySafe`,
+      title: `${city.label} safety overview · TravelSafe`,
       description: `Browse every supported ${city.label} neighborhood with a current Safety Index and recent reports timeline. Data sourced directly from the city's official police open-data feed.`,
       type: "article",
     },
@@ -191,7 +191,7 @@ export default async function CityLandingPage({ params }: Props) {
           present in the rendered HTML, not just on the in-app routes. */}
       <p className="surface-muted p-3 text-xs text-slate2-700 leading-snug" role="note">
         <strong className="text-slate2-900">How to read this:</strong>{" "}
-        CommunitySafe summarizes publicly published police reports. Scores reflect
+        TravelSafe summarizes publicly published police reports. Scores reflect
         historical reporting only — not predictions of future risk, and not a
         substitute for professional safety advice. Should not be used as the sole
         basis for housing, lending, insurance, or hiring decisions — verify each

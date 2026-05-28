@@ -11,7 +11,7 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
     // Surface in the console so devs can find the cause; production
     // exceptions also propagate to Vercel's error stream.
     // eslint-disable-next-line no-console
-    console.error("[CommunitySafe] page error:", error);
+    console.error("[TravelSafe] page error:", error);
   }, [error]);
 
   return (
@@ -20,7 +20,7 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
         <p className="text-xs uppercase tracking-[0.18em] text-amber2-700 font-medium">Something went wrong</p>
         <h1 className="mt-1 font-display text-2xl text-slate2-900">This page hit an error</h1>
         <p className="mt-2 text-sm text-slate2-700 leading-snug">
-          CommunitySafe couldn&apos;t render this view just now. The underlying police feed may be slow or
+          TravelSafe couldn&apos;t render this view just now. The underlying police feed may be slow or
           the cached response could be malformed. Tap below to retry; if it keeps failing, switch
           to a different tab and come back.
         </p>

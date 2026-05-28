@@ -1,6 +1,6 @@
 {
-  "name": "CommunitySafe",
-  "short_name": "CommunitySafe",
+  "name": "TravelSafe",
+  "short_name": "TravelSafe",
   "description": "Neighborhood-level safety awareness across 37 US cities. Drawn from official police open-data feeds and the FBI Crime Data Explorer 2025 national average. Not surveillance; not a substitute for emergency services.",
   "lang": "en-US",
   "dir": "ltr",

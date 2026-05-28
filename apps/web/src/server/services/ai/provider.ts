@@ -1,7 +1,7 @@
 import "server-only";
 import { env } from "../../lib/env";
 
-// Single source of truth for which AI model CommunitySafe uses.
+// Single source of truth for which AI model TravelSafe uses.
 //
 // Preferred: Google Gemini 2.0 Flash via @ai-sdk/google. Free tier: 15 RPM /
 // 1,500 requests/day per Google Cloud project — enough headroom for the
@@ -17,7 +17,7 @@ function geminiKey(): string | undefined {
   return env.GOOGLE_GENERATIVE_AI_API_KEY || env.GEMINI_API_KEY || env.GOOGLE_API_KEY;
 }
 
-/// Returns the LanguageModel handle CommunitySafe should pass to streamText /
+/// Returns the LanguageModel handle TravelSafe should pass to streamText /
 /// generateText, or null if no AI provider is configured. Callers must guard
 /// for null and degrade gracefully (assistant returns 503; tip generator
 /// returns []).

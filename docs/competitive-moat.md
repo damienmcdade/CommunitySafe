@@ -29,7 +29,7 @@ signal not noise" persona explicitly. That's the wedge.
 
 ### 1. Data coverage + calibration (technical, real)
 
-Across 30 cities TravelSafe has:
+Across 37 cities TravelSafe has:
 - Per-city adapters with custom calibration (NIBRS vs CFS, with
   per-city CFS scaling)
 - ACS-sourced population denominators for 1,800+ neighborhoods (not
@@ -183,7 +183,7 @@ incumbent-revenue conflict could match our brand positioning more
 nimbly than we can.
 
 **Defense:** speed of city coverage + accumulated brand trust.
-First to 30 cities with rigorous data wins. The data engineering
+First to 37 cities with rigorous data wins. The data engineering
 work shipped this past quarter is the structural lead.
 
 ### Scenario D: An insurance carrier builds it in-house

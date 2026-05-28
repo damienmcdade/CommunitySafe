@@ -50,7 +50,7 @@ const PROVENANCE: DataProvenance = {
   granularity: "beat",  // Indy publishes by IMPD district/zone; neighborhood is via PIP overlay client-side
   disclaimer:
     "Incidents are reported by the Indianapolis Metropolitan Police Department and grouped " +
-    "by IMPD district. Not live, not street-level. CommunitySafe does not track individuals.",
+    "by IMPD district. Not live, not street-level. TravelSafe does not track individuals.",
 };
 
 async function fetchPage(offset: number): Promise<IndyRow[]> {

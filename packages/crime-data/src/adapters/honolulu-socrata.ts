@@ -114,10 +114,10 @@ const PROVENANCE: DataProvenance = {
     "Police Department to the City and County of Honolulu's open-data " +
     "portal. HPD does not publish per-incident latitude/longitude or " +
     "neighborhood labels — only a redacted block-address string — so " +
-    "CommunitySafe assigns each row to a named Honolulu neighborhood " +
+    "TravelSafe assigns each row to a named Honolulu neighborhood " +
     "via OpenStreetMap Nominatim reverse-geocoding (cached offline). " +
     "Addresses outside the cached map fall into a citywide bucket. " +
-    "CommunitySafe does not request demographic columns.",
+    "TravelSafe does not request demographic columns.",
 };
 
 function safeIso(raw: string | null | undefined): string | null {

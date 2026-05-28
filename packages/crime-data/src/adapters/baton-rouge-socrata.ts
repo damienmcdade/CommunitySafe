@@ -50,7 +50,7 @@ const PROVENANCE: DataProvenance = {
   granularity: "neighborhood",
   disclaimer:
     "Incidents are reported by the Baton Rouge Police Department, with neighborhood " +
-    "and NIBRS classification published per-row by BRPD. CommunitySafe does not request " +
+    "and NIBRS classification published per-row by BRPD. TravelSafe does not request " +
     "or display the suspect / victim demographic columns that other LA datasets sometimes carry.",
 };
 

@@ -26,8 +26,16 @@ async function isTokenRevoked(payload: SessionPayload): Promise<boolean> {
   if (cached && cached.exp > now) {
     dbVer = cached.ver;
   } else {
-    const u = await prisma.user.findUnique({ where: { id: payload.uid }, select: { tokenVersion: true } });
+    // v96 — also reject soft-deleted users. Pull deletedAt alongside
+    // tokenVersion so the auth gate honors the "right to be forgotten"
+    // soft-delete flow without needing every downstream service to
+    // re-check. Soft-deleted accounts read as revoked.
+    const u = await prisma.user.findUnique({
+      where: { id: payload.uid },
+      select: { tokenVersion: true, deletedAt: true },
+    });
     if (!u) return true;  // user deleted → token invalid
+    if (u.deletedAt) return true;  // v96 soft-delete
     dbVer = u.tokenVersion;
     TOKEN_VERSION_CACHE.set(payload.uid, { ver: dbVer, exp: now + TOKEN_VERSION_TTL_MS });
   }

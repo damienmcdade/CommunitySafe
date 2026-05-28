@@ -1,9 +1,9 @@
 // Per-state public sex-offender registry lookup. Each state runs its
-// own registry; previously CommunitySafe surfaced California's
+// own registry; previously TravelSafe surfaced California's
 // Megan's Law site for every city regardless of state, which was
 // wrong (a Chicago user clicking the link landed on a CA-only site).
 //
-// Coverage: every state where CommunitySafe currently has a supported
+// Coverage: every state where TravelSafe currently has a supported
 // city. URLs verified against the official state agency page (not
 // nsopw.gov aggregator), since the state-run sites are the
 // authoritative search interfaces.

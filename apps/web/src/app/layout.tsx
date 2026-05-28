@@ -42,7 +42,7 @@ import { FBI_DATA_YEAR, FBI_DATA_LABEL } from "@/lib/data-vintage";
 const ADSENSE_CLIENT_ID = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
 
 // Title template — each page sets its own `title` (e.g. "Safety Score")
-// and Next slots it into "{title} · CommunitySafe" automatically. Default is
+// and Next slots it into "{title} · TravelSafe" automatically. Default is
 // the fallback for pages that don't set one explicitly.
 // metadataBase resolves relative URLs (alternates.canonical, og.images) to
 // absolute. NEXT_PUBLIC_SITE_URL is the canonical override; falls through
@@ -52,8 +52,8 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://communitysafe.app"
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "CommunitySafe",
-    template: "%s · CommunitySafe",
+    default: "TravelSafe",
+    template: "%s · TravelSafe",
   },
   description:
     "Neighborhood-level safety awareness across 30 US cities. Drawn from " +
@@ -66,7 +66,7 @@ export const metadata: Metadata = {
   // every tab without its own opengraph-image.tsx were barren.
   openGraph: {
     type: "website",
-    siteName: "CommunitySafe",
+    siteName: "TravelSafe",
     locale: "en_US",
     // Next auto-detects opengraph-image.tsx at every route segment, so
     // we DON'T list a static images array here — letting Next emit the
@@ -75,13 +75,13 @@ export const metadata: Metadata = {
   },
   // Twitter card defaults — `summary_large_image` tells X scrapers to
   // render the full 1200×630 OG image instead of the small square
-  // thumbnail fallback. Without this every shared CommunitySafe URL on X
+  // thumbnail fallback. Without this every shared TravelSafe URL on X
   // showed a tiny preview tile. Next auto-mirrors openGraph.images into
   // twitter.images when not explicitly set, so the per-URL tailored
   // cards flow through automatically.
   twitter: {
     card: "summary_large_image",
-    title: "CommunitySafe",
+    title: "TravelSafe",
     description:
       "Neighborhood-level safety awareness across 30 US cities. Drawn from official police open-data feeds.",
   },
@@ -90,7 +90,7 @@ export const metadata: Metadata = {
   // icon. Without these iOS falls back to a generic web-clip experience.
   appleWebApp: {
     capable: true,
-    title: "CommunitySafe",
+    title: "TravelSafe",
     statusBarStyle: "default",
   },
   // AdSense account-verification meta tag. Google reads

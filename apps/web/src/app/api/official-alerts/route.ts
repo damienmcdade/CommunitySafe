@@ -56,6 +56,6 @@ export const GET = wrap(async (req: Request) => {
       "Aggregated from the National Weather Service (active weather alerts), " +
       "USGS Earthquakes (M2.5+ within 300km, past 72h), and active AMBER Alerts " +
       "(Child Abduction Emergencies) for the user's state. Independent of " +
-      "CommunitySafe community posts.",
+      "TravelSafe community posts.",
   });
 });
