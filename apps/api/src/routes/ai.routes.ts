@@ -33,11 +33,30 @@ const composeBody = z.object({
 // prompt + caching + response shape; Railway-hosted so the Vercel
 // proxy can avoid the cold-start LRU reset on every serverless
 // instance spin-up.
+// v95p42 — route-level timeout. Cold-cache neighborhoods (no prior
+// /geo/areas warm) trigger getCrimeMix → full city dataset fetch
+// (15-60 pages of upstream data + LLM call), which exceeded our
+// audit script's 30s budget and Railway's request timeout. On
+// timeout, return null brief so the client renders the "not enough
+// data" panel instead of waiting indefinitely. The background
+// warm-worker continues populating; subsequent calls are fast.
+const AREA_BRIEF_TIMEOUT_MS = 22_000;
+const AREA_BRIEF_TIMEOUT = Symbol("area-brief-timeout");
+function withAreaBriefTimeout<T>(p: Promise<T>): Promise<T | typeof AREA_BRIEF_TIMEOUT> {
+  return Promise.race([
+    p,
+    new Promise<typeof AREA_BRIEF_TIMEOUT>((resolve) =>
+      setTimeout(() => resolve(AREA_BRIEF_TIMEOUT), AREA_BRIEF_TIMEOUT_MS),
+    ),
+  ]);
+}
+
 aiRouter.get("/area-brief", async (req, res, next) => {
   try {
     const area = typeof req.query.area === "string" ? req.query.area : "";
     if (!area) return res.status(400).json({ error: "area_required" });
-    const brief = await generateAreaBrief(area);
+    const out = await withAreaBriefTimeout(generateAreaBrief(area));
+    const brief = out === AREA_BRIEF_TIMEOUT ? null : out;
     res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=900");
     // v66 — was `aiConfigured: brief !== null` which conflated three
     // distinct null cases: (1) provider unset, (2) area has no top
@@ -66,19 +85,37 @@ const summaryQuery = z.object({
   windowDays: z.coerce.number().int().min(1).max(180).optional(),
 });
 
+// v95p42 — same cold-cache concern as /area-brief; mirror the timeout.
+const SUMMARY_TIMEOUT_MS = 22_000;
+const SUMMARY_TIMEOUT = Symbol("incident-summary-timeout");
+
 aiRouter.get("/incident-summary", async (req, res, next) => {
   try {
     const q = summaryQuery.parse(req.query);
-    const out = q.area
-      ? await generateIncidentSummary({ area: q.area, windowDays: q.windowDays })
-      : q.city
-        ? await generateIncidentSummary({ cityOnly: { citySlug: q.city }, windowDays: q.windowDays })
-        : null;
-    if (!out) {
+    if (!q.area && !q.city) {
       return res.status(400).json({ error: "summary_unavailable", reason: "Pass ?area= or ?city=" });
     }
+    const p = q.area
+      ? generateIncidentSummary({ area: q.area, windowDays: q.windowDays })
+      : generateIncidentSummary({ cityOnly: { citySlug: q.city! }, windowDays: q.windowDays });
+    const raced = await Promise.race([
+      p,
+      new Promise<typeof SUMMARY_TIMEOUT>((resolve) =>
+        setTimeout(() => resolve(SUMMARY_TIMEOUT), SUMMARY_TIMEOUT_MS),
+      ),
+    ]);
+    if (raced === SUMMARY_TIMEOUT) {
+      return res.status(503).json({
+        error: "upstream_warming",
+        message: "Crime feed is still warming for this area. Retry in a moment.",
+        retryAfterSeconds: 30,
+      });
+    }
+    if (!raced) {
+      return res.status(400).json({ error: "summary_unavailable", reason: "Insufficient data" });
+    }
     res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=900");
-    res.json(out);
+    res.json(raced);
   } catch (err) {
     next(err);
   }
