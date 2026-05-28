@@ -6,32 +6,105 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".":                       { "types": "./dist/index.d.ts",                       "import": "./dist/index.js",                       "default": "./src/index.ts" },
-    "./types":                 { "types": "./dist/types.d.ts",                       "import": "./dist/types.js",                       "default": "./src/types.ts" },
-    "./neighborhoods":         { "types": "./dist/neighborhoods.d.ts",               "import": "./dist/neighborhoods.js",               "default": "./src/neighborhoods.ts" },
-    "./population":            { "types": "./dist/population.d.ts",                  "import": "./dist/population.js",                  "default": "./src/population.ts" },
-    "./fbi-baselines":         { "types": "./dist/fbi-baselines.d.ts",               "import": "./dist/fbi-baselines.js",               "default": "./src/fbi-baselines.ts" },
-    "./cities":                { "types": "./dist/cities.d.ts",                      "import": "./dist/cities.js",                      "default": "./src/cities.ts" },
-    "./errors":                { "types": "./dist/errors.d.ts",                      "import": "./dist/errors.js",                      "default": "./src/errors.ts" },
-    "./safety-score":          { "types": "./dist/safety-score.d.ts",                "import": "./dist/safety-score.js",                "default": "./src/safety-score.ts" },
-    "./trend-feed":            { "types": "./dist/trend-feed.d.ts",                  "import": "./dist/trend-feed.js",                  "default": "./src/trend-feed.ts" },
-    "./mix":                   { "types": "./dist/mix.d.ts",                         "import": "./dist/mix.js",                         "default": "./src/mix.ts" },
-    "./upticks":               { "types": "./dist/upticks.d.ts",                     "import": "./dist/upticks.js",                     "default": "./src/upticks.ts" },
-    "./dispatcher":            { "types": "./dist/dispatcher.d.ts",                  "import": "./dist/dispatcher.js",                  "default": "./src/dispatcher.ts" },
-    "./polygon-areas":         { "types": "./dist/polygon-areas.d.ts",               "import": "./dist/polygon-areas.js",               "default": "./src/polygon-areas.ts" },
-    "./neighborhood-population": { "types": "./dist/neighborhood-population.d.ts",   "import": "./dist/neighborhood-population.js",     "default": "./src/neighborhood-population.ts" },
-    "./lib/http":              { "types": "./dist/lib/http.d.ts",                    "import": "./dist/lib/http.js",                    "default": "./src/lib/http.ts" },
-    "./lib/inflight":          { "types": "./dist/lib/inflight.d.ts",                "import": "./dist/lib/inflight.js",                "default": "./src/lib/inflight.ts" },
-    "./adapters/*":            { "types": "./dist/adapters/*.d.ts",                  "import": "./dist/adapters/*.js",                  "default": "./src/adapters/*.ts" },
-    "./data/*":                { "types": "./dist/data/*.d.ts",                      "import": "./dist/data/*.js",                      "default": "./src/data/*.ts" },
-    "./data/*.json":           "./src/data/*.json"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./src/index.ts"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "import": "./dist/types.js",
+      "default": "./src/types.ts"
+    },
+    "./neighborhoods": {
+      "types": "./dist/neighborhoods.d.ts",
+      "import": "./dist/neighborhoods.js",
+      "default": "./src/neighborhoods.ts"
+    },
+    "./population": {
+      "types": "./dist/population.d.ts",
+      "import": "./dist/population.js",
+      "default": "./src/population.ts"
+    },
+    "./fbi-baselines": {
+      "types": "./dist/fbi-baselines.d.ts",
+      "import": "./dist/fbi-baselines.js",
+      "default": "./src/fbi-baselines.ts"
+    },
+    "./cities": {
+      "types": "./dist/cities.d.ts",
+      "import": "./dist/cities.js",
+      "default": "./src/cities.ts"
+    },
+    "./errors": {
+      "types": "./dist/errors.d.ts",
+      "import": "./dist/errors.js",
+      "default": "./src/errors.ts"
+    },
+    "./safety-score": {
+      "types": "./dist/safety-score.d.ts",
+      "import": "./dist/safety-score.js",
+      "default": "./src/safety-score.ts"
+    },
+    "./trend-feed": {
+      "types": "./dist/trend-feed.d.ts",
+      "import": "./dist/trend-feed.js",
+      "default": "./src/trend-feed.ts"
+    },
+    "./mix": {
+      "types": "./dist/mix.d.ts",
+      "import": "./dist/mix.js",
+      "default": "./src/mix.ts"
+    },
+    "./upticks": {
+      "types": "./dist/upticks.d.ts",
+      "import": "./dist/upticks.js",
+      "default": "./src/upticks.ts"
+    },
+    "./dispatcher": {
+      "types": "./dist/dispatcher.d.ts",
+      "import": "./dist/dispatcher.js",
+      "default": "./src/dispatcher.ts"
+    },
+    "./polygon-areas": {
+      "types": "./dist/polygon-areas.d.ts",
+      "import": "./dist/polygon-areas.js",
+      "default": "./src/polygon-areas.ts"
+    },
+    "./neighborhood-population": {
+      "types": "./dist/neighborhood-population.d.ts",
+      "import": "./dist/neighborhood-population.js",
+      "default": "./src/neighborhood-population.ts"
+    },
+    "./lib/http": {
+      "types": "./dist/lib/http.d.ts",
+      "import": "./dist/lib/http.js",
+      "default": "./src/lib/http.ts"
+    },
+    "./lib/inflight": {
+      "types": "./dist/lib/inflight.d.ts",
+      "import": "./dist/lib/inflight.js",
+      "default": "./src/lib/inflight.ts"
+    },
+    "./adapters/*": {
+      "types": "./dist/adapters/*.d.ts",
+      "import": "./dist/adapters/*.js",
+      "default": "./src/adapters/*.ts"
+    },
+    "./data/*": {
+      "types": "./dist/data/*.d.ts",
+      "import": "./dist/data/*.js",
+      "default": "./src/data/*.ts"
+    },
+    "./data/*.json": "./src/data/*.json"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json && mkdir -p dist/data && cp -R src/data/*.json dist/data/ 2>/dev/null || true",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@prisma/client": "^5.22.0"
+    "@prisma/client": "^5.22.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "typescript": "^5.6.3"
