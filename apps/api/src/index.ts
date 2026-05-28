@@ -1,3 +1,22 @@
+// v95p31 — keep the process alive when a library callback throws.
+// Specifically we've seen undici's HTTP-1 parser throw
+// `AssertionError: assert(!this.paused)` from inside a TLSSocket
+// `end` handler when an upstream response is cut mid-flight (warm-
+// worker fetching adapter pages). Without these handlers the
+// assertion takes down the whole Node process and Railway has been
+// restart-looping. Log loudly so we still see the cause, but don't
+// exit — there's no useful in-process recovery for an interrupted
+// HTTP response that the calling code has already moved past.
+process.on("uncaughtException", (err) => {
+  // Format the error verbosely so log greps still catch the stack.
+  // eslint-disable-next-line no-console
+  console.error("[uncaughtException]", err?.name, err?.message, err?.stack);
+});
+process.on("unhandledRejection", (reason) => {
+  // eslint-disable-next-line no-console
+  console.error("[unhandledRejection]", reason);
+});
+
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
