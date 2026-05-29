@@ -2,6 +2,7 @@ import { CrimeCategory } from "@prisma/client";
 import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../types.js";
 import { riskLevelFromAreaCounts } from "../risk-bands.js";
 import type { KnownArea } from "../neighborhoods.js";
+import { phlPolygons } from "../data/phl-neighborhoods.js";
 
 // Philadelphia — Crime Incidents Part 1 & Part 2 (PPD).
 // CARTO SQL API at phl.carto.com — third adapter shape after Socrata and
@@ -49,14 +50,13 @@ function mapToNibrs(row: PhlRow): CrimeCategory {
   return CrimeCategory.SOCIETY;
 }
 
-// PPD's 21 police districts mapped to the single most-recognized
-// neighborhood name in each district's service area. The prior map
-// surfaced the district number AND a comma-list of neighborhoods
-// ("9th District: Center City"); users want the real neighborhood
-// name only ("Center City"). Where two districts cover similar
-// geography, we differentiate by picking distinct anchor
-// neighborhoods (5 vs 7 vs 8 vs 15 — all "Northeast" — get
-// Frankford / Bustleton / Somerton / Tacony respectively).
+// FALLBACK ONLY (since the neighborhood geocoder below): PPD's 21 police
+// districts mapped to the single most-recognized neighborhood name in
+// each district's service area. Used for the rare incident with no
+// usable point_x/point_y, or one that lands outside every neighborhood
+// polygon. Where two districts cover similar geography, we differentiate
+// by picking distinct anchor neighborhoods (5 vs 7 vs 8 vs 15 — all
+// "Northeast" — get Frankford / Bustleton / Somerton / Tacony).
 const DISTRICT_NEIGHBORHOODS: Record<number, string> = {
   1:  "South Philadelphia",
   2:  "Mayfair",
@@ -92,15 +92,53 @@ function enrich(dc_dist: string | null | undefined): string {
   return DISTRICT_NEIGHBORHOODS[n] ?? `PPD District ${n}`;
 }
 
+// Point-in-polygon neighborhood geocoder over the 158 OpenDataPhilly
+// neighborhoods. bbox-prefiltered ray casting — same self-contained
+// pattern as the New Orleans adapter (no shared dep). Built once at
+// module load.
+interface PolyIndex { name: string; bbox: [number, number, number, number]; rings: number[][][] }
+const POLY_INDEX: PolyIndex[] = phlPolygons.map((p) => {
+  const rings: number[][][] = p.geometry.type === "Polygon"
+    ? (p.geometry.coordinates as number[][][])
+    : (p.geometry.coordinates as number[][][][]).flat();
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const ring of rings) for (const [x, y] of ring) {
+    if (x < minX) minX = x; if (x > maxX) maxX = x;
+    if (y < minY) minY = y; if (y > maxY) maxY = y;
+  }
+  return { name: p.name, bbox: [minX, minY, maxX, maxY], rings };
+});
+
+function pointInRing(x: number, y: number, ring: number[][]): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+    const intersect = ((yi > y) !== (yj > y)) && (x < ((xj - xi) * (y - yi)) / (yj - yi || 1e-12) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function geocodePhl(lng: number, lat: number): string | null {
+  for (const p of POLY_INDEX) {
+    const [minX, minY, maxX, maxY] = p.bbox;
+    if (lng < minX || lng > maxX || lat < minY || lat > maxY) continue;
+    let parity = 0;
+    for (const ring of p.rings) if (pointInRing(lng, lat, ring)) parity++;
+    if (parity % 2 === 1) return p.name;
+  }
+  return null;
+}
+
 const PROVENANCE: DataProvenance = {
   source: "Philadelphia Crime Incidents Part 1 & Part 2 (OpenDataPhilly, CARTO SQL)",
   datasetUrl: "https://opendataphilly.org/datasets/crime-incidents/",
   recency: "Refreshed daily by the Philadelphia Police Department",
-  granularity: "beat",
+  granularity: "neighborhood",
   disclaimer:
     "Incidents are reported by the Philadelphia Police Department and " +
-    "aggregated to PPD's 21 districts — not live, not street-level. TravelSafe " +
-    "does not track individuals.",
+    "geocoded to one of 158 OpenDataPhilly neighborhoods — not live, not " +
+    "street-level. TravelSafe does not track individuals.",
 };
 
 async function fetchPhl(): Promise<Incident[]> {
@@ -128,16 +166,21 @@ async function fetchPhl(): Promise<Incident[]> {
     // CARTO returns point_x = lng, point_y = lat (the GIS XY convention).
     const lng = typeof r.point_x === "number" ? r.point_x : undefined;
     const lat = typeof r.point_y === "number" ? r.point_y : undefined;
+    const hasCoord = typeof lat === "number" && lat !== 0 && typeof lng === "number" && lng !== 0;
+    // Prefer the neighborhood the incident's point falls inside; fall
+    // back to the PPD-district anchor for rows with no/zeroed point or
+    // that land outside every polygon.
+    const area = (hasCoord ? geocodePhl(lng!, lat!) : null) ?? enrich(r.dc_dist);
     return {
       id: `phl-${r.objectid ?? i}`,
-      area: enrich(r.dc_dist),
+      area,
       occurredAt: r.dispatch_date_time ?? new Date(0).toISOString(),
       nibrsCategory: mapToNibrs(r),
       ibrOffenseDescription: r.text_general_code?.trim() || "Unknown",
       beat: r.psa ?? null,
       blockLabel: r.location_block ?? undefined,
-      lat: typeof lat === "number" && lat !== 0 ? lat : undefined,
-      lng: typeof lng === "number" && lng !== 0 ? lng : undefined,
+      lat: hasCoord ? lat : undefined,
+      lng: hasCoord ? lng : undefined,
     };
   });
 }
@@ -167,22 +210,15 @@ export async function getDiscoveredAreasPhl(): Promise<KnownArea[]> {
   }
   return Array.from(agg.entries())
     .filter(([, e]) => e.count >= 3)
-    .map(([name, e]) => {
-      // Extract the leading number ("9th District: ..." → "9") for a clean slug.
-      const m = name.match(/^(\d+)/);
-      const num = m ? m[1] : name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-      return {
-        slug: `phl-${num}`,
-        label: name,
-        jurisdiction: "Philadelphia",
-        centroid: { lat: e.latSum / e.count, lng: e.lngSum / e.count },
-      };
-    })
-    .sort((a, b) => {
-      const na = parseInt(a.label, 10) || 999;
-      const nb = parseInt(b.label, 10) || 999;
-      return na - nb;
-    });
+    .map(([name, e]) => ({
+      // Slug from the normalized neighborhood name — must match the
+      // normalization in labelForPhlSlug for round-tripping.
+      slug: `phl-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`,
+      label: name,
+      jurisdiction: "Philadelphia",
+      centroid: { lat: e.latSum / e.count, lng: e.lngSum / e.count },
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 }
 
 function labelForPhlSlug(slug: string, rows: Incident[]): string | null {
