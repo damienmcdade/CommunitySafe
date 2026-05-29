@@ -4,6 +4,7 @@ import { riskLevelFromAreaCounts } from "../risk-bands.js";
 import type { KnownArea } from "../neighborhoods.js";
 import { fetchSocrata } from "../lib/http.js";
 import { cityLocalToUtcIso } from "../lib/city-time.js";
+import { rdToNeighborhood, neighborhoodCentroids } from "../data/la-neighborhoods.js";
 
 // City of Los Angeles — LAPD NIBRS Offenses Dataset 2024 to 2025.
 // Socrata dataset y8y3-fqfu on data.lacity.org.
@@ -118,10 +119,11 @@ const PROVENANCE: DataProvenance = {
   recency: "Refreshed bi-weekly by LAPD",
   granularity: "neighborhood",
   disclaimer:
-    "Incidents are reported by the Los Angeles Police Department and aggregated to " +
-    "LAPD patrol division — not live, not street-level. TravelSafe does not track " +
-    "individuals and intentionally ignores victim/suspect-demographic columns " +
-    "published by LAPD.",
+    "Incidents are reported by the Los Angeles Police Department. The NIBRS feed " +
+    "carries no coordinates, so each is mapped to one of 114 LA neighborhoods via " +
+    "its reporting district (falling back to LAPD patrol division) — not live, not " +
+    "street-level. TravelSafe does not track individuals and intentionally ignores " +
+    "victim/suspect-demographic columns published by LAPD.",
 };
 
 async function fetchOne(baseUrl: string): Promise<SodaRow[]> {
@@ -154,8 +156,14 @@ async function fetchLapd(): Promise<Incident[]> {
   }
   return merged.map((r, i) => {
     const rawArea = r.area_name?.trim() || "Unknown";
-    const area = displayLabelLA(rawArea);
-    const cen = centroidFor(rawArea);
+    // Prefer the neighborhood the incident's reporting district maps to
+    // (rpt_dist_no -> one of 114 LA neighborhoods via the build-time
+    // crosswalk); fall back to the LAPD patrol-division label when the
+    // RD isn't in the crosswalk or rpt_dist_no is missing.
+    const rd = parseInt(r.rpt_dist_no ?? "", 10);
+    const nbhd = Number.isFinite(rd) ? rdToNeighborhood[rd] : undefined;
+    const area = nbhd ?? displayLabelLA(rawArea);
+    const cen = neighborhoodCentroids[area] ?? centroidFor(rawArea);
     return {
       id: `la-${r.uniquenibrno ?? r.caseno ?? i}`,
       area,
@@ -192,8 +200,9 @@ export async function getRowsLA(): Promise<Incident[]> {
 export async function getDiscoveredAreasLA(): Promise<KnownArea[]> {
   const rows = await getRowsLA();
   // Per-row lat/lng isn't published by the NIBRS feed; we count
-  // incidents per area name and look the centroid up in
-  // AREA_CENTROIDS instead. Skip areas with no centroid mapping
+  // incidents per area (neighborhood, or division for unmapped RDs)
+  // and look the centroid up in neighborhoodCentroids, then the
+  // division AREA_CENTROIDS. Skip areas with no centroid in either
   // (would render as a tiny dot at 0,0 on the Crime Map).
   const counts = new Map<string, number>();
   for (const r of rows) {
@@ -204,7 +213,7 @@ export async function getDiscoveredAreasLA(): Promise<KnownArea[]> {
   return Array.from(counts.entries())
     .filter(([, n]) => n >= 3)
     .map(([name]) => {
-      const cen = centroidFor(name);
+      const cen = neighborhoodCentroids[name] ?? centroidFor(name);
       return cen ? {
         slug: `la-${name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`,
         label: name,
