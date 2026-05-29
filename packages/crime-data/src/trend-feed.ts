@@ -1,6 +1,7 @@
 import { crimeData } from "./dispatcher.js";
 import { cityForArea } from "./cities.js";
 import { dedupe } from "./lib/inflight.js";
+import { displayOffenseLabel } from "./lib/offense-display-label.js";
 
 /// Trend Feed — produces a bulleted chronological summary of the past
 /// 30 days for a given area, plus week-over-week shift markers. Bullets
@@ -229,7 +230,12 @@ async function computeCitywideTrend(citySlug: string, opts?: { windowDays?: numb
   const dispatchBullets: TrendBullet[] = sortedWindow.slice(0, DISPATCH_CAP).map((i) => ({
     kind: "dispatch",
     at: i.occurredAt,
-    text: `${ymd(i.occurredAt)} · ${i.area} — ${i.ibrOffenseDescription}${i.blockLabel ? ` near ${i.blockLabel}` : ""}.`,
+    // v96p2-followup — run the raw upstream label through
+    // displayOffenseLabel server-side. The chart legend already does
+    // this client-side, but the dispatches list shipped raw strings
+    // ("ALL OTHER OFFENSES") and the user saw two different labels
+    // for the same bucket on the same page.
+    text: `${ymd(i.occurredAt)} · ${i.area} — ${displayOffenseLabel(i.ibrOffenseDescription)}${i.blockLabel ? ` near ${i.blockLabel}` : ""}.`,
     category: i.nibrsCategory,
   }));
 
@@ -357,7 +363,7 @@ export async function getTrendForArea(areaSlug: string, areaLabel: string, opts?
   const dispatchBullets: TrendBullet[] = sortedWindow.slice(0, 5000).map((i) => ({
     kind: "dispatch",
     at: i.occurredAt,
-    text: `${ymd(i.occurredAt)} — ${i.ibrOffenseDescription}${i.blockLabel ? ` near ${i.blockLabel}` : ""}.`,
+    text: `${ymd(i.occurredAt)} — ${displayOffenseLabel(i.ibrOffenseDescription)}${i.blockLabel ? ` near ${i.blockLabel}` : ""}.`,
     category: i.nibrsCategory as "PERSONS" | "PROPERTY" | "SOCIETY",
   }));
 
