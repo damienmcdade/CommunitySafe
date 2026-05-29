@@ -2,6 +2,7 @@ import { crimeData } from "./dispatcher.js";
 import { cityForArea } from "./cities.js";
 import { dedupe } from "./lib/inflight.js";
 import { displayOffenseLabel } from "./lib/offense-display-label.js";
+import { MS_PER_DAY as DAY } from "./lib/time-constants.js";
 
 // v96p2 — hoisted; used by both citywide and per-area dispatch
 // bullet construction. Per the v95p18 directive every event in the
@@ -21,7 +22,7 @@ const DISPATCH_CAP = 5000;
 /// rest of the app. No commentary, no inference — just the feed in
 /// readable English.
 
-const DAY = 24 * 60 * 60 * 1000;
+// v96p2 — DAY (= MS_PER_DAY) now lives in lib/time-constants.
 
 export interface TrendBullet {
   /// Either "trend" (week-over-week summary) or "dispatch" (single incident).

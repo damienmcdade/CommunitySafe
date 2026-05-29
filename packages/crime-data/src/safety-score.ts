@@ -302,9 +302,13 @@ const PART1_CACHE_CAP = 5000;
 // source of truth for the rate-window math and lets the constants
 // carry their rationale in one place.
 
-/// Number of milliseconds in a UTC day. Used to convert windowDays
-/// into a wall-clock cutoff (nowMs - RATE_WINDOW_DAYS * MS_PER_DAY).
-export const MS_PER_DAY = 24 * 60 * 60 * 1000;
+// v96p2 — was `export const MS_PER_DAY = 24 * 60 * 60 * 1000;` in
+// this file plus four duplicates across trend-feed / upticks / mix /
+// dispatcher. Centralized in lib/time-constants.ts. Imported here
+// for internal use and re-exported so any external caller that was
+// pulling MS_PER_DAY from safety-score keeps working.
+import { MS_PER_DAY } from "./lib/time-constants.js";
+export { MS_PER_DAY };
 
 /// Annualization horizon for the citywide rate. We accept up to
 /// 365 days of cached data; older rows are clamped because the

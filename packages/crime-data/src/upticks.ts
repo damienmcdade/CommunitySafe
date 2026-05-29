@@ -1,6 +1,7 @@
 import { crimeData } from "./dispatcher.js";
 import { cityBySlug, CITIES } from "./cities.js";
 import { dedupe } from "./lib/inflight.js";
+import { MS_PER_DAY as DAY } from "./lib/time-constants.js";
 
 /// Recent uptick detector — flags neighborhoods whose 7-day report count
 /// jumped meaningfully versus the prior 7 days. Used to surface "what's
@@ -14,7 +15,7 @@ import { dedupe } from "./lib/inflight.js";
 ///   so a 4 → 12 increment shows even if it's only 3× ratio).
 /// - Sort by multiplier descending; cap at 6 entries.
 
-const DAY = 24 * 60 * 60 * 1000;
+// v96p2 — DAY now lives in lib/time-constants (re-exported above).
 
 export interface UptickEntry {
   area: { slug: string; label: string };

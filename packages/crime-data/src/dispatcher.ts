@@ -2,6 +2,7 @@ import { env } from "./env.js";
 import type { AreaRiskAlert, AreaStats, CrimeDataAdapter, Incident } from "./types.js";
 import { dedupe } from "./lib/inflight.js";
 import { displayOffenseLabel } from "./lib/offense-display-label.js";
+import { MS_PER_DAY } from "./lib/time-constants.js";
 // Adapter modules moved to @travelsafe/crime-data in v34. The three
 // directly-referenced ones here are imported via the package's
 // adapters/ subpath; the rest are pulled in via cities.ts.
@@ -162,7 +163,7 @@ export const crimeData = {
     // annualization uses (commit 1f7d7d9). null means "no window",
     // matching the legacy behavior for backwards compat.
     const windowDays = opts.windowDays && opts.windowDays > 0 ? Math.floor(opts.windowDays) : null;
-    const windowCutoffMs = windowDays != null ? Date.now() - windowDays * 24 * 60 * 60 * 1000 : null;
+    const windowCutoffMs = windowDays != null ? Date.now() - windowDays * MS_PER_DAY : null;
     const inWindow = (occurredAt: string): boolean => {
       if (windowCutoffMs == null) return true;
       const t = +new Date(occurredAt);

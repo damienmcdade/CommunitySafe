@@ -2,8 +2,10 @@ import { crimeData } from "./dispatcher.js";
 import { cityBySlug } from "./cities.js";
 import { dedupe } from "./lib/inflight.js";
 import { displayOffenseLabel } from "./lib/offense-display-label.js";
+import { MS_PER_DAY } from "./lib/time-constants.js";
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
+// v96p2 — MS_PER_DAY now lives in lib/time-constants.ts so every
+// window-math module shares the same value.
 // Per-area cap for citywide aggregation. The single-area path pulls up to
 // 5,000 incidents; doing the same for every area of a city like Detroit
 // (199 areas) would blow memory. 1,000 still gives a representative
