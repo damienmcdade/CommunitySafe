@@ -46,7 +46,16 @@ echo "[prisma-deploy] resolving baseline (0_init)..."
   npx prisma migrate resolve \
     --applied 0_init \
     --schema packages/db/prisma/schema.prisma 2>&1 || true
-} | grep -Ev '^(Error: P3008|Prisma schema loaded|Datasource "db"|The migration .* is already recorded as applied|$)' \
+# v96p2 — grep pattern tightened: anchor the migration-name line so
+# `.*` only matches a migration identifier (alphanumeric + underscore
+# + hyphen + dot, no spaces), not the entire remainder. This is
+# defense in depth — if Prisma ever changes its message format to
+# embed user data or a different error type that happens to include
+# the phrase "is already recorded as applied", the tight pattern is
+# more likely to mismatch and surface the line instead of swallowing
+# it. Real-world Prisma output empirically ends with the exact
+# "<migration_name> is already recorded as applied" form.
+} | grep -Ev '^(Error: P3008|Prisma schema loaded|Datasource "db"|The migration [A-Za-z0-9._-]+ is already recorded as applied|$)' \
   || echo "[prisma-deploy] baseline already resolved (expected on subsequent deploys)"
 
 # Step 2: apply any new migrations. No-op on a baselined DB with no

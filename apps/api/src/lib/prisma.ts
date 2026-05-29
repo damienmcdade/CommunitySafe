@@ -19,6 +19,18 @@ function buildClient() {
   const base = new PrismaClient({
     log: process.env.NODE_ENV === "production" ? ["error"] : ["warn", "error"],
   });
+  // v96p2 — for AND-composable shapes (findFirst / findMany / count)
+  // use explicit `AND: [args.where, { deletedAt: null }]` instead of
+  // top-level spread. Prisma implicitly AND's where keys so both
+  // shapes are equivalent today, but the explicit AND is robust
+  // against a caller that passes `{ OR: [...] }` (a top-level spread
+  // would silently turn it into `{ OR: [...], deletedAt: null }` =
+  // (OR clause) AND deletedAt-null, which IS correct intent, but the
+  // explicit AND is unambiguous and survives any future refactor
+  // that tries to clear `where`). findUnique's WhereUniqueInput
+  // doesn't accept `AND`, so the spread there is the only option;
+  // it's also semantically correct ("find this unique row only when
+  // not soft-deleted").
   return base.$extends({
     name: "soft-delete-user-filter",
     query: {
@@ -27,13 +39,16 @@ function buildClient() {
           return query({ ...args, where: { ...args.where, deletedAt: null } as Prisma.UserWhereUniqueInput });
         },
         async findFirst({ args, query }) {
-          return query({ ...args, where: { ...(args.where ?? {}), deletedAt: null } });
+          const base = args.where;
+          return query({ ...args, where: base ? { AND: [base, { deletedAt: null }] } : { deletedAt: null } });
         },
         async findMany({ args, query }) {
-          return query({ ...args, where: { ...(args.where ?? {}), deletedAt: null } });
+          const base = args.where;
+          return query({ ...args, where: base ? { AND: [base, { deletedAt: null }] } : { deletedAt: null } });
         },
         async count({ args, query }) {
-          return query({ ...args, where: { ...(args.where ?? {}), deletedAt: null } });
+          const base = args.where;
+          return query({ ...args, where: base ? { AND: [base, { deletedAt: null }] } : { deletedAt: null } });
         },
       },
     },

@@ -47,6 +47,12 @@ export async function getAIModelChain(): Promise<AIModelHandle[]> {
     out.push({ name: "gemini", model: provider("gemini-2.0-flash") });
   }
   if (env.AI_GATEWAY_API_KEY) {
+    // The Vercel AI Gateway accepts a plain `"provider/model"` string
+    // where the AI SDK normally expects a LanguageModel object —
+    // they're different shapes in the same union, so the cast
+    // bridges them at the boundary. `unknown` here (rather than
+    // `LanguageModel`) keeps the AIModelHandle.model type honest
+    // about what's actually inside.
     out.push({ name: "gateway", model: "anthropic/claude-haiku-4-5" as unknown });
   }
   return out;
@@ -75,6 +81,12 @@ export async function generateTextWithFallback(opts: GenOpts): Promise<GenResult
   for (const handle of chain) {
     try {
       const res = await generateText({
+        // The AI SDK's `model` parameter is a discriminated union of
+        // LanguageModel objects (Groq/Gemini handles) and gateway
+        // strings (`"provider/model"`). TypeScript can't widen the
+        // union narrowly enough here without a generic dance, so we
+        // hand the runtime value across the boundary via `any`. The
+        // gate above already discriminated by handle.name.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         model: handle.model as any,
         system: opts.system,
