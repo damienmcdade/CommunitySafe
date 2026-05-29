@@ -1,5 +1,6 @@
 import { CrimeCategory } from "@prisma/client";
 import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../types.js";
+import { registerRowCache } from "../cache-registry.js";
 import { bucketByBands, deriveBands } from "../risk-bands.js";
 import type { KnownArea } from "../neighborhoods.js";
 import { fetchSocrata } from "../lib/http.js";
@@ -30,6 +31,7 @@ interface Cache {
   labelToRows: Map<string, Incident[]>;
 }
 let cache: Cache | null = null;
+registerRowCache(() => { cache = null; });
 function buildNorfolkIndexes(rows: Incident[]): Pick<Cache, "slugToLabel" | "labelToRows"> {
   const slugToLabel = new Map<string, string>();
   const labelToRows = new Map<string, Incident[]>();

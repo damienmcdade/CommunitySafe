@@ -1,5 +1,6 @@
 import { CrimeCategory } from "@prisma/client";
 import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../types.js";
+import { registerRowCache } from "../cache-registry.js";
 import { bucketByBands, deriveBands } from "../risk-bands.js";
 import type { KnownArea } from "../neighborhoods.js";
 import { titleCaseOffense } from "../lib/titlecase-offense.js";
@@ -33,6 +34,7 @@ interface Cache {
   labelToRows: Map<string, Incident[]>;
 }
 let cache: Cache | null = null;
+registerRowCache(() => { cache = null; });
 
 interface DetroitRow {
   crime_id?: string;

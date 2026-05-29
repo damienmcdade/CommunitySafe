@@ -2,6 +2,7 @@ import { parse as parseCsv } from "csv-parse/sync";
 import { env } from "../env.js";
 import { CrimeCategory } from "@prisma/client";
 import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../types.js";
+import { registerRowCache } from "../cache-registry.js";
 import { riskLevelFromAreaCounts } from "../risk-bands.js";
 import type { KnownArea } from "../neighborhoods.js";
 import { findArea } from "../neighborhoods.js";
@@ -11,6 +12,7 @@ import { findArea } from "../neighborhoods.js";
 // causing repeated stale-looking responses).
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; year: number; rows: Incident[] } | null = null;
+registerRowCache(() => { cache = null; });
 
 // Last-known-good discovered-areas cache. Independent from `cache` (rows)
 // so a transient upstream failure that empties the row cache doesn't also

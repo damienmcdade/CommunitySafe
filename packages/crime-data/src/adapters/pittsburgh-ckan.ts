@@ -1,5 +1,6 @@
 import { CrimeCategory } from "@prisma/client";
 import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../types.js";
+import { registerRowCache } from "../cache-registry.js";
 import { riskLevelFromAreaCounts } from "../risk-bands.js";
 import type { KnownArea } from "../neighborhoods.js";
 
@@ -28,6 +29,7 @@ const RESOURCE_ID = "bd41992a-987a-4cca-8798-fbe1cd946b07";
 const ROW_LIMIT = 30_000;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
+registerRowCache(() => { cache = null; });
 
 interface PghRow {
   Report_Number?: string;

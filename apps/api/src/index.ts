@@ -49,6 +49,7 @@ import { startDigestWorker } from "./services/push/digest.worker.js";
 // import { startWarmWorker } from "./services/warm/cache.worker.js";
 import { startGradeSanityWorker, getLastReport as getGradeSanityReport } from "./services/audit/grade-sanity.worker.js";
 import { startAuditRetentionWorker } from "./services/audit/retention.worker.js";
+import { evictAllRowCaches, registeredRowCacheCount } from "@travelsafe/crime-data/cache-registry";
 import { Agent, setGlobalDispatcher } from "undici";
 import { globalLimiter } from "./middleware/rate-limit.js";
 import { csrfGuard } from "./middleware/csrf.js";
@@ -83,6 +84,42 @@ function installPooledDispatcher(): void {
     headersTimeout: 30_000,
     bodyTimeout: 30_000,
   }));
+}
+
+// v97 — memory watchdog: the ROOT-CAUSE guard for the recurring OOM
+// crashloop (exit 134 "Ineffective mark-compacts near heap limit" at
+// ~15 min uptime). The 37 city adapters each hold their fetched rows in
+// a module-level cache that never frees once populated, so resident heap
+// climbs past the 3.5 GB old-space cap as cities are touched (a warm
+// sweep of all of them, or just organic traffic over time). --expose-gc
+// alone can't help: the rows are RETAINED by the caches, so they aren't
+// garbage. This polls heapUsed every 30s and, once it crosses a
+// high-water mark set well under the cap, drops EVERY registered adapter
+// cache (each refetches lazily on its next request, rebuilding its 5-min
+// cache) and forces a GC so the freed rows are actually reclaimed. The
+// trade is a one-request latency blip under pressure instead of a crash;
+// resident memory is bounded regardless of how many cities are cached.
+const HEAP_HIGH_WATER_MB = 2200;
+let lastEvictAt: string | null = null;
+let evictCount = 0;
+function startMemoryWatchdog(): void {
+  const gc = (globalThis as { gc?: () => void }).gc;
+  const timer = setInterval(() => {
+    const usedMB = process.memoryUsage().heapUsed / 1024 / 1024;
+    if (usedMB < HEAP_HIGH_WATER_MB) return;
+    const before = Math.round(usedMB);
+    const cleared = evictAllRowCaches();
+    if (gc) gc();
+    const after = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
+    lastEvictAt = new Date().toISOString();
+    evictCount += 1;
+    console.warn(
+      `[mem-watchdog] heap ${before}MB >= ${HEAP_HIGH_WATER_MB}MB high-water -> ` +
+      `evicted ${cleared}/${registeredRowCacheCount()} adapter caches, gc -> ${after}MB`,
+    );
+  }, 30_000);
+  // Don't keep the event loop alive solely for the watchdog.
+  timer.unref();
 }
 
 const app = express();
@@ -181,6 +218,15 @@ const healthHandler = (_req: import("express").Request, res: import("express").R
       totalMB: Math.round(mem.heapTotal / 1024 / 1024),
       rssMB: Math.round(mem.rss / 1024 / 1024),
     },
+    // v97 — memory-watchdog telemetry so an external monitor can see
+    // whether cache eviction is firing (and how often) without waiting
+    // for a crash.
+    cache: {
+      registered: registeredRowCacheCount(),
+      highWaterMB: HEAP_HIGH_WATER_MB,
+      evictions: evictCount,
+      lastEvictAt,
+    },
   });
 };
 app.get("/health", healthHandler);
@@ -242,6 +288,8 @@ const server = app.listen(env.LISTEN_PORT, () => {
   // startWarmWorker();
   startGradeSanityWorker();
   startAuditRetentionWorker();
+  // v97 — arm the memory watchdog last so it covers steady-state.
+  startMemoryWatchdog();
 });
 
 for (const sig of ["SIGINT", "SIGTERM"] as const) {

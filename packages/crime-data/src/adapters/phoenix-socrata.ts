@@ -1,5 +1,6 @@
 import { CrimeCategory } from "@prisma/client";
 import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../types.js";
+import { registerRowCache } from "../cache-registry.js";
 import type { KnownArea } from "../neighborhoods.js";
 import { riskLevelFromAreaCounts } from "../risk-bands.js";
 import { phoenixPolygons } from "../data/phoenix-neighborhoods.js";
@@ -179,6 +180,7 @@ interface Cache {
   areas: KnownArea[];
 }
 let cache: Cache | null = null;
+registerRowCache(() => { cache = null; });
 // Last-known-good areas. Independent of `cache` so a transient upstream
 // failure doesn't blank the neighborhood list — same pattern SDPD uses.
 let lastDiscovered: { fetchedAt: number; areas: KnownArea[] } | null = null;

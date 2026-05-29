@@ -1,5 +1,6 @@
 import { CrimeCategory } from "@prisma/client";
 import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../types.js";
+import { registerRowCache } from "../cache-registry.js";
 import type { KnownArea } from "../neighborhoods.js";
 import { fetchSocrata } from "../lib/http.js";
 import { riskLevelFromAreaCounts } from "../risk-bands.js";
@@ -16,6 +17,7 @@ const BASE = "https://data.cityofchicago.org/resource/ijzp-q8t2.json";
 // adapters for the rationale).
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[]; areaByNum: Map<number, string> } | null = null;
+registerRowCache(() => { cache = null; });
 
 interface SodaRow {
   id?: string;

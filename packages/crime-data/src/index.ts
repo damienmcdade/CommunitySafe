@@ -29,6 +29,12 @@ export {
   riskLevelFromAreaCounts,
 } from "./risk-bands.js";
 
+export {
+  registerRowCache,
+  evictAllRowCaches,
+  registeredRowCacheCount,
+} from "./cache-registry.js";
+
 export type { CityFbiBaseline } from "./fbi-baselines.js";
 export { CITY_FBI_BASELINES } from "./fbi-baselines.js";
 

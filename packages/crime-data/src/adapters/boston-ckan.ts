@@ -1,6 +1,7 @@
 import { CrimeCategory } from "@prisma/client";
 import { env } from "../env.js";
 import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../types.js";
+import { registerRowCache } from "../cache-registry.js";
 import { riskLevelFromAreaCounts } from "../risk-bands.js";
 import type { KnownArea } from "../neighborhoods.js";
 import { titleCaseOffense } from "../lib/titlecase-offense.js";
@@ -46,6 +47,7 @@ const PAGE_SIZE = 100;
 const PAGES = 10;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
+registerRowCache(() => { cache = null; });
 
 // v70 — direct CSV download path. The data.boston.gov CSV-download
 // endpoint redirects to a signed S3 URL (24h pre-signed). S3 is

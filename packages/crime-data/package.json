@@ -41,6 +41,11 @@
       "import": "./dist/errors.js",
       "default": "./src/errors.ts"
     },
+    "./cache-registry": {
+      "types": "./dist/cache-registry.d.ts",
+      "import": "./dist/cache-registry.js",
+      "default": "./src/cache-registry.ts"
+    },
     "./safety-score": {
       "types": "./dist/safety-score.d.ts",
       "import": "./dist/safety-score.js",

@@ -1,5 +1,6 @@
 import { CrimeCategory } from "@prisma/client";
 import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../types.js";
+import { registerRowCache } from "../cache-registry.js";
 import { riskLevelFromAreaCounts } from "../risk-bands.js";
 import type { KnownArea } from "../neighborhoods.js";
 import { phlPolygons } from "../data/phl-neighborhoods.js";
@@ -23,6 +24,7 @@ const TABLE = "incidents_part1_part2";
 const ROW_LIMIT = 30_000;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
+registerRowCache(() => { cache = null; });
 
 interface PhlRow {
   objectid?: number;

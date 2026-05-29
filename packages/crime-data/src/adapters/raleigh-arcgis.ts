@@ -1,5 +1,6 @@
 import { CrimeCategory } from "@prisma/client";
 import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../types.js";
+import { registerRowCache } from "../cache-registry.js";
 import { riskLevelFromAreaCounts } from "../risk-bands.js";
 import type { KnownArea } from "../neighborhoods.js";
 import { USER_AGENT } from "../lib/http.js";
@@ -16,6 +17,7 @@ const PAGE_SIZE = 2000;
 const PAGES = 25;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
+registerRowCache(() => { cache = null; });
 
 interface RduRow {
   case_number?: string;

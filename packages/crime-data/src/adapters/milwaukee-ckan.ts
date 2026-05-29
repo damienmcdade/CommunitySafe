@@ -1,5 +1,6 @@
 import { CrimeCategory } from "@prisma/client";
 import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../types.js";
+import { registerRowCache } from "../cache-registry.js";
 import type { KnownArea } from "../neighborhoods.js";
 import { riskLevelFromAreaCounts } from "../risk-bands.js";
 
@@ -137,6 +138,7 @@ async function fetchPage(offset: number, signal?: AbortSignal): Promise<RawRow[]
 
 interface Cache { fetchedAt: number; rows: Incident[]; areas: KnownArea[] }
 let cache: Cache | null = null;
+registerRowCache(() => { cache = null; });
 let lastDiscovered: { fetchedAt: number; areas: KnownArea[] } | null = null;
 
 // Milwaukee metro centroid — last-resort fallback when a neighborhood

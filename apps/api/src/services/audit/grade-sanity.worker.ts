@@ -200,7 +200,14 @@ async function tick(): Promise<void> {
   inFlight = true;
   const t0 = Date.now();
   try {
-    const snaps = await runBounded(CITIES, 6, (c) => probeCity(c.slug, t0));
+    // v97 — concurrency 6 → 3. On a Redis miss each probe falls through
+    // to a heavy getCitywideSafetyScore (cold per-city fetch + parse of
+    // tens of thousands of rows); 6 concurrent cold probes was the
+    // dominant transient heap spike on top of the resident adapter
+    // caches. 3 halves the peak. The memory watchdog (apps/api/index.ts)
+    // is the hard backstop if it still climbs; this just makes eviction
+    // fire less often.
+    const snaps = await runBounded(CITIES, 3, (c) => probeCity(c.slug, t0));
     const flaggedCount = snaps.filter((s) => s.flags.length > 0).length;
     const report: GradeReport = {
       generatedAt: new Date(t0).toISOString(),
