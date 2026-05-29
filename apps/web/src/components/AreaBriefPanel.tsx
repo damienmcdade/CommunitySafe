@@ -41,10 +41,16 @@ export function AreaBriefPanel({
   // The toggle still works for users who want to dismiss it.
   const [expanded, setExpanded] = useState(true);
 
-  // Self-fetch path: AI is up but this area's brief is null = don't
-  // render the disappearing trick that v66 fixed — surface the panel
-  // with the "not enough data" fallback so users can see it tried.
-  if (!body && data && !data.aiConfigured) return null;
+  // v96p2 — when self-fetched and aiConfigured=false the panel used
+  // to return null and vanish entirely from the page. User reported
+  // "AI summary not working in neighborhood tab" — the proximate
+  // cause was that Railway being down caused the Vercel proxy to
+  // fall back to local generation, which on Vercel sees
+  // aiConfigured=false (no LLM keys set on the Vercel side) and the
+  // panel hid itself. Now stays rendered with an explicit
+  // "temporarily unavailable" message so users know there IS an AI
+  // summary surface — it's just degraded right now.
+  const aiDown = !body && data && !data.aiConfigured;
 
   const briefText = body ?? data?.brief ?? null;
   const showBody = expanded;
@@ -86,8 +92,13 @@ export function AreaBriefPanel({
               )}
             </>
           )}
-          {!loading && !error && !briefText && data && (
+          {!loading && !error && !briefText && data && !aiDown && (
             <p className="text-sm text-slate2-500">Not enough recent data in this area to summarize.</p>
+          )}
+          {!loading && aiDown && (
+            <p className="text-sm text-slate2-500">
+              AI summary is temporarily unavailable. The data panels below still apply.
+            </p>
           )}
         </div>
       )}
