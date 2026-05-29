@@ -118,10 +118,16 @@ async function fetchDallas(): Promise<Incident[]> {
   // string URL; the audit also flagged this for future $where
   // expansion risk if conditions grew. The helper handles encoding.)
   // EXPLICIT $select — never request demographic columns.
+  // v96p2 — added 180-day cutoff for the same reason Seattle got
+  // one in this commit: the unbounded ROW_LIMIT pull occasionally
+  // timed out on Socrata's slow path. Dallas saw only 5 timeouts vs
+  // Seattle's 169, but the fix is mechanical and the user-facing
+  // surfaces never look past 180 days.
+  const cutoff = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString();
   const rows = await fetchSocrata<DallasRow>("Dallas Socrata", {
     url: BASE,
     select: "incidentnum,servnumid,offincident,date1,division,sector,beat,nibrs_crime,nibrs_crime_category,nibrs_crimeagainst,geocoded_column",
-    where: "date1 IS NOT NULL AND geocoded_column IS NOT NULL",
+    where: `date1 IS NOT NULL AND geocoded_column IS NOT NULL AND date1 >= '${cutoff}'`,
     order: "date1 DESC",
     limit: ROW_LIMIT,
   });

@@ -54,9 +54,20 @@ function titleCase(s: string): string {
 
 async function fetchSeattle(): Promise<Incident[]> {
   // v96 — migrated to fetchSocrata helper.
+  // v96p2 — added a 180-day $where filter. The unbounded "give me
+  // 50k most-recent rows" pull was consistently hitting Socrata's
+  // slow path (169 timeouts observed in production logs over a few
+  // hours). Most user-facing surfaces only look at the recent
+  // window anyway (mix → 30 d, citywide → 90 d, year-long fallback
+  // → 365 d). Capping the query at 180 d keeps the response under
+  // a second on Socrata's hot path and well inside the 30 s
+  // AbortSignal budget. If a future feature needs older rows it can
+  // either pass a wider window or use a separate historical fetch.
+  const cutoff = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString();
   const rows = await fetchSocrata<SodaRow>("Seattle SODA", {
     url: BASE,
     select: "offense_id,offense_date,neighborhood,precinct,beat,offense_category,nibrs_offense_code_description,nibrs_crime_against_category,latitude,longitude",
+    where: `offense_date >= '${cutoff}'`,
     order: "offense_date DESC",
     limit: 50000,
   });
