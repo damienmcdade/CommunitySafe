@@ -4,6 +4,7 @@ import { registerRowCache } from "../cache-registry.js";
 import { riskLevelFromAreaCounts } from "../risk-bands.js";
 import type { KnownArea } from "../neighborhoods.js";
 import { nashvillePolygons } from "../data/nashville-neighborhoods.js";
+import { nashvilleAssociationPolygons } from "../data/nashville-associations.js";
 
 // Nashville — MNPD Police Department Incidents.
 // ArcGIS FeatureServer on services2.arcgis.com. Refreshed daily, with
@@ -72,17 +73,24 @@ function mapToNibrs(row: NashRow): CrimeCategory {
 // ---- Point-in-polygon ------------------------------------------------------
 
 interface PolyIndex { name: string; bbox: [number, number, number, number]; rings: number[][][] }
-const POLY_INDEX: PolyIndex[] = nashvillePolygons.map((p) => {
-  const rings: number[][][] = p.geometry.type === "Polygon"
-    ? (p.geometry.coordinates as number[][][])
-    : (p.geometry.coordinates as number[][][][]).flat();
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  for (const ring of rings) for (const [x, y] of ring) {
-    if (x < minX) minX = x; if (x > maxX) maxX = x;
-    if (y < minY) minY = y; if (y > maxY) maxY = y;
-  }
-  return { name: p.name, bbox: [minX, minY, maxX, maxY], rings };
-});
+type Poly = { name: string; geometry: { type: "Polygon" | "MultiPolygon"; coordinates: number[][][] | number[][][][] } };
+function buildIndex(polys: Poly[]): PolyIndex[] {
+  return polys.map((p) => {
+    const rings: number[][][] = p.geometry.type === "Polygon"
+      ? (p.geometry.coordinates as number[][][])
+      : (p.geometry.coordinates as number[][][][]).flat();
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const ring of rings) for (const [x, y] of ring) {
+      if (x < minX) minX = x; if (x > maxX) maxX = x;
+      if (y < minY) minY = y; if (y > maxY) maxY = y;
+    }
+    return { name: p.name, bbox: [minX, minY, maxX, maxY], rings };
+  });
+}
+// Primary: 288 Metro Planning neighborhood associations (fine-grained but
+// they do NOT tile the county). Fallback: 9 MNPD precincts (full coverage).
+const ASSOC_INDEX: PolyIndex[] = buildIndex(nashvilleAssociationPolygons);
+const PRECINCT_INDEX: PolyIndex[] = buildIndex(nashvillePolygons);
 
 function pointInRing(x: number, y: number, ring: number[][]): boolean {
   let inside = false;
@@ -94,8 +102,8 @@ function pointInRing(x: number, y: number, ring: number[][]): boolean {
   return inside;
 }
 
-function geocodeNashville(lng: number, lat: number): string | null {
-  for (const p of POLY_INDEX) {
+function geocodeIn(index: PolyIndex[], lng: number, lat: number): string | null {
+  for (const p of index) {
     const [minX, minY, maxX, maxY] = p.bbox;
     if (lng < minX || lng > maxX || lat < minY || lat > maxY) continue;
     let parity = 0;
@@ -105,6 +113,15 @@ function geocodeNashville(lng: number, lat: number): string | null {
   return null;
 }
 
+// Neighborhood-first (precise, ~30% of incidents fall inside one of the
+// 288 associations), precinct fallback (full coverage so the other ~70%
+// still get a real area instead of "Unknown"). Net: Nashville's
+// discoverable area list jumps from 9 precincts to ~140 areas with no
+// coverage regression.
+function geocodeNashville(lng: number, lat: number): string | null {
+  return geocodeIn(ASSOC_INDEX, lng, lat) ?? geocodeIn(PRECINCT_INDEX, lng, lat);
+}
+
 const PROVENANCE: DataProvenance = {
   source: "Metro Nashville Police Department Incidents (NashvilleOpenData, ArcGIS Feature Server)",
   datasetUrl: "https://data.nashville.gov/Police/Metro-Nashville-Police-Department-Incidents/2u6v-ujjs",
@@ -112,9 +129,10 @@ const PROVENANCE: DataProvenance = {
   granularity: "neighborhood",
   disclaimer:
     "Incidents are reported by Metro Nashville Police Department and " +
-    "aggregated to MNPD's 9 named precincts. TravelSafe explicitly excludes " +
-    "the victim demographic columns (race, ethnicity, gender, age range) " +
-    "published by MNPD from every request — they never reach our server.",
+    "geocoded to one of 288 Metro Planning neighborhoods where the location " +
+    "falls inside one, otherwise to the MNPD precinct. TravelSafe explicitly " +
+    "excludes the victim demographic columns (race, ethnicity, gender, age " +
+    "range) published by MNPD from every request — they never reach our server.",
 };
 
 async function fetchPage(offset: number): Promise<NashRow[]> {
