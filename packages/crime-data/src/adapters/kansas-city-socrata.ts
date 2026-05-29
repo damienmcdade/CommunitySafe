@@ -1,7 +1,7 @@
 import { CrimeCategory } from "@prisma/client";
 import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../types.js";
 import type { KnownArea } from "../neighborhoods.js";
-import { fetchSocrata, socrataDate } from "../lib/http.js";
+import { fetchSocrata } from "../lib/http.js";
 import { kansasCityPolygons } from "../data/kansas-city-neighborhoods.js";
 
 // Kansas City MO — KCPD Crime Data, current + prior year.
@@ -180,19 +180,16 @@ function safeIso(raw: string | null | undefined): string | null {
 
 async function fetchKansasCityYear(datasetId: string): Promise<KcRow[]> {
   // v96 — migrated to fetchSocrata helper.
-  // v96p2 — 180-day cutoff. The unbounded most-recent-50k pull was
-  // timing out at Vercel build prerender ("[kc] year-dataset
-  // dmnp-9ajg failed: timeout") because KCPD's per-year datasets
-  // hold the entire year and the upstream had to scan 50k+ rows.
-  // 180 days is more than safety-score's 90 d window needs, gives
-  // the trend feed enough history, and stays well inside our 30 s
-  // AbortSignal.
+  // v96p2 — 180-day recent window. Keeps the response under the
+  // AbortSignal budget without scanning the per-year dataset's full
+  // history.
   // EXPLICIT $select — never request the `race`/`sex` demographic columns.
-  const cutoff = socrataDate(Date.now() - 180 * 24 * 60 * 60 * 1000);
   return fetchSocrata<KcRow>(`Kansas City Socrata ${datasetId}`, {
     url: `https://data.kcmo.org/resource/${datasetId}.json`,
     select: "report,report_date,from_date,offense,ibrs,beat,address,city,zipcode,rep_dist,area,location",
-    where: `location IS NOT NULL AND report_date >= '${cutoff}'`,
+    where: "location IS NOT NULL",
+    windowDays: 180,
+    dateField: "report_date",
     order: "report_date DESC",
     limit: ROW_LIMIT,
   });

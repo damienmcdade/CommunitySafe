@@ -140,6 +140,19 @@ async function runBatched<T>(items: T[], concurrency: number, worker: (item: T) 
   return results;
 }
 
+// v96p2 — mid-cycle GC trigger. End-of-cycle GC reclaimed ~125 MB
+// but pods still OOMed across multiple cycles because peak heap
+// during a cycle's heavy bucket exceeded 3 GB before reclaim. Force
+// a major GC AFTER the heavy bucket completes (but before the light
+// bucket starts) so the large adapter buffers from the heavy phase
+// are released before light cities pile on more. No-op when
+// --expose-gc isn't set.
+function midCycleGc(): void {
+  if (typeof global.gc === "function") {
+    global.gc();
+  }
+}
+
 async function tick() {
   if (inFlight) return; // skip overlap if prior tick is still running
   inFlight = true;
@@ -155,6 +168,8 @@ async function tick() {
     // bounded by the single in-flight city's incident buffer
     // (~50–80 MB for LV/LA) instead of 2 × 80 = 160 MB stacked.
     const heavyTimings = await runBatched(HEAVY_CITIES, 1, warmCity);
+    // v96p2 — drop heavy-bucket buffers before light bucket starts.
+    midCycleGc();
     const lightCities = CITIES.map((c) => c.slug).filter((s) => !HEAVY_CITIES.includes(s));
     const lightTimings = await runBatched(lightCities, 3, warmCity);
     const total = Date.now() - cycleStart;

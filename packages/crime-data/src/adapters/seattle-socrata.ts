@@ -1,7 +1,7 @@
 import { CrimeCategory } from "@prisma/client";
 import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../types.js";
 import type { KnownArea } from "../neighborhoods.js";
-import { fetchSocrata, socrataDate } from "../lib/http.js";
+import { fetchSocrata } from "../lib/http.js";
 
 // Seattle — SPD Crime Data.
 // Socrata dataset tazs-3rd5 on data.seattle.gov. NIBRS-coded by SPD, which
@@ -54,20 +54,16 @@ function titleCase(s: string): string {
 
 async function fetchSeattle(): Promise<Incident[]> {
   // v96 — migrated to fetchSocrata helper.
-  // v96p2 — added a 180-day $where filter. The unbounded "give me
-  // 50k most-recent rows" pull was consistently hitting Socrata's
-  // slow path (169 timeouts observed in production logs over a few
-  // hours). Most user-facing surfaces only look at the recent
-  // window anyway (mix → 30 d, citywide → 90 d, year-long fallback
-  // → 365 d). Capping the query at 180 d keeps the response under
-  // a second on Socrata's hot path and well inside the 30 s
-  // AbortSignal budget. If a future feature needs older rows it can
-  // either pass a wider window or use a separate historical fetch.
-  const cutoff = socrataDate(Date.now() - 180 * 24 * 60 * 60 * 1000);
+  // v96p2 — 180-day recent window. The unbounded "give me 50k
+  // most-recent rows" pull was consistently hitting Socrata's slow
+  // path (169 timeouts observed in production logs); every user
+  // surface only needs the recent window (mix → 30d, citywide →
+  // 90d, year-long fallback → 365d).
   const rows = await fetchSocrata<SodaRow>("Seattle SODA", {
     url: BASE,
     select: "offense_id,offense_date,neighborhood,precinct,beat,offense_category,nibrs_offense_code_description,nibrs_crime_against_category,latitude,longitude",
-    where: `offense_date >= '${cutoff}'`,
+    windowDays: 180,
+    dateField: "offense_date",
     order: "offense_date DESC",
     limit: 50000,
   });

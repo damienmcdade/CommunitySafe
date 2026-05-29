@@ -76,6 +76,17 @@ export interface SocrataQuery {
   select?: string;
   /// $where SoQL filter. Optional.
   where?: string;
+  /// v96p2 — declarative recent-window filter. When set, fetchSocrata
+  /// automatically appends `${dateField} >= '<cutoff>'` to the where
+  /// clause (AND'd if `where` is also set). 11 adapters previously
+  /// hand-rolled the same socrataDate(Date.now() - N days) +
+  /// $where string-template; pushing the pattern down here keeps
+  /// the intent declarative (caller says "180 days of incident_date")
+  /// and means a future window-size change is a single-line edit.
+  windowDays?: number;
+  /// Date column to apply `windowDays` against. Required when
+  /// `windowDays` is set. Empty/missing → no auto window.
+  dateField?: string;
   /// $order clause (e.g., "cmplnt_fr_dt DESC").
   order?: string;
   /// $limit (caps at 50,000 per Socrata's hard ceiling).
@@ -143,13 +154,33 @@ export async function fetchWithRetry(
   throw new Error("fetchWithRetry exhausted retries");
 }
 
+// v96p2 — internal helper: build the final $where SoQL by AND-ing
+// the caller's where with the optional auto-window cutoff. Returns
+// undefined when both inputs are empty so the caller skips setting
+// $where entirely.
+function composeWhere(q: SocrataQuery): string | undefined {
+  const userWhere = q.where?.trim() || "";
+  const hasWindow = q.windowDays != null && q.windowDays > 0 && q.dateField;
+  if (!userWhere && !hasWindow) return undefined;
+  if (!hasWindow) return userWhere;
+  const cutoff = socrataDate(Date.now() - q.windowDays! * 24 * 60 * 60 * 1000);
+  const auto = `${q.dateField} >= '${cutoff}'`;
+  return userWhere ? `(${userWhere}) AND ${auto}` : auto;
+}
+
 export async function fetchSocrata<TRow>(
   adapterName: string,
   query: SocrataQuery,
 ): Promise<TRow[]> {
   const url = typeof query.url === "string" ? new URL(query.url) : new URL(query.url.toString());
   if (query.select) url.searchParams.set("$select", query.select);
-  if (query.where) url.searchParams.set("$where", query.where);
+  // v96p2 — compose where with optional auto-window. When both
+  // windowDays + dateField are set, append `${dateField} >= '<cutoff>'`
+  // AND'd with the caller's where (if any) so adapters declare
+  // `windowDays: 180, dateField: "incident_datetime"` instead of
+  // hand-rolling the SoQL string + socrataDate call.
+  const where = composeWhere(query);
+  if (where) url.searchParams.set("$where", where);
   if (query.order) url.searchParams.set("$order", query.order);
   if (query.limit != null) url.searchParams.set("$limit", String(query.limit));
   if (query.offset != null) url.searchParams.set("$offset", String(query.offset));

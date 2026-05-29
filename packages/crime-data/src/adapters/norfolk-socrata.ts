@@ -1,7 +1,7 @@
 import { CrimeCategory } from "@prisma/client";
 import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../types.js";
 import type { KnownArea } from "../neighborhoods.js";
-import { fetchSocrata, socrataDate } from "../lib/http.js";
+import { fetchSocrata } from "../lib/http.js";
 
 // Norfolk VA — Norfolk Police Incident Reports on data.norfolk.gov
 // (Socrata dataset r7bn-2egr). Replaces Tucson in the supported-city
@@ -137,12 +137,13 @@ function titleCaseArea(raw: string | null | undefined): string | undefined {
 
 async function fetchNorfolk(): Promise<Incident[]> {
   // v96 — migrated to fetchSocrata helper.
-  // v96p2 — added 180-d cutoff to match seattle/dallas/sf/nola/kc/chicago.
-  const cutoff = socrataDate(Date.now() - 180 * 24 * 60 * 60 * 1000);
+  // v96p2 — 180-day recent window per the deployment-log scan.
   const rows = await fetchSocrata<NorRow>("Norfolk Socrata", {
     url: BASE,
     select: "inci_id,offense,streetno,street,date_occu,hour_occu,tract,zone,district,reportarea,dow1,neighborhd",
-    where: `date_occu IS NOT NULL AND neighborhd IS NOT NULL AND date_occu >= '${cutoff}'`,
+    where: "date_occu IS NOT NULL AND neighborhd IS NOT NULL",
+    windowDays: 180,
+    dateField: "date_occu",
     order: "date_occu DESC",
     limit: ROW_LIMIT,
   });

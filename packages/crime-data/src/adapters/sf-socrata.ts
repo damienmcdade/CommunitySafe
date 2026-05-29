@@ -1,7 +1,7 @@
 import { CrimeCategory } from "@prisma/client";
 import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../types.js";
 import type { KnownArea } from "../neighborhoods.js";
-import { fetchSocrata, socrataDate } from "../lib/http.js";
+import { fetchSocrata } from "../lib/http.js";
 
 // City of San Francisco — Police Department Incident Reports 2018 to Present.
 // Socrata dataset wg3w-h783 on data.sfgov.org. Documented + current.
@@ -61,14 +61,12 @@ async function fetchSF(): Promise<Incident[]> {
   // row → Incident transformation. HTTP status / JSON envelope /
   // 30 s default timeout / X-App-Token handling all live in
   // ../lib/http.ts.
-  // v96p2 — 180-day cutoff per the deployment-log scan. Vercel
-  // build-time prerender + Railway warm cycle were both timing out
-  // on the unbounded 50k pull. Matches Seattle/Dallas/NOLA/KC.
-  const cutoff = socrataDate(Date.now() - 180 * 24 * 60 * 60 * 1000);
+  // v96p2 — 180-day recent window per the deployment-log scan.
   const rows = await fetchSocrata<SodaRow>("SFPD", {
     url: BASE,
     select: "incident_id,incident_datetime,analysis_neighborhood,police_district,incident_category,incident_subcategory,incident_description,latitude,longitude",
-    where: `incident_datetime >= '${cutoff}'`,
+    windowDays: 180,
+    dateField: "incident_datetime",
     order: "incident_datetime DESC",
     limit: 50000,
   });

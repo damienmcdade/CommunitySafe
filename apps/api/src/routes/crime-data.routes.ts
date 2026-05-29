@@ -106,7 +106,15 @@ crimeDataRouter.get("/area-stats", optionalAuth, async (req, res, next) => {
     if (q.city) return res.json(await crimeData.getCitywideAreaStats(q.city));
     const area = resolveArea(q);
     if (!area) return res.status(400).json({ error: "area_or_city_required" });
-    res.json(await crimeData.getAreaStats(area));
+    // v96p2 — pen-test follow-up: was returning `200 null` for any
+    // ?neighborhood= that resolved to a string but couldn't be
+    // matched by the adapter. Inconsistent with /insights (which
+    // 404s in the same case) and made it hard for callers to
+    // distinguish "valid area, no data" from "garbage input". Now
+    // 404 on unresolvable so the client surface is consistent.
+    const stats = await crimeData.getAreaStats(area);
+    if (stats == null) return res.status(404).json({ error: "unknown_area" });
+    res.json(stats);
   } catch (err) {
     next(err);
   }

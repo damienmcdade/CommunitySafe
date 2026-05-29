@@ -1,7 +1,7 @@
 import { CrimeCategory } from "@prisma/client";
 import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../types.js";
 import type { KnownArea } from "../neighborhoods.js";
-import { fetchSocrata, socrataDate } from "../lib/http.js";
+import { fetchSocrata } from "../lib/http.js";
 import { nolaPolygons } from "../data/new-orleans-neighborhoods.js";
 
 // New Orleans — NOPD Calls for Service 2026.
@@ -158,14 +158,13 @@ async function fetchNola(): Promise<Incident[]> {
   // v96 — migrated to fetchSocrata helper.
   // Explicit $select — never pull anything we don't render. (Calls for
   // Service 2026 doesn't publish demographics anyway, but belt-and-braces.)
-  // v96p2 — 180-day cutoff per the deployment-log scan. NOLA's CFS
-  // dataset is large; the unbounded "give me the most recent
-  // ROW_LIMIT" pull was timing out at Vercel build prerender.
-  const cutoff = socrataDate(Date.now() - 180 * 24 * 60 * 60 * 1000);
+  // v96p2 — 180-day recent window per the deployment-log scan.
   const rows = await fetchSocrata<NolaRow>("NOLA Socrata", {
     url: BASE,
     select: "nopd_item,type_,typetext,priority,policedistrict,beat,block_address,timecreate,location,disposition,dispositiontext",
-    where: `location IS NOT NULL AND timecreate >= '${cutoff}'`,
+    where: "location IS NOT NULL",
+    windowDays: 180,
+    dateField: "timecreate",
     order: "timecreate DESC",
     limit: ROW_LIMIT,
   });
