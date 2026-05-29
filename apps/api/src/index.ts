@@ -99,7 +99,16 @@ function installPooledDispatcher(): void {
 // cache) and forces a GC so the freed rows are actually reclaimed. The
 // trade is a one-request latency blip under pressure instead of a crash;
 // resident memory is bounded regardless of how many cities are cached.
-const HEAP_HIGH_WATER_MB = 2200;
+//
+// v98 — poll 30s→8s and high-water 2200→1700MB. The watchdog bounds the
+// RESIDENT baseline well, but v97 still OOM'd once: a burst of concurrent
+// cold city computes (grade-sanity recompute) spiked heap from ~550MB
+// past the 3584 cap inside a single 30s poll gap. The primary fix is
+// making grade-sanity read-only (no recompute — see grade-sanity.worker
+// .ts), which removes that burst; this faster/lower watchdog is the
+// backstop for any remaining organic spike, giving ~1.9GB of headroom
+// to the cap and re-checking every 8s.
+const HEAP_HIGH_WATER_MB = 1700;
 let lastEvictAt: string | null = null;
 let evictCount = 0;
 function startMemoryWatchdog(): void {
@@ -117,7 +126,7 @@ function startMemoryWatchdog(): void {
       `[mem-watchdog] heap ${before}MB >= ${HEAP_HIGH_WATER_MB}MB high-water -> ` +
       `evicted ${cleared}/${registeredRowCacheCount()} adapter caches, gc -> ${after}MB`,
     );
-  }, 30_000);
+  }, 8_000);
   // Don't keep the event loop alive solely for the watchdog.
   timer.unref();
 }

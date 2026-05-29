@@ -125,20 +125,29 @@ async function probeCity(slug: string, nowMs: number): Promise<GradeSnapshot> {
       }
     }
     if (!s) {
-      // v94 — per-city timeout. Pre-v94 a single hung city
-      // (Detroit upstream stall, etc) blocked the entire sanity
-      // tick indefinitely. Combined with Promise.all over all 36
-      // cities, it held every partially-built getCitywideSafetyScore
-      // result in memory until heap OOM (we hit exit-134 once with
-      // a 15.8-hour cycle). 30s is enough headroom for a cold compute
-      // while small enough to fail fast.
-      const TIMEOUT = Symbol("city-timeout");
-      const result = await Promise.race([
-        getCitywideSafetyScore(slug),
-        new Promise<typeof TIMEOUT>((resolve) => setTimeout(() => resolve(TIMEOUT), 30_000)),
-      ]);
-      if (result === TIMEOUT) throw new Error("city safety-score compute timed out (>30s)");
-      s = result;
+      // v98 — READ-ONLY. Do NOT recompute on a Redis miss. The cold
+      // getCitywideSafetyScore path (per-area fan-out + a 50-120k-row
+      // fetch + JSON.parse + map) running for several cities per cycle
+      // is a multi-hundred-MB transient that spiked the heap past the
+      // old-space cap and OOM-crashed the pod BETWEEN the watchdog's
+      // polls (the watchdog bounds resident caches, but can't catch a
+      // sub-poll allocation burst). v97's concurrency 6→3 wasn't
+      // enough; the recompute itself is the trigger. Routes already
+      // warm Redis (citywide:<slug>) for every city a user views, so
+      // the worker now audits only those warm entries. A city with no
+      // warm score is reported as NO_WARM_DATA rather than recomputed.
+      return {
+        slug,
+        grade: null,
+        windowDays: null,
+        confidence: null,
+        asOfAgeDays: null,
+        personsCount: 0,
+        propertyCount: 0,
+        personsRatio: null,
+        propertyRatio: null,
+        flags: [{ code: "NO_WARM_DATA", detail: "No cached citywide score to audit (city not viewed recently)" }],
+      };
     }
     const persons = (s.rows || []).find((r) => r.category === "PERSONS");
     const property = (s.rows || []).find((r) => r.category === "PROPERTY");
