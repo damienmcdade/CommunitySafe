@@ -229,7 +229,7 @@ const RULES: ExplainerRule[] = [
   {
     match: /allotheroffenses|allothercrime|otheroffense(?!s?contact)|miscoffense|miscellaneous(crim|offen)|groupb(?!urg)|catchall/,
     explain: {
-      label: "Other Offenses (NIBRS Group B catch-all)",
+      label: "Other reports — DUI, trespass, disorderly, etc.",
       description:
         "NIBRS code 90Z — the FBI's catch-all category for offenses that don't fit one of the named NIBRS codes. Each city's police feed routes a different mix of behaviors here (court-order violations, contempt, parole/probation violations, escape, harboring a fugitive, public-order infractions). The bucket is a remainder, not a specific crime — what's actually inside varies by jurisdiction.",
     },

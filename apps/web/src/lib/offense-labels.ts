@@ -8,9 +8,12 @@
 ///     Assault" instead.
 ///   - "All Other Offenses" is the FBI's NIBRS 90Z catch-all bucket.
 ///     The string tells the user nothing about what's actually inside.
-///     The UI renders it as "Other Offenses (NIBRS Group B)" so the
-///     reader at least knows it's a remainder category rather than a
-///     specific crime.
+///     v96p2 — was rendered as "Other Offenses (NIBRS Group B)" but
+///     the parenthetical jargon left non-specialists no better off
+///     than the upstream label. Renamed to "Other reports — DUI,
+///     trespass, disorderly, etc." so the chart legend reader sees
+///     the actual KINDS of behaviors in this bucket before tapping
+///     through to the full explainer.
 ///
 /// The mapping is intentionally case-insensitive and whitespace-tolerant
 /// because adapters publish offense names in slightly different shapes
@@ -31,7 +34,7 @@ const RULES: LabelRule[] = [
   // Order matters: more specific first.
   { match: /^aggravatedassault$|aggravatedassaultandbattery|^assaultaggravated$/, display: "Aggravated Assault" },
   { match: /^simpleassault$|^assaultsimple$|^misdemeanorassault$|^nonaggravatedassault$|^offensivecontact$/, display: "Non-Aggravated Assault" },
-  { match: /^allotheroffenses?$|^othercrime$|^miscellaneous(offenses?|crime)?$|^groupb(offenses?)?$/, display: "Other Offenses (NIBRS Group B)" },
+  { match: /^allotheroffenses?$|^othercrime$|^miscellaneous(offenses?|crime)?$|^groupb(offenses?)?$/, display: "Other reports — DUI, trespass, disorderly, etc." },
   { match: /^sexoffenses?$/, display: "Sex Offense" },
   { match: /^theftof(motorvehicle)?partsoraccessories$|^theftofmotorvehiclepartsoraccessories$/, display: "Theft of Vehicle Parts / Accessories" },
   { match: /^drugnarcoticviolations?$|^drugnarcoticoffense$/, display: "Drug / Narcotic Violation" },
