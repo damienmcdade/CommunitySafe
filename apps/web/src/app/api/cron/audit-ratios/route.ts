@@ -27,13 +27,23 @@ export const maxDuration = 60;
 /// Same CRON_SECRET Bearer auth as /api/cron/warm-cache so the endpoint
 /// isn't a public trigger. Bypass available via NO_CRON_SECRET env var
 /// for local development.
+///
+/// v98 — this cron is now the CANONICAL grade monitor; the in-process
+/// Railway grade-sanity worker was retired (it OOM'd on the concurrent
+/// recompute, and read-only it only ever saw NO_WARM_DATA). To keep THIS
+/// monitor reliable, the per-city probes run at bounded concurrency
+/// instead of a 37-wide Promise.all — the wide fan-out is the exact
+/// heap-spike shape that crashed the worker, and it would do the same to
+/// the Vercel function on a cold cache. Cap of 4 keeps peak memory small
+/// while still finishing well inside maxDuration.
+const PROBE_CONCURRENCY = 4;
+
 export async function GET(req: NextRequest) {
   const denied = requireCronSecret(req);
   if (denied) return denied;
   const startedAt = Date.now();
 
-  const results = await Promise.all(
-    CITIES.map(async (city) => {
+  const probe = async (city: (typeof CITIES)[number]) => {
       try {
         const score = await getCitywideSafetyScore(city.slug);
         const ratios = score.rows.map((r) => r.nationalPer100k > 0 ? r.localPer100k / r.nationalPer100k : 1);
@@ -67,6 +77,20 @@ export async function GET(req: NextRequest) {
           error: (err as Error).message?.slice(0, 120) ?? "unknown error",
           flags: ["fetch-failed"],
         };
+      }
+  };
+
+  // Bounded-concurrency runner — at most PROBE_CONCURRENCY citywide
+  // computes in flight at once, so peak memory stays small even when the
+  // adapter cache is cold (vs the prior 37-wide Promise.all).
+  const results: Awaited<ReturnType<typeof probe>>[] = new Array(CITIES.length);
+  let cursor = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(PROBE_CONCURRENCY, CITIES.length) }, async () => {
+      for (;;) {
+        const i = cursor++;
+        if (i >= CITIES.length) return;
+        results[i] = await probe(CITIES[i]);
       }
     }),
   );

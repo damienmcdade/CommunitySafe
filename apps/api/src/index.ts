@@ -47,7 +47,14 @@ import { startDigestWorker } from "./services/push/digest.worker.js";
 // v96p2 — startWarmWorker import removed from the call path. See
 // the boot section below for the rationale.
 // import { startWarmWorker } from "./services/warm/cache.worker.js";
-import { startGradeSanityWorker, getLastReport as getGradeSanityReport } from "./services/audit/grade-sanity.worker.js";
+// v98 — the in-process grade-sanity worker is RETIRED. Grade monitoring
+// moved to the external `audit-ratios` Vercel cron (apps/web/src/app/api/
+// cron/audit-ratios), which is strictly more reliable: it runs off-process
+// (survives api restarts, can't OOM the api), computes fresh each run (no
+// dependence on a warm Redis cache the in-process worker couldn't get),
+// and probes the same per-city safety-score. The worker's recompute sweep
+// was the heap-spike OOM source, and once made read-only it only ever
+// reported NO_WARM_DATA — dead weight either way.
 import { startAuditRetentionWorker } from "./services/audit/retention.worker.js";
 import { evictAllRowCaches, registeredRowCacheCount } from "@travelsafe/crime-data/cache-registry";
 import { Agent, setGlobalDispatcher } from "undici";
@@ -256,15 +263,15 @@ app.use("/ai", aiRouter);
 app.use("/official-alerts", officialAlertsRouter);
 app.use("/safezone", safezoneRouter);
 
-// v64 — grade sanity diagnostic. Read-only summary of the latest
-// in-process grade-sanity report. Public read because it's pure
-// diagnostics (no secrets, no user data), same posture as /health.
-// MUST be registered BEFORE app.use(notFound) — otherwise the
-// catch-all 404 middleware intercepts the request first.
+// v98 — grade-sanity diagnostic retired alongside the in-process worker.
+// Kept as a 200 pointer (not a 404) so anything still polling this path
+// gets a clear redirect to the external monitor instead of a hard error.
 app.get("/diag/grade-sanity", (_req, res) => {
-  const r = getGradeSanityReport();
-  if (!r) return res.status(503).json({ error: "no_report_yet", message: "Worker has not completed its first cycle." });
-  res.json(r);
+  res.json({
+    retired: true,
+    message: "In-process grade-sanity worker retired in v98. Grade monitoring moved to the external audit-ratios Vercel cron.",
+    monitor: "GET /api/cron/audit-ratios (Vercel, daily 09:07 UTC; cron-secret protected)",
+  });
 });
 
 app.use(notFound);
@@ -295,7 +302,8 @@ const server = app.listen(env.LISTEN_PORT, () => {
   // (likely undici body pools or adapter intermediate JSON.parse
   // outputs not being released between cycles).
   // startWarmWorker();
-  startGradeSanityWorker();
+  // startGradeSanityWorker() — retired; see import-site note. Grade
+  // monitoring is the external audit-ratios Vercel cron now.
   startAuditRetentionWorker();
   // v97 — arm the memory watchdog last so it covers steady-state.
   startMemoryWatchdog();
