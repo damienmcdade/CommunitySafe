@@ -20,13 +20,17 @@ import { generateAITipsForArea, type AITip } from "./ai-tips";
 // section stays curated because it cites verbatim statute and case law.
 
 export type CitySlug =
-  | "san-diego" | "los-angeles" | "san-francisco" | "oakland"
+  | "san-diego" | "los-angeles" | "san-francisco" | "oakland" | "sacramento"
   | "chicago" | "seattle" | "new-york" | "colorado-springs" | "detroit"
   | "washington-dc" | "boston" | "philadelphia" | "cincinnati"
   | "new-orleans" | "baton-rouge" | "cambridge" | "dallas"
   | "charlotte" | "nashville" | "minneapolis" | "cleveland"
   | "milwaukee" | "las-vegas" | "boise" | "buffalo" | "tucson"
-  | "kansas-city" | "saint-paul" | "pittsburgh";
+  | "kansas-city" | "saint-paul" | "pittsburgh"
+  // v98c — these 8 were absent from the union, so Record<CitySlug,…>
+  // lookups (CITY_RESOURCES, NON_EMERGENCY) silently missed them and the
+  // safety tab 500'd for these cities.
+  | "norfolk" | "phoenix" | "denver" | "atlanta" | "indianapolis" | "raleigh" | "honolulu";
 export type TipGroup = "prevention" | "self-defense" | "ca-legal";
 
 export interface SafetyTip {
@@ -78,6 +82,15 @@ export const NON_EMERGENCY: Record<CitySlug, { line: string; label: string; url:
   "kansas-city":   { line: "816-234-5111", label: "KCPD non-emergency",   url: "https://kcpolice.org/" },
   "saint-paul":    { line: "651-291-1111", label: "SPPD non-emergency",   url: "https://www.stpaul.gov/departments/police" },
   "pittsburgh":    { line: "412-255-2828", label: "PBP non-emergency",    url: "https://pittsburghpa.gov/publicsafety/police" },
+  // v98c — the 8 cities that previously fell back to SDPD's number.
+  "sacramento":    { line: "916-808-5471", label: "Sacramento PD non-emergency", url: "https://www.cityofsacramento.gov/police" },
+  "norfolk":       { line: "757-441-5610", label: "Norfolk PD non-emergency", url: "https://www.norfolk.gov/356/Police" },
+  "phoenix":       { line: "602-262-6151", label: "Phoenix PD Crime Stop (non-emergency)", url: "https://www.phoenix.gov/police" },
+  "denver":        { line: "720-913-2000", label: "Denver PD non-emergency", url: "https://www.denvergov.org/Government/Agencies-Departments-Offices/Agencies-Departments-Offices-Directory/Police-Department" },
+  "atlanta":       { line: "404-614-6544", label: "APD non-emergency", url: "https://www.atlantapd.org/" },
+  "indianapolis":  { line: "317-327-3811", label: "IMPD non-emergency", url: "https://www.indy.gov/agency/indianapolis-metropolitan-police-department" },
+  "raleigh":       { line: "919-996-3335", label: "Raleigh PD non-emergency", url: "https://raleighnc.gov/police" },
+  "honolulu":      { line: "808-529-3111", label: "HPD non-emergency", url: "https://www.honolulupd.org/" },
 };
 
 // City-specific official resource links. These get joined into one or more
@@ -116,6 +129,17 @@ export const CITY_RESOURCES: Record<CitySlug, { name: string; url: string; progr
   "kansas-city":   { name: "Kansas City Missouri Police Department", url: "https://kcpolice.org/", programName: "KCPD Community Outreach", programUrl: "https://kcpolice.org/community/" },
   "saint-paul":    { name: "Saint Paul Police Department", url: "https://www.stpaul.gov/departments/police", programName: "Saint Paul Police Department", programUrl: "https://www.stpaul.gov/departments/police" },
   "pittsburgh":    { name: "Pittsburgh Bureau of Police", url: "https://pittsburghpa.gov/publicsafety/police", programName: "Pittsburgh Bureau of Police", programUrl: "https://pittsburghpa.gov/publicsafety/police" },
+  // v98c — these 8 were missing, which crashed the safety tab (500) for
+  // their cities. Main department sites (stable); programUrl points to the
+  // same site to avoid linking a guessed sub-page.
+  "norfolk":       { name: "Norfolk Police Department", url: "https://www.norfolk.gov/356/Police", programName: "Norfolk Police Department", programUrl: "https://www.norfolk.gov/356/Police" },
+  "phoenix":       { name: "Phoenix Police Department", url: "https://www.phoenix.gov/police", programName: "Phoenix Police Department", programUrl: "https://www.phoenix.gov/police" },
+  "denver":        { name: "Denver Police Department", url: "https://www.denvergov.org/Government/Agencies-Departments-Offices/Agencies-Departments-Offices-Directory/Police-Department", programName: "Denver Police Department", programUrl: "https://www.denvergov.org/Government/Agencies-Departments-Offices/Agencies-Departments-Offices-Directory/Police-Department" },
+  "sacramento":    { name: "Sacramento Police Department", url: "https://www.cityofsacramento.gov/police", programName: "Sacramento Police Department", programUrl: "https://www.cityofsacramento.gov/police" },
+  "atlanta":       { name: "Atlanta Police Department", url: "https://www.atlantapd.org/", programName: "APD Crime Prevention", programUrl: "https://www.atlantapd.org/i-want-to/crime-prevention" },
+  "indianapolis":  { name: "Indianapolis Metropolitan Police Department", url: "https://www.indy.gov/agency/indianapolis-metropolitan-police-department", programName: "IMPD", programUrl: "https://www.indy.gov/agency/indianapolis-metropolitan-police-department" },
+  "raleigh":       { name: "Raleigh Police Department", url: "https://raleighnc.gov/police", programName: "Raleigh Police Department", programUrl: "https://raleighnc.gov/police" },
+  "honolulu":      { name: "Honolulu Police Department", url: "https://www.honolulupd.org/", programName: "HPD Crime Prevention", programUrl: "https://www.honolulupd.org/information/crime-prevention/" },
 };
 
 const PREVENTION_TIPS: SafetyTip[] = [
@@ -425,6 +449,23 @@ export interface SafetyTipsResponse {
 /// transit-focused phrasing.
 function buildCityResourceTip(citySlug: CitySlug, dominantCategory: "PERSONS" | "PROPERTY" | "SOCIETY" | null): MatchedTip {
   const res = CITY_RESOURCES[citySlug];
+  // v98c — CRITICAL guard. A city missing from CITY_RESOURCES previously
+  // crashed here (`res.name` on undefined → 500 for the ENTIRE safety tab,
+  // including the per-state legal section). Eight cities were missing
+  // (norfolk, phoenix, denver, sacramento, atlanta, indianapolis, raleigh,
+  // honolulu) — those are now added below, but this fallback guarantees no
+  // future omission can break the tab again.
+  if (!res) {
+    return {
+      id: `city-resource-${citySlug}`,
+      title: "Official crime-prevention resources",
+      body: "Your local police department and the FBI publish crime-prevention guidance — neighborhood-watch programs, the right reporting channels, and tips matched to recent local trends. Use these as your first stop before the general material in the cards below.",
+      source: "FBI — Safety Resources",
+      sourceUrl: "https://www.fbi.gov/how-we-can-help-you/safety-resources",
+      group: "prevention",
+      relevance: 200,
+    };
+  }
   const cityName = res.name.replace(/ Police Department$/, "").replace(/ Police$/, "").trim();
   let body = `For local guidance specific to ${cityName}, your police department publishes a crime-prevention resource page with neighborhood-watch sign-ups, community-meeting schedules, and tips matched to recent ${cityName} crime trends. Use this as your first stop before reading the generic federal material in the cards below.`;
   if (dominantCategory === "PROPERTY") {
