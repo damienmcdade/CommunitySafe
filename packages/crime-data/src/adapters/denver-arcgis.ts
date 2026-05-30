@@ -25,7 +25,11 @@ import type { KnownArea } from "../neighborhoods.js";
 
 const BASE = "https://services1.arcgis.com/zdB7qR0BtYrg0Xpl/arcgis/rest/services/ODC_CRIME_OFFENSES_P/FeatureServer/324/query";
 const PAGE_SIZE = 2000;
-const PAGES = 5;                // 5 × 2000 = 10,000 rows. ~7 weeks of citywide data.
+// v99 — was 5 (10,000 rows ≈ 7 weeks!). That tiny window (windowDays=63) plus
+// recent reporting lag deflated the violent rate to 0.56× FBI. Denver publishes
+// ~58k incidents/yr; 35 pages (70k ≈ 14 months) gives a representative window.
+// Classification is correct (menacing-felony INCLUDE-override already added).
+const PAGES = 35;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
 registerRowCache(() => { cache = null; });
