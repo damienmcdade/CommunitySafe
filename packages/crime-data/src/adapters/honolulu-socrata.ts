@@ -173,6 +173,26 @@ async function fetchHonolulu(): Promise<Incident[]> {
       lng: resolved.lng,
     });
   }
+  // v98 — canonicalize Hawaiian diacritic variants. The offline geocode
+  // map (built from Nominatim) spells the same neighborhood inconsistently
+  // — e.g. "Wahiawā"/"Wahiawa", "Nānākuli"/"Nanakuli", "‘Āhuimanu"/
+  // "Ahuimanu". slugify() folds them to one slug, but the discovery
+  // grouped by raw label, producing TWO areas with the SAME slug — a
+  // duplicate that split the neighborhood's incidents and shadowed one in
+  // the picker (caught by the full-fleet data audit). Collapse every label
+  // to one canonical form per slug, preferring the spelling with the most
+  // ʻokina/kahakō (the correct Hawaiian form) so the display stays proper.
+  const nonAscii = (s: string) => [...s].filter((c) => (c.codePointAt(0) ?? 0) > 127).length;
+  const canonBySlug = new Map<string, string>();
+  for (const r of out) {
+    if (!r.area) continue;
+    const slug = slugify(r.area);
+    const cur = canonBySlug.get(slug);
+    if (cur === undefined || nonAscii(r.area) > nonAscii(cur)) canonBySlug.set(slug, r.area);
+  }
+  for (const r of out) {
+    if (r.area) r.area = canonBySlug.get(slugify(r.area)) ?? r.area;
+  }
   return out;
 }
 
