@@ -56,7 +56,16 @@ import { CITY_POPULATION, POPULATION_VINTAGE } from "./population.js";
 // empirical CFS-to-NIBRS ratios reported in criminology literature
 // for general crime feeds. A dataConfidence note in the response
 // surfaces the calibration to users.
-const CFS_CALIBRATION: Record<string, number> = {
+// v99 — PER-CATEGORY CFS calibration. CFS (calls-for-service) volume converts
+// to NIBRS-equivalent volume at a DIFFERENT ratio for violent vs property: a
+// single coarse "Violent Crimes" / "AssaultOffense" dispatch bucket is far more
+// inflated than property dispatches. A single per-city scale tuned to tame the
+// over-counting category collaterally crushed the other (Las Vegas property
+// read 0.54× FBI, Boise property 0.48×, both purely from the single 0.50/0.20
+// scale tuned for their over-counting violent bucket). Each category is now
+// scaled independently so both land near the city's FBI baseline.
+interface CfsScale { persons: number; property: number; }
+const CFS_CALIBRATION: Record<string, CfsScale> = {
   // Cleveland REMOVED in v95p14. The Cleveland adapter switched from
   // CAD_Police (Calls for Service, dispatch-keyword-matched) to
   // Crime_Incidents_P1RMS (CDP's NIBRS Part-1 incident reports, with
@@ -70,8 +79,11 @@ const CFS_CALIBRATION: Record<string, number> = {
   // violent at ~558/100k (0.41× baseline, Grade B-ish) and
   // property at ~4282/100k (0.84× baseline). Plausible signal,
   // inside the divergence guard.
-  "new-orleans":   0.80,
-  "las-vegas":     0.50,
+  "new-orleans":   { persons: 0.80, property: 0.80 },
+  // v99 — Las Vegas split. Raw violent ran ~2.9× FBI (LVMPD CFS coarse),
+  // raw property ~1.1×; the single 0.50 scale put property at 0.54×. Persons
+  // 0.34 (→~1.0×), property 0.93 (→~1.0×).
+  "las-vegas":     { persons: 0.34, property: 0.93 },
   // v68 followup — Boise 0.30 → 0.20. The grade-sanity worker flagged
   // PERSONS at 2.01× FBI city baseline even after the 0.30 scale —
   // BPD's "Violent Crimes" category label is too coarse for adapter-
@@ -81,8 +93,19 @@ const CFS_CALIBRATION: Record<string, number> = {
   // Boise has elevated reporting). Property drops to ~0.48× which
   // is acceptable trade-off; per-category CFS scaling is a deeper
   // architectural change tracked separately.
-  "boise":         0.20,
+  // v99 — Boise split. BPD's coarse "Violent Crimes" CFS bucket ran ~8× FBI
+  // raw; property ~2.9×. The single 0.20 scale left violent ~1.6× over and
+  // property at 0.48×. Persons 0.12 (→~1.0×), property 0.34 (→~1.0×).
+  "boise":         { persons: 0.12, property: 0.34 },
 };
+
+/// Per-category CFS scale lookup (1.0 for NIBRS adapters not in the map).
+/// `isCfs` is the boolean the divergence/undercount guards use to widen
+/// their thresholds for structurally-off-baseline calls-for-service feeds.
+function cfsScalesFor(slug: string): { persons: number; property: number; isCfs: boolean } {
+  const c = CFS_CALIBRATION[slug];
+  return { persons: c?.persons ?? 1, property: c?.property ?? 1, isCfs: !!c };
+}
 // POPULATION_VINTAGE is re-exported so consumers can render the label
 // without reaching into the shared module independently.
 export { POPULATION_VINTAGE };
@@ -426,12 +449,13 @@ function computeDataConfidence(
   windowDays: number,
   totalIncidents: number,
   pop: number,
-  // CFS-calibration scale (Cleveland 0.35 / NOLA 0.40 / LV 0.50, else 1.0).
-  // Without this, the ratio check for CFS cities sees raw calls-for-service
-  // counts which are structurally 2-3× inflated vs NIBRS, so the "low
-  // confidence" tripwire never fires for them even when data is genuinely
-  // thin — the audit caught this drift.
-  cfsScale: number = 1,
+  // v99 — the ALREADY-CALIBRATED combined annual rate per 100k (persons +
+  // property local rates, each scaled by its own per-category CFS factor).
+  // Passing the scaled rate directly keeps the divergence ratio on the same
+  // yardstick as the rates shown to users, and works with per-category CFS
+  // scaling (the old single cfsScale arg couldn't). Defaults below derive it
+  // from totalIncidents for NIBRS callers that don't pre-scale.
+  observedAnnualCombined?: number,
 ): { dataConfidence: SafetyScoreResponse["dataConfidence"]; dataConfidenceNote?: string } {
   if (windowDays === 0 || totalIncidents === 0) {
     return {
@@ -452,9 +476,9 @@ function computeDataConfidence(
   // shown to users; otherwise the ratio is on a different yardstick from
   // the national reference.
   const nationalCombined = FBI_NATIONAL_PER_100K_2024.PERSONS + FBI_NATIONAL_PER_100K_2024.PROPERTY;
-  const observedAnnual = pop > 0
-    ? (totalIncidents * (365 / windowDays) / pop) * 100_000 * cfsScale
-    : 0;
+  const observedAnnual = observedAnnualCombined != null
+    ? observedAnnualCombined
+    : (pop > 0 ? (totalIncidents * (365 / windowDays) / pop) * 100_000 : 0);
   const ratio = nationalCombined > 0 ? observedAnnual / nationalCombined : 1;
   // Major cities (>500k) almost never run < 25% of the FBI national rate;
   // that ratio is the signature of a partial upstream pull.
@@ -872,21 +896,20 @@ async function computeCitywideSafetyScore(citySlug: string): Promise<SafetyScore
   // cityPop is always correct: the denominator can never legitimately exceed
   // the city's actual residents.
   const pop = (popFraction >= FRESH_POP_FRACTION_THRESHOLD && freshPopSum > 0) ? Math.min(freshPopSum, cityPop) : cityPop;
-  // CFS calibration — see CFS_CALIBRATION comment at the top of the file.
-  // 1.0 for NIBRS-based adapters, ~0.35-0.50 for CFS-based.
-  const cfsScale = CFS_CALIBRATION[city.slug] ?? 1.0;
-  const annualize = (count: number) => {
+  // CFS calibration — per-category (see CFS_CALIBRATION at the top of the file).
+  // 1.0 for NIBRS adapters; per-category factors for CFS feeds.
+  const { persons: cfsScalePersons, property: cfsScaleProperty, isCfs } = cfsScalesFor(city.slug);
+  const annualize = (count: number, scale: number) => {
     if (pop <= 0 || windowDays <= 0) return 0;
-    const annualCount = count * (365 / windowDays);
-    return (annualCount / pop) * 100_000 * cfsScale;
+    return (count * (365 / windowDays) / pop) * 100_000 * scale;
   };
 
   // For the citywide endpoint the area IS the city, so cityPer100k =
   // localPer100k and cityDeltaPct = 0 by definition. The shape stays
   // consistent with the per-area endpoint so consumers can read either
   // through one branch.
-  const personsLocal100k = Math.round(annualize(persons));
-  const propertyLocal100k = Math.round(annualize(property));
+  const personsLocal100k = Math.round(annualize(persons, cfsScalePersons));
+  const propertyLocal100k = Math.round(annualize(property, cfsScaleProperty));
   const cityBaseline = CITY_FBI_BASELINES[city.slug];
   const rows: SafetyScoreRow[] = [
     {
@@ -927,7 +950,7 @@ async function computeCitywideSafetyScore(citySlug: string): Promise<SafetyScore
   // Charlotte, Nashville, Minneapolis, Las Vegas, Tucson — ORI
   // lookup pending), fall back to the legacy vs-national grader.
   const cityLabel = `${city.label} (citywide)`;
-  let confidence = computeDataConfidence(windowDays, persons + property, pop, cfsScale);
+  let confidence = computeDataConfidence(windowDays, persons + property, pop, personsLocal100k + propertyLocal100k);
   const fbiBaseline = CITY_FBI_BASELINES[city.slug];
   const rawGrade = fbiBaseline
     ? gradeFromCityFbiBaseline(rows, fbiBaseline)
@@ -971,7 +994,7 @@ async function computeCitywideSafetyScore(citySlug: string): Promise<SafetyScore
     // permanently N/A. For CFS sources we use a 20× threshold so a
     // calibration gap doesn't black out the city's grade entirely —
     // the dataConfidence note still warns users about the gap.
-    const isCfsAdapter = (cfsScale ?? 1) < 1;
+    const isCfsAdapter = isCfs;
     const divergenceThreshold = isCfsAdapter ? 20 : 3;
     if (worst >= divergenceThreshold) {
       grade = "N/A";
@@ -1007,7 +1030,7 @@ async function computeCitywideSafetyScore(citySlug: string): Promise<SafetyScore
   // at 15.6× divergence, ~9.78% of FBI baseline) skipped the under-
   // count guard because its initial confidence was "medium", then
   // got upgraded to "low" too late to suppress the misleading A.
-  grade = gradeWithUndercountGuard(grade, rows, fbiBaseline, confidence.dataConfidence, (cfsScale ?? 1) < 1);
+  grade = gradeWithUndercountGuard(grade, rows, fbiBaseline, confidence.dataConfidence, isCfs);
 
   const headline = headlineForCity(grade, cityLabel, fbiBaseline ? "city-fbi" : "national");
 
@@ -1033,12 +1056,12 @@ async function computeCitywideSafetyScore(citySlug: string): Promise<SafetyScore
         : `The grade compares this rate against the FBI ${FBI_NATIONAL_SOURCE.publishedYear} national average ` +
           `because no city-specific FBI baseline is on file for ${city.label} yet. `) +
       "Society / public-order offenses are excluded because the FBI does not publish a national rate." +
-      (CFS_CALIBRATION[city.slug]
-        ? ` ${city.label} publishes calls-for-service rather than closed NIBRS reports; rates are scaled by ${CFS_CALIBRATION[city.slug]}× to approximate NIBRS-equivalent volumes (CFS is structurally 2–3× inflated because each crime spawns multiple dispatches and many dispatches are unfounded).`
+      (isCfs
+        ? ` ${city.label} publishes calls-for-service rather than closed NIBRS reports; rates are scaled per category (violent ×${cfsScalePersons}, property ×${cfsScaleProperty}) to approximate NIBRS-equivalent volumes (CFS is structurally inflated because each crime spawns multiple dispatches and many dispatches are unfounded — and the violent dispatch bucket is far more inflated than the property one, hence the separate factors).`
         : ""),
     ...confidence,
-    dataSourceType: CFS_CALIBRATION[city.slug] ? "cfs" : "nibrs",
-    cfsScale: CFS_CALIBRATION[city.slug] ?? 1.0,
+    dataSourceType: isCfs ? "cfs" : "nibrs",
+    cfsScale: cfsScalePersons,
   };
 }
 
@@ -1200,13 +1223,13 @@ export async function getSafetyScore(areaSlug: string, areaLabel: string): Promi
   // Citywide annualized rate per 100k — uses the actual US Census Vintage
   // 2024 city population. Same CFS calibration as getCitywideSafetyScore
   // so per-area scores are comparable to the citywide grade.
-  const cfsScalePerArea = CFS_CALIBRATION[city.slug] ?? 1.0;
-  const annualizeCity = (count: number) => {
+  const { persons: cfsScalePersonsArea, property: cfsScalePropertyArea, isCfs: isCfsArea } = cfsScalesFor(city.slug);
+  const annualizeCity = (count: number, scale: number) => {
     if (cityPop <= 0 || windowDays <= 0) return 0;
-    return (count * 365 / windowDays / cityPop) * 100_000 * cfsScalePerArea;
+    return (count * 365 / windowDays / cityPop) * 100_000 * scale;
   };
-  const cityPersons100k = annualizeCity(cityPersons);
-  const cityProperty100k = annualizeCity(cityProperty);
+  const cityPersons100k = annualizeCity(cityPersons, cfsScalePersonsArea);
+  const cityProperty100k = annualizeCity(cityProperty, cfsScalePropertyArea);
 
   // POPULATION DENOMINATOR — two strategies, polygon-area-weighted
   // preferred, peer-share as fallback.
@@ -1256,8 +1279,8 @@ export async function getSafetyScore(areaSlug: string, areaLabel: string): Promi
   const curatedPop = knownNeighborhoodPopulation(city.slug, areaSlug);
   if (curatedPop) {
     popDenominator = curatedPop.population;
-    const localPersonsRate = popDenominator > 0 ? (persons * 365 / Math.max(1, windowDays) / popDenominator) * 100_000 * cfsScalePerArea : 0;
-    const localPropertyRate = popDenominator > 0 ? (property * 365 / Math.max(1, windowDays) / popDenominator) * 100_000 * cfsScalePerArea : 0;
+    const localPersonsRate = popDenominator > 0 ? (persons * 365 / Math.max(1, windowDays) / popDenominator) * 100_000 * cfsScalePersonsArea : 0;
+    const localPropertyRate = popDenominator > 0 ? (property * 365 / Math.max(1, windowDays) / popDenominator) * 100_000 * cfsScalePropertyArea : 0;
     personsScale = cityPersons100k > 0 ? localPersonsRate / cityPersons100k : 0;
     propertyScale = cityProperty100k > 0 ? localPropertyRate / cityProperty100k : 0;
   } else if (ourAreaKm2 != null && cityTotalKm2 > 0 && cityPop > 0) {
@@ -1267,8 +1290,8 @@ export async function getSafetyScore(areaSlug: string, areaLabel: string): Promi
     // Apply CFS scaling here too — otherwise (raw_local / scaled_city)
     // ratio cancels the scaling out and per-area persons100k ends up
     // unscaled while citywide rates are scaled.
-    const localPersonsRate = areaPop > 0 ? (persons * 365 / Math.max(1, windowDays) / areaPop) * 100_000 * cfsScalePerArea : 0;
-    const localPropertyRate = areaPop > 0 ? (property * 365 / Math.max(1, windowDays) / areaPop) * 100_000 * cfsScalePerArea : 0;
+    const localPersonsRate = areaPop > 0 ? (persons * 365 / Math.max(1, windowDays) / areaPop) * 100_000 * cfsScalePersonsArea : 0;
+    const localPropertyRate = areaPop > 0 ? (property * 365 / Math.max(1, windowDays) / areaPop) * 100_000 * cfsScalePropertyArea : 0;
     personsScale = cityPersons100k > 0 ? localPersonsRate / cityPersons100k : 0;
     propertyScale = cityProperty100k > 0 ? localPropertyRate / cityProperty100k : 0;
   } else {
@@ -1339,7 +1362,7 @@ export async function getSafetyScore(areaSlug: string, areaLabel: string): Promi
   // Computed before the grade so gradeWithNullGuard can demote a
   // no-data area to "N/A" instead of the misleading C the raw math
   // would yield.
-  const confidence = computeDataConfidence(windowDays, persons + property, popDenominator, cfsScalePerArea);
+  const confidence = computeDataConfidence(windowDays, persons + property, popDenominator, persons100k + property100k);
 
   // Per-area grade compares to the CITY rate, not the national rate.
   // See gradeFromCityDeltas comment for the rationale.
@@ -1383,7 +1406,7 @@ export async function getSafetyScore(areaSlug: string, areaLabel: string): Promi
         `${city.label}'s citywide vs FBI ${FBI_NATIONAL_SOURCE.publishedYear} national is shown below for context. ` +
         "Society / public-order offenses are excluded because the FBI doesn't publish a national rate for them.",
     ...confidence,
-    dataSourceType: CFS_CALIBRATION[city.slug] ? "cfs" : "nibrs",
-    cfsScale: CFS_CALIBRATION[city.slug] ?? 1.0,
+    dataSourceType: isCfsArea ? "cfs" : "nibrs",
+    cfsScale: cfsScalePersonsArea,
   };
 }
