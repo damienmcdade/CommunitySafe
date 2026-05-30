@@ -23,6 +23,14 @@
  *   apps/web/src/server/services/watch/city-fbi-baselines-generated.ts
  *
  * Re-run after each new ACS / CDE month. Idempotent + deterministic.
+ *
+ * WARNING (v99): the LIVE baselines the scorer uses live in
+ *   packages/crime-data/src/fbi-baselines.ts  (this tool currently writes the
+ *   stale apps/web path). That file applies a MANUAL_BASELINE_OVERRIDES map on
+ *   top of the base table — documented corrections (Chicago, Oakland, SF, KC,
+ *   Honolulu) where the raw CDE figure is wrong/stale. If you re-point this tool
+ *   at fbi-baselines.ts, regenerate ONLY the BASE_FBI_BASELINES table and
+ *   PRESERVE MANUAL_BASELINE_OVERRIDES.
  */
 
 import fs from "node:fs/promises";
