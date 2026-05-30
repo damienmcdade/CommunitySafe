@@ -30,7 +30,8 @@ export type CitySlug =
   // v98c — these 8 were absent from the union, so Record<CitySlug,…>
   // lookups (CITY_RESOURCES, NON_EMERGENCY) silently missed them and the
   // safety tab 500'd for these cities.
-  | "norfolk" | "phoenix" | "denver" | "atlanta" | "indianapolis" | "raleigh" | "honolulu";
+  | "norfolk" | "phoenix" | "denver" | "atlanta" | "indianapolis" | "raleigh" | "honolulu"
+  | "long-beach";
 export type TipGroup = "prevention" | "self-defense" | "ca-legal";
 
 export interface SafetyTip {
@@ -91,6 +92,7 @@ export const NON_EMERGENCY: Record<CitySlug, { line: string; label: string; url:
   "indianapolis":  { line: "317-327-3811", label: "IMPD non-emergency", url: "https://www.indy.gov/agency/indianapolis-metropolitan-police-department" },
   "raleigh":       { line: "919-829-1911", label: "Raleigh PD non-emergency", url: "https://raleighnc.gov/police" },
   "honolulu":      { line: "808-529-3111", label: "HPD non-emergency", url: "https://www.honolulupd.org/" },
+  "long-beach":    { line: "562-435-6711", label: "LBPD non-emergency", url: "https://www.longbeach.gov/police/" },
 };
 
 // City-specific official resource links. These get joined into one or more
@@ -140,6 +142,7 @@ export const CITY_RESOURCES: Record<CitySlug, { name: string; url: string; progr
   "indianapolis":  { name: "Indianapolis Metropolitan Police Department", url: "https://www.indy.gov/agency/indianapolis-metropolitan-police-department", programName: "IMPD", programUrl: "https://www.indy.gov/agency/indianapolis-metropolitan-police-department" },
   "raleigh":       { name: "Raleigh Police Department", url: "https://raleighnc.gov/police", programName: "Raleigh Police Department", programUrl: "https://raleighnc.gov/police" },
   "honolulu":      { name: "Honolulu Police Department", url: "https://www.honolulupd.org/", programName: "HPD Crime Prevention", programUrl: "https://www.honolulupd.org/information/crime-prevention/" },
+  "long-beach":    { name: "Long Beach Police Department", url: "https://www.longbeach.gov/police/", programName: "LBPD Crime Prevention", programUrl: "https://www.longbeach.gov/police/community-programs/" },
 };
 
 const PREVENTION_TIPS: SafetyTip[] = [
@@ -369,7 +372,7 @@ const CITY_STATE: Record<string, string> = {
   "dallas": "TX", "charlotte": "NC", "raleigh": "NC", "nashville": "TN",
   "minneapolis": "MN", "saint-paul": "MN", "milwaukee": "WI", "las-vegas": "NV",
   "boise": "ID", "norfolk": "VA", "kansas-city": "MO", "phoenix": "AZ", "tucson": "AZ",
-  "atlanta": "GA", "indianapolis": "IN", "honolulu": "HI",
+  "atlanta": "GA", "indianapolis": "IN", "honolulu": "HI", "long-beach": "CA",
 };
 
 // Verified against NCSL's state-by-state self-defense table + each state's

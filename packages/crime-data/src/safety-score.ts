@@ -140,6 +140,16 @@ const CFS_CALIBRATION: Record<string, CfsScale> = {
   // approximate the FBI total incl. the missing rape, and flag it. Property
   // (1.43× after the tows/accidents exclude) is accurate-ish → 1.0.
   "boston":        { persons: 1.4, property: 1.0, sourceType: "partial" },
+  // v100 — Long Beach. LBPD's public "Police Crime Mapping" feed under-
+  // publishes Part-1 PROPERTY relative to the full FBI UCR submission: a
+  // stable ~880 mapped property incidents/month (~10.5k/yr) vs the FBI's
+  // 15.6k/yr, so property reads ~0.61× (NOT a reporting-lag artifact — the
+  // monthly volume is flat Dec–Apr; petty larceny/theft simply isn't all
+  // put on the public map). VIOLENT is accurate (626 vs 672 FBI = 0.93×;
+  // robbery forced to PERSONS), so persons stays 1.0. Scale property ×1.64
+  // to recover the authoritative FBI property rate and avoid false safety,
+  // and flag it via the partial disclaimer.
+  "long-beach":    { persons: 1.0, property: 1.64, sourceType: "partial" },
 };
 
 /// Per-category rate-calibration lookup (1.0 for NIBRS adapters not in the
@@ -1112,7 +1122,9 @@ async function computeCitywideSafetyScore(citySlug: string): Promise<SafetyScore
         : sourceType === "coarse"
         ? ` ${city.label}'s feed reports assaults in a single bucket with no simple-vs-aggravated severity field, so the violent rate can't be filtered to UCR Part-1 aggravated assault precisely; it is calibrated to the city's FBI baseline in aggregate (violent ×${cfsScalePersons}) and should be read as approximate.`
         : sourceType === "partial"
-        ? ` ${city.label}'s open feed omits part of the FBI violent-crime definition (e.g. non-weapon aggravated assault, or rape/sexual assault), so it structurally understates violent crime; the rate is calibrated up (×${cfsScalePersons}) to approximate the FBI total and should be read as approximate.`
+        ? (cfsScaleProperty !== 1 && cfsScalePersons === 1
+            ? ` ${city.label}'s public crime feed under-publishes part of the FBI property-crime definition (much petty larceny/theft is not mapped publicly), so it structurally understates property crime; the property rate is calibrated up (×${cfsScaleProperty}) to approximate the FBI total and should be read as approximate.`
+            : ` ${city.label}'s open feed omits part of the FBI violent-crime definition (e.g. non-weapon aggravated assault, or rape/sexual assault), so it structurally understates violent crime; the rate is calibrated up (×${cfsScalePersons}) to approximate the FBI total and should be read as approximate.`)
         : ""),
     ...confidence,
     dataSourceType: isCfs ? "cfs" : "nibrs",

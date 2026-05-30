@@ -71,6 +71,11 @@ const BASE_FBI_BASELINES: Record<string, CityFbiBaseline> = {
   // rates. Honolulu is structurally lower-crime than mainland peer
   // cities and these baselines reflect that.
   "honolulu":     { violent: 305,  property: 2912, year: 2024, ori: "HI0010100" },
+  // v100 — Long Beach (LBPD ORI CA0194100). FBI UCR 2024: violent 3,030
+  // (murder 37 + rape ~200 + robbery ~989 + agg assault ~1,779) / property
+  // 15,581, over pop 450,917 → 672 / 3,456 per 100k. Do NOT confuse with
+  // CA0198200 (CSU Long Beach PD).
+  "long-beach":   { violent: 672,  property: 3456, year: 2024, ori: "CA0194100" },
 };
 
 // Documented manual corrections applied OVER BASE_FBI_BASELINES. Each is a city

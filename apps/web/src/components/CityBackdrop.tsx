@@ -368,6 +368,13 @@ export const PHOTOS: Record<string, string[]> = {
     "https://upload.wikimedia.org/wikipedia/commons/9/95/Waikiki_Diamond_Head_CC.jpg",
     "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/Waikiki_Beach.jpg/1920px-Waikiki_Beach.jpg",
   ],
+  "long-beach": [
+    // Downtown Long Beach skyline from the Queen Mary at dusk
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Downtown%2C_Long_Beach_from_Queen_Mary_%28Dusk%29.JPG/1920px-Downtown%2C_Long_Beach_from_Queen_Mary_%28Dusk%29.JPG.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/Queen_Mary_Long_Beach.JPG/1920px-Queen_Mary_Long_Beach.JPG.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/Long_Beach_CA_Photo_D_Ramey_Logan.jpg/1920px-Long_Beach_CA_Photo_D_Ramey_Logan.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Downtown_Long_Beach_California_Aerial.jpg/1920px-Downtown_Long_Beach_California_Aerial.jpg",
+  ],
 };
 
 // 30-second rotation — keeps the backdrop visibly dynamic without distracting

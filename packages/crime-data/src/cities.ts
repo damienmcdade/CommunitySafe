@@ -42,6 +42,7 @@ import { indianapolisAdapter, getDiscoveredAreasIndianapolis } from "./adapters/
 import { raleighAdapter, getDiscoveredAreasRaleigh } from "./adapters/raleigh-arcgis.js";
 import { tucsonAdapter, getDiscoveredAreasTucson } from "./adapters/tucson-arcgis.js";
 import { honoluluAdapter, getDiscoveredAreasHonolulu } from "./adapters/honolulu-socrata.js";
+import { longBeachAdapter, getDiscoveredAreasLongBeach } from "./adapters/long-beach-arcgis.js";
 
 // City registry.
 //
@@ -351,6 +352,16 @@ export const CITIES: CityEntry[] = [
     adapter: honoluluAdapter,
     discover: getDiscoveredAreasHonolulu,
   },
+  {
+    // Long Beach, CA — 38th city. LBPD "Police Crime Mapping" ArcGIS
+    // FeatureServer; incident-level NIBRS rows with point geometry,
+    // geocoded to 98 official Long Beach neighborhoods via point-in-polygon.
+    slug: "long-beach",
+    label: "Long Beach",
+    bbox: { south: 33.733, west: -118.249, north: 33.885, east: -118.063 },
+    adapter: longBeachAdapter,
+    discover: getDiscoveredAreasLongBeach,
+  },
 ];
 
 export function cityFromLatLng(point: { lat: number; lng: number }): CityEntry | null {
@@ -427,6 +438,7 @@ export function cityForArea(slug: string): CityEntry {
   if (slug.startsWith("rdu-")  || slug === "raleigh")      return CITIES[34];
   if (slug.startsWith("tuc-")  || slug === "tucson")       return CITIES[35];
   if (slug.startsWith("hnl-")  || slug === "honolulu")     return CITIES[36];
+  if (slug.startsWith("lb-")   || slug === "long-beach")   return CITIES[37];
   return CITIES[0];
 }
 

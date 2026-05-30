@@ -68,6 +68,8 @@ export const CITY_POPULATION: Record<string, number> = {
   // which is also reported against HPD's full ORI jurisdiction.
   // US Census Bureau Vintage 2024.
   "honolulu":        991_346,
+  // v100 — 38th city. US Census Bureau ACS 2024 1-year estimate.
+  "long-beach":      450_917,
 };
 
 export function populationFor(slug: string): number | null {
