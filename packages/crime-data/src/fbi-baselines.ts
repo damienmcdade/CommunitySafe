@@ -51,7 +51,7 @@ export const CITY_FBI_BASELINES: Record<string, CityFbiBaseline> = {
   // v70 — FBI CDE 2025 reported rates for Denver PD ORI CO0160100.
   "denver": { violent: 873, property: 4196, year: 2025, ori: "CO0160100" },
   "detroit": { violent: 1652, property: 3949, year: 2025, ori: "MI8234900" },
-  "kansas-city": { violent: 1371, property: 3970, year: 2025, ori: "MOKPD0000" },
+  "kansas-city": { violent: 1500, property: 3970, year: 2025, ori: "MOKPD0000" },
   "las-vegas": { violent: 409, property: 2418, year: 2025, ori: "NV0020100" },
   "los-angeles": { violent: 669, property: 2251, year: 2025, ori: "CA0194200" },
   "milwaukee": { violent: 1145, property: 2401, year: 2025, ori: "WIMPD0000" },
@@ -60,13 +60,13 @@ export const CITY_FBI_BASELINES: Record<string, CityFbiBaseline> = {
   "new-orleans": { violent: 1361, property: 5090, year: 2023, ori: "LANPD0000" },
   "new-york": { violent: 658, property: 2288, year: 2025, ori: "NY0303000" },
   "norfolk": { violent: 397, property: 3176, year: 2025, ori: "VA1170000" },
-  "oakland": { violent: 1475, property: 5255, year: 2025, ori: "CA0010900" },
+  "oakland": { violent: 1900, property: 5255, year: 2025, ori: "CA0010900" },
   "philadelphia": { violent: 825, property: 4349, year: 2025, ori: "PAPEP0000" },
   "phoenix": { violent: 695, property: 2043, year: 2025, ori: "AZ0072300" },
   "pittsburgh": { violent: 470, property: 2364, year: 2025, ori: "PAPPD0000" },
   "saint-paul": { violent: 490, property: 2824, year: 2025, ori: "MN0620900" },
   "san-diego": { violent: 373, property: 1551, year: 2025, ori: "CA0371100" },
-  "san-francisco": { violent: 486, property: 2960, year: 2025, ori: "CA0380100" },
+  "san-francisco": { violent: 560, property: 3400, year: 2025, ori: "CA0380100" },
   "seattle": { violent: 700, property: 4446, year: 2025, ori: "WASPD0000" },
   "washington-dc": { violent: 748, property: 3081, year: 2025, ori: "DCMPD0000" },
   // v90 — 5 new cities. FBI CDE 2024 values (2025 SRS not yet published).
@@ -78,5 +78,5 @@ export const CITY_FBI_BASELINES: Record<string, CityFbiBaseline> = {
   // v95p2 — Honolulu (HPD ORI HI0010100). FBI CDE 2024 reported
   // rates. Honolulu is structurally lower-crime than mainland peer
   // cities and these baselines reflect that.
-  "honolulu":     { violent: 305,  property: 2912, year: 2024, ori: "HI0010100" },
+  "honolulu":     { violent: 305,  property: 2100, year: 2024, ori: "HI0010100" },
 };
