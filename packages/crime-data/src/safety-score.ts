@@ -87,7 +87,13 @@ const CFS_CALIBRATION: Record<string, CfsScale> = {
   // violent at ~558/100k (0.41× baseline, Grade B-ish) and
   // property at ~4282/100k (0.84× baseline). Plausible signal,
   // inside the divergence guard.
-  "new-orleans":   { persons: 0.80, property: 0.80, sourceType: "cfs" },
+  // v99 — persons 0.80→1.4. NOPD's calls-for-service feed, after Part-1 keyword
+  // filtering, structurally UNDER-captures violent crime (it read 0.52× FBI even
+  // after the 0.80 scale — misleadingly low for one of the highest-crime US
+  // cities, baseline 1361). Unlike Las Vegas/Boise (CFS OVER-counts violent),
+  // NOLA's CFS keyword filter misses violent calls coded generically, so the
+  // persons scale compensates UP. Property (0.99×) is accurate → stays 0.80.
+  "new-orleans":   { persons: 1.4, property: 0.80, sourceType: "cfs" },
   // v99 — Las Vegas split. Raw violent ran ~2.9× FBI (LVMPD CFS coarse),
   // raw property ~1.1×; the single 0.50 scale put property at 0.54×. Persons
   // 0.34 (→~1.0×), property 0.93 (→~1.0×).
