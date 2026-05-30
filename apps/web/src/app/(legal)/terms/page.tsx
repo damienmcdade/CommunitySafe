@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { LegalFooter } from "@/components/LegalFooter";
 
 export const metadata: Metadata = {
   title: "Terms",
@@ -21,6 +22,13 @@ export default function TermsPage() {
       <section className="surface p-6 space-y-3 text-sm text-slate2-700 leading-relaxed">
         <h2 className="font-display text-xl text-slate2-900">What CommunitySafe is</h2>
         <p>CommunitySafe is a neighborhood-level safety-awareness tool that surfaces publicly published police-incident data for 37 supported US cities, compared to the FBI Crime in the Nation national average. It is informational and educational.</p>
+        <p>
+          CommunitySafe is operated by{" "}
+          <a href="https://cyberwaveglobal.com" target="_blank" rel="noopener noreferrer" className="text-bay-700 hover:underline">Cyberwave Global</a>{" "}
+          (cyberwaveglobal.com) (&ldquo;we&rdquo;, &ldquo;us&rdquo;). By using CommunitySafe you
+          agree to these Terms. Questions about these Terms:{" "}
+          <a href="mailto:info@cyberwaveglobal.com?subject=CommunitySafe%20terms" className="text-bay-700 hover:underline">info@cyberwaveglobal.com</a>.
+        </p>
       </section>
 
       <section className="surface p-6 space-y-3 text-sm text-slate2-700 leading-relaxed">
@@ -90,9 +98,7 @@ export default function TermsPage() {
         <p>These terms may be updated as the app evolves. Material changes will be noted by the &quot;Last updated&quot; date at the top of this page.</p>
       </section>
 
-      <p className="text-xs text-slate2-500">
-        See also: <Link href="/privacy" className="text-bay-700 hover:underline">Privacy</Link>, <Link href="/methodology" className="text-bay-700 hover:underline">Methodology</Link>.
-      </p>
+      <LegalFooter />
     </main>
   );
 }
