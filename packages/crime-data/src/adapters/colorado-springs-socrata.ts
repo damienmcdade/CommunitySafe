@@ -19,7 +19,13 @@ import { coSpPolygons } from "../data/colorado-springs-neighborhoods.js";
 // back to the patrol_division name so we never lose the row.
 
 const BASE = "https://policedata.coloradosprings.gov/resource/bc88-hemr.json";
-const ROW_LIMIT = 5_000;
+// v99 — 5,000 → 50,000. CSPD publishes ~85k incidents/yr; a 5,000-row fetch
+// covered only ~49 days, and property crime (theft/larceny) is entered with more
+// reporting lag than violent crime, so the recent slice severely under-sampled
+// property (0.44× FBI) more than persons (0.75×). 50,000 rows ≈ 7 months — a
+// representative window that dilutes the laggy recent tail. (occurredfromdate is
+// ISO-text, so DESC orders chronologically.)
+const ROW_LIMIT = 50_000;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
 registerRowCache(() => { cache = null; });
