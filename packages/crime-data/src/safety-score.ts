@@ -150,6 +150,16 @@ const CFS_CALIBRATION: Record<string, CfsScale> = {
   // to recover the authoritative FBI property rate and avoid false safety,
   // and flag it via the partial disclaimer.
   "long-beach":    { persons: 1.0, property: 1.64, sourceType: "partial" },
+  // v100 — Dallas. The DPD public feed (qv6i-rri7) STRUCTURALLY REDACTS two big
+  // slices of FBI violent crime: (1) rape / sex offenses — ZERO rows in the
+  // person-crime feed (FBI Dallas ~480/yr); (2) family-violence aggravated
+  // assault — only ~7 "AGG ASSAULT - FV" vs 558 "AGG ASSAULT - NFV" per 90d
+  // (DV is redacted from public data). So the feed captures only NFV agg
+  // assault + robbery + murder ≈ 0.55× the FBI violent total (8,698/yr) at the
+  // corrected baseline (658). Same partial-feed pattern as Boston (missing
+  // rape) / DC (weapon-only). Scale persons ×1.82 to recover the FBI aggregate;
+  // property is genuinely high (Dallas auto theft) and accurate → stays 1.0.
+  "dallas":        { persons: 1.82, property: 1.0, sourceType: "partial" },
 };
 
 /// Per-category rate-calibration lookup (1.0 for NIBRS adapters not in the
