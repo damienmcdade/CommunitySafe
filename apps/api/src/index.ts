@@ -226,6 +226,10 @@ const healthHandler = (_req: import("express").Request, res: import("express").R
   res.json({
     ok: true,
     service: "travelsafe-api",
+    // v100 — prismaMajor lets us confirm which client generation is actually
+    // running in production (the Prisma 7 cutover). 7 = adapter-pg + generated
+    // ./src/generated/prisma client; 6 = legacy @prisma/client.
+    prismaMajor: 7,
     time: new Date().toISOString(),
     buildSha: BUILD_SHA,
     bootedAt: BOOT_TIME,
