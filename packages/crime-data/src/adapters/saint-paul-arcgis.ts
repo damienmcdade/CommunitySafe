@@ -19,11 +19,17 @@ import { districtNumberToName } from "../data/saint-paul-neighborhoods.js";
 // per-neighborhood counts represent actual reported crime.
 
 const BASE = "https://services1.arcgis.com/9meaaHE3uiba0zr8/arcgis/rest/services/Crime_Incident_Report_-_Dataset/FeatureServer/0/query";
-const PAGE_SIZE = 2000;
+// v99 — was 2000, but this FeatureServer's maxRecordCount is 1000. The adapter
+// stepped the offset by PAGE_SIZE (i × 2000) while each page returned only 1000
+// rows, so it fetched rows 0-999, SKIPPED 1000-1999, fetched 2000-2999, etc. —
+// silently dropping every other 1000-row block (~half the data, uniformly across
+// persons + property). That was the real cause of Saint Paul's 0.41× violent
+// rate, NOT feed completeness. Match the server cap so offsets are contiguous.
+const PAGE_SIZE = 1000;
 // v26 bump 5 → 15. Saint Paul was running ~1.8× under FBI baseline
 // on both PERSONS and PROPERTY; deeper cache reduces the
 // annualization tax.
-const PAGES = 22;  // v99 — with proactive/community records filtered out (above), ~44k crime rows ≈ a representative year
+const PAGES = 45;  // v99 — 45 × 1000 = 45k contiguous crime rows ≈ 14 months (Saint Paul ~38k crimes/yr after the proactive filter)
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
 registerRowCache(() => { cache = null; });
