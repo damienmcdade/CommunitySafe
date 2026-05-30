@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     "CommunitySafe privacy practices — what's stored on your device, what's stored on our servers when you create a Safety account, what's transmitted to third parties, and how to control it.",
 };
 
-const LAST_UPDATED = "2026-05-27";
+const LAST_UPDATED = "2026-05-30";
 
 export default function PrivacyPage() {
   return (

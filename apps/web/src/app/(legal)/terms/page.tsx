@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     "CommunitySafe terms of use — what the app is, what it isn't, acceptable use, AI assistant disclaimer, and how community posts are moderated.",
 };
 
-const LAST_UPDATED = "2026-05-26";
+const LAST_UPDATED = "2026-05-30";
 
 export default function TermsPage() {
   return (
@@ -91,6 +91,18 @@ export default function TermsPage() {
       <section className="surface p-6 space-y-3 text-sm text-slate2-700 leading-relaxed">
         <h2 className="font-display text-xl text-slate2-900">No warranty</h2>
         <p>CommunitySafe is provided &quot;as is&quot; without warranty of any kind. We do not warrant that the data is current, complete, or fit for any particular purpose. To the extent permitted by applicable law, CommunitySafe and its operators disclaim liability for any decision made in reliance on data displayed by the app.</p>
+      </section>
+
+      <section className="surface p-6 space-y-3 text-sm text-slate2-700 leading-relaxed">
+        <h2 className="font-display text-xl text-slate2-900">Limitation of liability &amp; indemnity</h2>
+        <p>To the maximum extent permitted by applicable law, Cyberwave Global and its operators, officers, and contributors will not be liable for any indirect, incidental, special, consequential, or punitive damages, or for any loss arising from your use of — or inability to use — CommunitySafe or any decision made in reliance on it. CommunitySafe is provided free of charge; to the extent any liability cannot be excluded, it is limited in the aggregate to USD $100.</p>
+        <p>You agree to indemnify and hold harmless Cyberwave Global from any claim arising out of your misuse of the app, your violation of these Terms, your use of the data for a prohibited purpose (including any housing, lending, insurance, or employment decision), or any content you submit to the community feed.</p>
+        <p>If any provision of these Terms is held unenforceable, the remaining provisions stay in effect. These Terms, together with the <Link href="/privacy" className="text-bay-700 hover:underline">Privacy Policy</Link>, are the entire agreement between you and Cyberwave Global regarding CommunitySafe.</p>
+      </section>
+
+      <section className="surface p-6 space-y-3 text-sm text-slate2-700 leading-relaxed">
+        <h2 className="font-display text-xl text-slate2-900">Governing law &amp; contact</h2>
+        <p>These Terms are governed by the laws applicable at Cyberwave Global&apos;s principal place of business, without regard to conflict-of-laws rules, and you agree to the exclusive jurisdiction of the courts there for any dispute that is not otherwise resolved. Questions about these Terms: <a href="mailto:info@cyberwaveglobal.com?subject=CommunitySafe%20terms" className="text-bay-700 hover:underline">info@cyberwaveglobal.com</a> · <a href="https://cyberwaveglobal.com" target="_blank" rel="noopener noreferrer" className="text-bay-700 hover:underline">cyberwaveglobal.com</a>.</p>
       </section>
 
       <section className="surface p-6 space-y-3 text-sm text-slate2-700 leading-relaxed">
