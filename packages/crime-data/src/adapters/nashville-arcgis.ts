@@ -53,8 +53,16 @@ interface NashRow {
 function nibrsCodeGroup(code: string | undefined): CrimeCategory {
   if (!code) return CrimeCategory.SOCIETY;
   const c = code.trim().toUpperCase();
+  // v99 — Robbery (NIBRS 120) MUST be checked before the generic "12"
+  // property prefix; otherwise "120" matches /^12/ and is mis-routed to
+  // PROPERTY. FBI UCR Part-1 counts robbery as VIOLENT, so route it to
+  // PERSONS (was silently dropping robbery from the violent count). 13B
+  // (simple) / 13C (intimidation) still land in PERSONS but are correctly
+  // dropped from Part-1 by isPart1Violent's description filter (Nashville
+  // "fear of bodily injury" / "offensive or provocative contact" EXCLUDEs).
+  if (/^120/.test(c)) return CrimeCategory.PERSONS;
   if (/^(09|10|11|13|36|64)/.test(c)) return CrimeCategory.PERSONS;
-  if (/^(12|22|23|24|25|26|27|28|29|120|200|240)/.test(c)) return CrimeCategory.PROPERTY;
+  if (/^(12|22|23|24|25|26|27|28|29|200|240)/.test(c)) return CrimeCategory.PROPERTY;
   // Description-based fallback for codes that don't match the prefixes —
   // some MNPD rows use 740 (police inquiry) or proprietary numbers.
   return CrimeCategory.SOCIETY;

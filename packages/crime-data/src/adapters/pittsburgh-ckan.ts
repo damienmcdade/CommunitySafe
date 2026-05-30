@@ -51,6 +51,13 @@ interface PghRow {
 }
 
 function mapToNibrs(row: PghRow): CrimeCategory {
+  // v99 — NIBRS tags Robbery as "Crime Against Property" (the target is
+  // property), but FBI UCR Part-1 counts robbery as VIOLENT. Trusting
+  // NIBRS_Crime_Against routed all ~1,022 robberies/yr into PROPERTY, so
+  // they were dropped from the citywide violent count (PERSONS read 0.47x
+  // FBI). Override robbery into PERSONS so isPart1Violent counts it.
+  const type = (row.NIBRS_Offense_Type ?? "").trim().toUpperCase();
+  if (type === "ROBBERY") return CrimeCategory.PERSONS;
   const c = (row.NIBRS_Crime_Against ?? "").trim().toUpperCase();
   if (c === "PERSON") return CrimeCategory.PERSONS;
   if (c === "PROPERTY") return CrimeCategory.PROPERTY;

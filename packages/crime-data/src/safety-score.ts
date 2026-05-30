@@ -255,6 +255,14 @@ const PART1_VIOLENT_EXCLUDE = [
   /elder abuse/i,
   /family offense/i,
   /\bdomestic\b(?!.*assault).*$/i, // DV w/o assault → catch-all
+  // v99 — Nashville (MNPD) NIBRS 13B/13C descriptors that carry no generic
+  // "simple"/"intimidation" token: "ASSAULT- FEAR OF BODILY INJURY" (13C
+  // intimidation) and "ASSAULT- OFFENSIVE OR PROVOCATIVE CONTACT" (13B simple).
+  // Neither is UCR Part-1 aggravated assault; they were being counted because
+  // the adapter buckets all 13* as PERSONS and the deny-list found no token.
+  // Genuine 13A "AGGRAVATED ASSAULT" is force-counted by the INCLUDE override.
+  /fear of bodily injury/i,
+  /offensive or provocative contact/i,
 ];
 
 // Hard EXCLUDES for property — NIBRS classifies these as Crimes
@@ -363,6 +371,18 @@ const PART1_VIOLENT_INCLUDE_OVERRIDE = [
   /threat.*gun/i,
   /threat.*knife/i,
   /weapon.*threat/i,
+  // v99 — aggravated assault is ALWAYS UCR Part-1 violent. Force-count it
+  // even when the description also carries "domestic"/"strangulation" tokens
+  // that would otherwise hit an EXCLUDE. Fixes Saint Paul "Aggravated
+  // Assault, Domestic" / "AGG ASLT DMSTIC-..." (~3.5k/yr were dropped by
+  // /\bdomestic\b(?!.*assault)/). Matches AGG / AGG. / AGGRAVATED + assault/aslt.
+  /\bagg(?:ravated|\.?)\s*(?:assault|aslt)/i,
+  // v99 — Denver files felony menacing-with-a-weapon under aggravated
+  // assault (descriptor "Menacing Felony W Weap"); it was dropped by the
+  // /\bmenacing\b/ EXCLUDE (~916/yr). Scope the rescue to the felony/weapon
+  // qualifier so plain/simple menacing stays excluded elsewhere.
+  /menacing.*felony/i,
+  /menacing.*weap/i,
 ];
 
 function isPart1Violent(desc: string | undefined): boolean {

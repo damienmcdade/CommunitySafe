@@ -50,13 +50,21 @@ function mapToNibrs(incident: string): CrimeCategory | null {
   if (t.startsWith("COMMUNITY EVENT")) return null;
   if (t === "MISC") return null;
 
-  if (t.includes("ASSAULT") || t === "RAPE" || t.includes("HOMICIDE") ||
-      t.includes("KIDNAP") || t.includes("DOMESTIC") || t.includes("THREAT") ||
-      t.includes("HARASSMENT") || t === "DISCHARGE") {
+  // v99 — ROBBERY moved to PERSONS: FBI UCR Part-1 counts robbery as VIOLENT
+  // (it was in the PROPERTY branch, dropping ~6,600 robberies/yr from the
+  // citywide violent count). DISCHARGE removed from PERSONS: discharging a
+  // firearm is a NIBRS weapons-law (Society) offense, NOT UCR Part-1 violent —
+  // it was the largest single PERSONS bucket (~13,655 rows) and was the main
+  // thing masking the robbery/agg-domestic under-counts. Aggravated-domestic
+  // assault (e.g. "Aggravated Assault, Domestic") is rescued by the
+  // /aggravated assault/i Part-1 INCLUDE-OVERRIDE in safety-score.ts.
+  if (t.includes("ROBBERY") || t.includes("ASSAULT") || t === "RAPE" ||
+      t.includes("HOMICIDE") || t.includes("KIDNAP") || t.includes("DOMESTIC") ||
+      t.includes("THREAT") || t.includes("HARASSMENT")) {
     return CrimeCategory.PERSONS;
   }
   if (t === "THEFT" || t === "BURGLARY" || t === "AUTO THEFT" ||
-      t === "ROBBERY" || t.includes("ARSON") || t.includes("CRIMINAL DAMAGE") ||
+      t.includes("ARSON") || t.includes("CRIMINAL DAMAGE") ||
       t.includes("VANDAL") || t.includes("FRAUD") || t.includes("FORGERY") ||
       t.includes("STOLEN") || t.includes("EMBEZZLE")) {
     return CrimeCategory.PROPERTY;
