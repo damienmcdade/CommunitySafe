@@ -287,15 +287,14 @@ const SELF_DEFENSE_TIPS: SafetyTip[] = [
   },
 ];
 
-// v98 — state-neutral self-defense LAW principles shown to every non-CA
-// city (the 4 CA cities keep their detailed Penal-Code cards). These state
-// only what is true across U.S. jurisdictions and explicitly flag the ONE
-// dimension that varies most — duty-to-retreat vs stand-your-ground — and
-// send users to the authoritative NCSL state-by-state table rather than
-// asserting a specific statute we haven't verified for ~24 states. Framed
-// as general information; the response disclaimer reinforces "verify your
-// state's statute / consult an attorney."
-const GENERIC_LEGAL_TIPS: SafetyTip[] = [
+// v98b — universal self-defense-LAW principles that hold across every U.S.
+// jurisdiction. Shown to every non-California city, LED by a state-specific
+// "duty to retreat vs stand your ground" card (buildStatePostureCard below)
+// so the section is genuinely tailored to the user's state. The 4 CA cities
+// keep their detailed CA Penal-Code cards. Framed as general information;
+// the response disclaimer reinforces "verify your state's statute / consult
+// an attorney."
+const UNIVERSAL_LEGAL_TIPS: SafetyTip[] = [
   {
     id: "legal-when-justified",
     title: "When self-defense is legally justified",
@@ -312,15 +311,6 @@ const GENERIC_LEGAL_TIPS: SafetyTip[] = [
       "Nearly every state limits deadly force to situations where a reasonable person would believe it necessary to prevent imminent death or great bodily injury (and, in some states, specific felonies like a forcible home invasion). It is never lawful to use deadly force to protect property alone or to pursue or punish someone. When in doubt, the lawful and safer choice is to escape and call 911.",
     source: "Cornell Legal Information Institute — Deadly Force",
     sourceUrl: "https://www.law.cornell.edu/wex/deadly_force",
-    group: "ca-legal",
-  },
-  {
-    id: "legal-duty-to-retreat",
-    title: "Know your state: duty to retreat vs. stand your ground",
-    body:
-      "States differ on whether you must retreat before using force in public if you can do so safely. \"Duty to retreat\" states require it where safe; \"stand your ground\" states do not. This single difference can change whether the same act is lawful, so look up your own state before relying on either rule. Almost all states also recognize a \"castle doctrine\" giving stronger protection inside your own home.",
-    source: "National Conference of State Legislatures (NCSL)",
-    sourceUrl: "https://www.ncsl.org/civil-and-criminal-justice/self-defense-and-stand-your-ground",
     group: "ca-legal",
   },
   {
@@ -343,6 +333,75 @@ const GENERIC_LEGAL_TIPS: SafetyTip[] = [
   },
 ];
 
+// v98b — city -> US state, for state-tailored self-defense law. The four
+// (now five, incl. Sacramento) CA cities use the detailed CA Penal-Code
+// cards; every other city is led by a card for its OWN state's posture.
+const CITY_STATE: Record<string, string> = {
+  "san-diego": "CA", "los-angeles": "CA", "san-francisco": "CA", "oakland": "CA", "sacramento": "CA",
+  "chicago": "IL", "seattle": "WA", "new-york": "NY", "buffalo": "NY",
+  "colorado-springs": "CO", "denver": "CO", "detroit": "MI", "washington-dc": "DC",
+  "boston": "MA", "cambridge": "MA", "philadelphia": "PA", "pittsburgh": "PA",
+  "cincinnati": "OH", "cleveland": "OH", "new-orleans": "LA", "baton-rouge": "LA",
+  "dallas": "TX", "charlotte": "NC", "raleigh": "NC", "nashville": "TN",
+  "minneapolis": "MN", "saint-paul": "MN", "milwaukee": "WI", "las-vegas": "NV",
+  "boise": "ID", "norfolk": "VA", "kansas-city": "MO", "phoenix": "AZ", "tucson": "AZ",
+  "atlanta": "GA", "indianapolis": "IN", "honolulu": "HI",
+};
+
+// Verified against NCSL's state-by-state self-defense table + each state's
+// statute. `syg` = no general duty to retreat in public (stand your ground);
+// !syg = duty to retreat in public where safe. Every state below also
+// recognizes a castle doctrine inside the home. `basis` notes whether the
+// posture is statutory or established by case law; `cite` is the controlling
+// statute (or "case law" where the posture is judicial).
+interface StateLaw { name: string; syg: boolean; basis: string; cite: string }
+const STATE_LAW: Record<string, StateLaw> = {
+  IL: { name: "Illinois",   syg: true,  basis: "case law",                                                  cite: "720 ILCS 5/7-1" },
+  WA: { name: "Washington", syg: true,  basis: "case law",                                                  cite: "RCW 9A.16.020 + case law" },
+  NY: { name: "New York",   syg: false, basis: "statute",                                                   cite: "N.Y. Penal Law §35.15" },
+  CO: { name: "Colorado",   syg: true,  basis: "case law, plus the 'Make My Day' home-defense statute",     cite: "C.R.S. §18-1-704 / §18-1-704.5" },
+  MI: { name: "Michigan",   syg: true,  basis: "statute",                                                   cite: "MCL §780.972" },
+  DC: { name: "the District of Columbia", syg: false, basis: "case law",                                    cite: "D.C. self-defense case law" },
+  MA: { name: "Massachusetts", syg: false, basis: "case law (castle doctrine by statute)",                  cite: "M.G.L. c.278 §8A" },
+  PA: { name: "Pennsylvania", syg: true, basis: "statute, with conditions (you must lawfully be present and the attacker must display or use a weapon)", cite: "18 Pa.C.S. §505" },
+  OH: { name: "Ohio",       syg: true,  basis: "statute (2021)",                                            cite: "R.C. §2901.09" },
+  LA: { name: "Louisiana",  syg: true,  basis: "statute",                                                   cite: "La. R.S. 14:20" },
+  TX: { name: "Texas",      syg: true,  basis: "statute",                                                   cite: "Tex. Penal Code §9.31 / §9.32" },
+  NC: { name: "North Carolina", syg: true, basis: "statute",                                                cite: "N.C.G.S. §14-51.3" },
+  TN: { name: "Tennessee",  syg: true,  basis: "statute",                                                   cite: "Tenn. Code §39-11-611" },
+  MN: { name: "Minnesota",  syg: false, basis: "case law",                                                  cite: "Minn. Stat. §609.06 / §609.065" },
+  WI: { name: "Wisconsin",  syg: true,  basis: "statute (no duty to retreat, though a jury may still weigh whether retreat was feasible)", cite: "Wis. Stat. §939.48" },
+  NV: { name: "Nevada",     syg: true,  basis: "statute",                                                   cite: "NRS §200.120" },
+  ID: { name: "Idaho",      syg: true,  basis: "statute",                                                   cite: "Idaho Code §19-202A" },
+  VA: { name: "Virginia",   syg: true,  basis: "case law (for a person who is not at fault)",               cite: "Virginia self-defense case law" },
+  MO: { name: "Missouri",   syg: true,  basis: "statute",                                                   cite: "Mo. Rev. Stat. §563.031" },
+  AZ: { name: "Arizona",    syg: true,  basis: "statute",                                                   cite: "A.R.S. §13-405" },
+  GA: { name: "Georgia",    syg: true,  basis: "statute",                                                   cite: "O.C.G.A. §16-3-23.1" },
+  IN: { name: "Indiana",    syg: true,  basis: "statute",                                                   cite: "Ind. Code §35-41-3-2" },
+  HI: { name: "Hawaii",     syg: false, basis: "statute",                                                   cite: "H.R.S. §703-304" },
+};
+
+/// Build the lead legal card for a non-CA city: a plain-language summary of
+/// that state's duty-to-retreat / stand-your-ground posture + castle
+/// doctrine, with the controlling statute and the NCSL table for the user to
+/// verify. Returns null for CA (handled by the detailed CA cards) or any
+/// unmapped state.
+function buildStatePostureCard(citySlug: CitySlug): SafetyTip | null {
+  const law = STATE_LAW[CITY_STATE[citySlug] ?? ""];
+  if (!law) return null;
+  const body = law.syg
+    ? `${law.name} is a "stand your ground" jurisdiction (${law.basis}): you generally have no legal duty to retreat before using lawful, proportional force in a place you have a right to be. ${law.name} also recognizes the "castle doctrine," which removes any retreat requirement inside your own home. Force must still be reasonable, proportional to the threat, and stop the moment the threat ends. Verify the current rule (${law.cite}) before relying on it.`
+    : `${law.name} is a "duty to retreat" jurisdiction (${law.basis}): in public you generally must retreat first if you can do so with complete safety, before using force. ${law.name} still recognizes the "castle doctrine," which removes any retreat requirement inside your own home. Force must be reasonable and proportional to the threat. Verify the current rule (${law.cite}) before relying on it.`;
+  return {
+    id: "legal-state-posture",
+    title: law.syg ? `${law.name}: stand your ground + castle doctrine` : `${law.name}: duty to retreat + castle doctrine`,
+    body,
+    source: `${law.name} self-defense law (${law.cite}) · NCSL`,
+    sourceUrl: "https://www.ncsl.org/civil-and-criminal-justice/self-defense-and-stand-your-ground",
+    group: "ca-legal",
+  };
+}
+
 const TIPS: SafetyTip[] = [...PREVENTION_TIPS, ...SELF_DEFENSE_TIPS];
 
 export interface MatchedTip extends SafetyTip { relevance: number }
@@ -357,8 +416,6 @@ export interface SafetyTipsResponse {
   caLegal: MatchedTip[];
   disclaimer: string;
 }
-
-const CA_CITIES = new Set<CitySlug>(["san-diego", "los-angeles", "san-francisco", "oakland"]);
 
 /// Build one city-specific tip per request, pointing to that city's actual
 /// police department crime-prevention page rather than the generic FBI
@@ -469,17 +526,27 @@ export async function getSafetyTipsForArea(area: string): Promise<SafetyTipsResp
   const selfDefense = aiSelfDefense.length > 0
     ? [...aiSelfDefense, ...bucket("self-defense", 2)].slice(0, 4)
     : bucket("self-defense", 4);
-  // v98 — CA cities get the detailed Penal-Code cards; every other city now
-  // gets the state-neutral self-defense-law principles (previously empty).
-  const caLegal = CA_CITIES.has(citySlug)
+  // v98b — CA cities (incl. Sacramento, via the state map — CA_CITIES had
+  // omitted it) get the detailed CA Penal-Code cards; every other city gets a
+  // card for ITS OWN state's duty-to-retreat/stand-your-ground posture +
+  // castle doctrine, followed by the universal principles.
+  const isCA = CITY_STATE[citySlug] === "CA";
+  const caLegal = isCA
     ? bucket("ca-legal", 6)
-    : GENERIC_LEGAL_TIPS.map((t, i) => ({ ...t, relevance: 100 - i }));
+    : ([buildStatePostureCard(citySlug), ...UNIVERSAL_LEGAL_TIPS]
+        .filter((t): t is SafetyTip => t != null)
+        .map((t, i) => ({ ...t, relevance: 100 - i })));
 
   const sourceParts: string[] = [
     "official agencies (city police departments, FBI, U.S. Postal Inspection Service, Ready.gov)",
   ];
-  if (CA_CITIES.has(citySlug)) sourceParts.push("California statute (Penal Code) and the California Attorney General");
-  else sourceParts.push("general U.S. self-defense law (Cornell LII, NCSL state-by-state, ABA)");
+  if (isCA) sourceParts.push("California statute (Penal Code) and the California Attorney General");
+  else {
+    const stateName = STATE_LAW[CITY_STATE[citySlug] ?? ""]?.name;
+    sourceParts.push(stateName
+      ? `${stateName} self-defense law (NCSL state-by-state table) plus general U.S. principles (Cornell LII, ABA)`
+      : "general U.S. self-defense law (Cornell LII, NCSL state-by-state, ABA)");
+  }
   if (aiPrevention.length > 0) sourceParts.push("AI-tailored prevention guidance grounded in this area's most-reported offenses");
 
   // Hard guarantee: every registered city now has an entry in NON_EMERGENCY,
