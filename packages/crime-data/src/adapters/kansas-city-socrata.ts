@@ -86,6 +86,7 @@ interface KcRow {
   zipcode?: string;
   rep_dist?: string;
   area?: string;
+  involvement?: string;
   dvflag?: boolean;
   location?: { type: "Point"; coordinates: [number, number] };
 }
@@ -94,11 +95,18 @@ const PERSONS_KEYS = [
   "ASSAULT", "BATTERY", "HOMICIDE", "MURDER", "KIDNAP", "ABDUCT",
   "RAPE", "SEX OFFENSE", "SEX CRIME", "MOLEST", "ABUSE",
   "DOMESTIC", "HARASSMENT", "INTIMIDATION", "THREAT",
+  // ROBBERY is FBI UCR Part-1 VIOLENT (force-from-theft to a person).
+  // KC's feed has no explicit NIBRS bucket, and "ROBBERY" was being
+  // swept into PROPERTY below, so KC's violent rate was missing all
+  // robbery (~under-count) while property was inflated. Same fix as the
+  // Dallas / Pittsburgh / Saint-Paul robbery reclassification. Checked
+  // before PROPERTY_KEYS so it wins.
+  "ROBBERY",
 ];
 const PROPERTY_KEYS = [
   "STEALING", "STOLEN", "BURGLARY", "THEFT", "LARCENY",
   "PROPERTY DAMAGE", "VANDAL", "ARSON", "FORGERY", "FRAUD",
-  "EMBEZZLE", "ROBBERY", "VEHICULAR",
+  "EMBEZZLE", "VEHICULAR",
 ];
 const SOCIETY_KEYS = [
   "DRUG", "NARCOTIC", "POSSESSION", "WEAPON", "FIREARM",
@@ -189,7 +197,7 @@ async function fetchKansasCityYear(datasetId: string): Promise<KcRow[]> {
   // EXPLICIT $select — never request the `race`/`sex` demographic columns.
   return fetchSocrata<KcRow>(`Kansas City Socrata ${datasetId}`, {
     url: `https://data.kcmo.org/resource/${datasetId}.json`,
-    select: "report,report_date,from_date,offense,ibrs,beat,address,city,zipcode,rep_dist,area,location",
+    select: "report,report_date,from_date,offense,ibrs,beat,address,city,zipcode,rep_dist,area,involvement,location",
     where: "location IS NOT NULL",
     windowDays: 180,
     dateField: "report_date",
@@ -217,17 +225,39 @@ async function fetchKansasCity(): Promise<Incident[]> {
     })),
   );
   const rows = pages.flat();
-  // De-duplicate: KCPD emits one row per VIC/SUS per report. Group by report
-  // number so each incident gets ONE card instead of (victims + suspects).
+  // KCPD's feed is PERSON-LEVEL — one row per involved party (victim / suspect /
+  // arrestee / witness) per offense per report (see the `involvement` column:
+  // VIC, SUS, ARR..., CMP VIC, VIC WIT, ...). The FBI counts UCR offenses
+  // differently by type, so we mirror that to avoid the ~0.4× violent
+  // under-count the old report-level dedup produced:
+  //   - PERSONS (crimes against persons): counted PER VICTIM. KCMO's FBI
+  //     violent total is ~77% aggravated assault; the feed carries ~4.7k
+  //     victim-level aggravated-assault rows/yr (≈ the FBI 6,092 figure once
+  //     all VIC-variants are included), but report-level dedup collapsed every
+  //     multi-victim assault to one. Keep each victim row; drop suspect-only
+  //     rows so offenders aren't counted as incidents.
+  //   - PROPERTY / SOCIETY: counted PER INCIDENT (report + offense), the NIBRS
+  //     convention — one burglary is one offense regardless of involved parties.
+  const isVictimRow = (inv: string | undefined) => /\bVIC\b/i.test(inv ?? "");
   const seen = new Set<string>();
   const out: Incident[] = [];
+  let victimSeq = 0;
   for (const r of rows) {
-    const id = r.report ?? "";
-    if (id && seen.has(id)) continue;
-    if (id) seen.add(id);
+    const reportId = r.report ?? "";
     const desc = r.offense?.trim() ?? "";
     const cat = classify(desc);
     if (cat == null) continue;
+    let id: string;
+    if (cat === CrimeCategory.PERSONS) {
+      // Per-victim: skip non-victim parties; each victim row is its own offense.
+      if (!isVictimRow(r.involvement)) continue;
+      id = reportId ? `${reportId}|${desc.toUpperCase()}|v${victimSeq++}` : "";
+    } else {
+      // Per-incident: collapse all parties of the same property/society offense.
+      id = reportId ? `${reportId}|${desc.toUpperCase()}` : "";
+      if (id && seen.has(id)) continue;
+      if (id) seen.add(id);
+    }
     const coords = r.location?.coordinates;
     const lng = coords ? Number(coords[0]) : NaN;
     const lat = coords ? Number(coords[1]) : NaN;

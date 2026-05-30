@@ -368,6 +368,15 @@ const PART1_PROPERTY_EXCLUDE = [
   // /damage.*property/.) Safe across cities — a tow/accident is never Part-1.
   /\btowed\b/i,
   /\baccident\b/i,
+  // v100 — Boston's "M/V - LEAVING SCENE - PROPERTY DAMAGE" (~1.95k/yr) and
+  // "TRESPASSING" (~160/yr) were counted as Part-1 property, pushing Boston's
+  // property rate to 1.43× FBI. Neither is UCR Part-1 property (which is only
+  // burglary / larceny-theft / MV-theft / arson). The reversed word order
+  // "PROPERTY DAMAGE" slips past /damage.*property/, so match it directly.
+  // Safe fleet-wide: a hit-and-run / trespass is never Part-1 property.
+  /leaving scene/i,
+  /property damage/i,
+  /\btrespass/i,
 ];
 
 // Default-INCLUDE filter: trust the adapter's NIBRS classification
@@ -444,9 +453,15 @@ export const FRESH_POP_FRACTION_THRESHOLD = 0.70;
 const PART1_VIOLENT_INCLUDE_OVERRIDE = [
   // "DOM VIOL ASLT/THREATS" — DV with assault abbreviation. Drops 63k
   // Cleveland records/yr that match /\bthreats\b/ even though they're
-  // clearly aggravated DV.
-  /dom\b.*viol/i,
-  /domestic.*viol/i,
+  // clearly aggravated DV. v100 — REQUIRE an assault/battery token: the
+  // bare /domestic.*viol/ form force-counted EVERY DV-labelled row,
+  // including Kansas City's "HARASSMENT/INTIMIDATION - DOMESTIC VIOLENCE",
+  // "DOMESTIC VIOLENCE STEALING", and "DOMESTIC VIOLENCE BURGLARY" — none
+  // of which are Part-1 violent. With the assault requirement, those fall
+  // through to the existing /\bdomestic\b(?!.*assault)/ exclude, while
+  // genuine "DOM VIOL ASLT" / "DOMESTIC VIOLENCE ASSAULT" still count.
+  /dom\b.*viol.*(?:assault|aslt|batter)/i,
+  /domestic.*viol.*(?:assault|aslt|batter)/i,
   // "PERSON THREATENING W/WEAPON" — UCR aggravated assault by
   // definition (threat + weapon). Drops 25k Cleveland records/yr that
   // match /\bthreaten/.
@@ -469,11 +484,37 @@ const PART1_VIOLENT_INCLUDE_OVERRIDE = [
   /menacing.*weap/i,
 ];
 
+// Beats the INCLUDE override (see isPart1Violent). Definitionally never UCR
+// Part-1 violent even if the row also carries a "domestic violence" /
+// "aggravated" token from a coarse adapter label.
+const PART1_VIOLENT_HARD_EXCLUDE = [
+  /non-?aggravated/i,        // "ASSAULT (NON-AGGRAVATED)" = simple assault
+  /property damage/i,        // "DOMESTIC VIOLENCE PROPERTY DAMAGE" = property/Part-2
+  /protective order/i,       // "273.6 VIOLATION OF PROTECTIVE ORDER" = not violent
+  /abuse of (?:a |an )?(?:child|minor)/i, // "ABUSE OF A CHILD" = Part-2 (reverse of /child abuse/)
+  /\banimal\b/i,             // "ANIMAL ABUSE/CRUELTY" = NIBRS Society, not Part-1 violent
+  /sexual abuse/i,           // non-rape sex offense = Part-2 (genuine "RAPE" is counted separately)
+];
+
 function isPart1Violent(desc: string | undefined): boolean {
   if (!desc) return true;
   const cached = VIOLENT_CACHE.get(desc);
   if (cached !== undefined) return cached;
   let result = true;
+  // HARD exclude — definitionally NEVER UCR Part-1 violent, so these beat
+  // even the INCLUDE override. Without this, the broad /domestic.*viol/
+  // override (added for Cleveland's aggravated "DOM VIOL ASLT") force-counted
+  // every DV-labelled row, inflating violent: Kansas City's "ASSAULT
+  // (NON-AGGRAVATED)" + "DOMESTIC VIOLENCE ASSAULT (NON-AGGRAVATED)" (~1.5k,
+  // simple assault), "DOMESTIC VIOLENCE PROPERTY DAMAGE" (a property/Part-2
+  // event), "ABUSE OF A CHILD" (Part-2), and Sacramento's "273.6 VIOLATION OF
+  // PROTECTIVE ORDER" (not a violent crime). All are simple/Part-2 regardless
+  // of any aggravated/DV token, so excluding them here is safe fleet-wide.
+  if (PART1_VIOLENT_HARD_EXCLUDE.some((re) => re.test(desc))) {
+    if (VIOLENT_CACHE.size >= PART1_CACHE_CAP) VIOLENT_CACHE.clear();
+    VIOLENT_CACHE.set(desc, false);
+    return false;
+  }
   // Explicit Part-1 override wins over any EXCLUDE match.
   let overridden = false;
   for (const inc of PART1_VIOLENT_INCLUDE_OVERRIDE) if (inc.test(desc)) { overridden = true; break; }
