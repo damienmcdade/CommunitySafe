@@ -9,7 +9,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "prisma:generate": "prisma generate",
+    "prisma:generate": "npx -y prisma@7.8.0 generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:db:push": "prisma db push --skip-generate",

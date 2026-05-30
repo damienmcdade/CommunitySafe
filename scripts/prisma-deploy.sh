@@ -1,65 +1,37 @@
 #!/usr/bin/env bash
-# v96 — Railway preDeployCommand wrapper. Replaces `prisma db push`
-# (destructive on schema drift) with the safer `prisma migrate deploy`
-# flow, plus a one-time baseline-resolve step for the existing
-# database.
+# Railway preDeployCommand wrapper — `prisma migrate deploy` with a one-time
+# baseline-resolve for the existing (db-push-era) database.
 #
-# How baselining works:
-#   * The production Neon database was populated via `db push` for
-#     ~95 versions before migrations existed. The first migrate-deploy
-#     run against it would fail because the `_prisma_migrations`
-#     table is empty but the schema is fully populated.
-#   * We therefore mark the initial migration (`0_init`) as already
-#     applied. The `|| true` swallows the expected error on every
-#     subsequent deploy when the migration is already resolved —
-#     it's safe because Prisma exits non-zero in exactly that case.
-#   * After the baseline is in place, future migrations are added
-#     via `prisma migrate dev` locally and applied on deploy via
-#     `migrate deploy`.
+# v100 (Prisma 7 cutover): two changes from the v6 script —
+#   1. Run from packages/db, NOT the repo root. In v7 the connection URL and
+#      schema path live in prisma.config.ts (the schema's datasource block no
+#      longer carries `url`). The config uses RELATIVE paths ("prisma/schema.
+#      prisma"), and the v7 CLI auto-loads prisma.config.ts from the current
+#      directory — so prisma must run from packages/db. We therefore drop the
+#      `--schema` flag and let the config supply both schema + datasource url.
+#   2. Pin `prisma@7.8.0` via npx so the CLI version can't be a stale v6 binary
+#      served from a build-cache layer (the symptom that blocked the first two
+#      cutover attempts — Railway generated a v6.19.3 client).
 #
-# What this script does NOT handle: the very first deploy after
-# committing the migration baseline. That deploy needs the operator
-# to set `MIGRATIONS_BASELINED=1` as a Railway env var on the FIRST
-# run only (so `migrate resolve` runs), then the env var stays set
-# (so subsequent runs see it but the `|| true` swallows the
-# "already applied" error). Or alternatively, ssh into the Railway
-# shell once and run `npx prisma migrate resolve --applied 0_init`
-# manually, then this script does the right thing on every deploy
-# without the env var.
+# Baselining: the production Neon DB was populated via `db push` for ~95
+# versions before migrations existed, so its _prisma_migrations table is empty
+# while the schema is fully populated. We mark 0_init applied once; the `|| true`
+# swallows the expected "already recorded as applied" error on every later deploy.
+# The v7 migration changes NO database schema (it is a client-generation change
+# only), so `migrate deploy` is a no-op here — it just validates connectivity.
 
 set -e
 
 cd "$(dirname "$0")/.." || exit 1
+cd packages/db || exit 1   # where prisma.config.ts + its relative paths resolve
 
-# Step 1: baseline-resolve the initial migration. Safe to call every
-# deploy: Prisma exits 1 with "already recorded as applied" when
-# 0_init is already in _prisma_migrations, which we swallow.
-# v96p2 — the Prisma CLI prints "Error: P3008 ... migration already
-# applied" to stderr on every subsequent deploy, which the deploy-log
-# scan flagged as noise. Capture both streams, filter out the
-# expected P3008 lines (and the supporting "Datasource" / "schema
-# loaded" boilerplate that the CLI emits alongside), and re-emit the
-# rest so real failures still surface. The exit-code `|| true` is
-# unchanged.
+PRISMA="npx -y prisma@7.8.0"
+
 echo "[prisma-deploy] resolving baseline (0_init)..."
 {
-  npx prisma migrate resolve \
-    --applied 0_init \
-    --schema packages/db/prisma/schema.prisma 2>&1 || true
-# v96p2 — grep pattern tightened: anchor the migration-name line so
-# `.*` only matches a migration identifier (alphanumeric + underscore
-# + hyphen + dot, no spaces), not the entire remainder. This is
-# defense in depth — if Prisma ever changes its message format to
-# embed user data or a different error type that happens to include
-# the phrase "is already recorded as applied", the tight pattern is
-# more likely to mismatch and surface the line instead of swallowing
-# it. Real-world Prisma output empirically ends with the exact
-# "<migration_name> is already recorded as applied" form.
-} | grep -Ev '^(Error: P3008|Prisma schema loaded|Datasource "db"|The migration [A-Za-z0-9._-]+ is already recorded as applied|$)' \
+  $PRISMA migrate resolve --applied 0_init 2>&1 || true
+} | grep -Ev '^(Error: P3008|Prisma schema loaded|Prisma config|Loaded Prisma config|Datasource "db"|The migration [A-Za-z0-9._-]+ is already recorded as applied|$)' \
   || echo "[prisma-deploy] baseline already resolved (expected on subsequent deploys)"
 
-# Step 2: apply any new migrations. No-op on a baselined DB with no
-# new migrations; runs the new SQL on subsequent deploys.
 echo "[prisma-deploy] applying pending migrations..."
-npx prisma migrate deploy \
-  --schema packages/db/prisma/schema.prisma
+$PRISMA migrate deploy
