@@ -13,13 +13,45 @@
 //     are scoped strictly to the owning user and their trusted contacts.
 // =============================================================================
 
-generator client {
-  provider = "prisma-client-js"
+// Prisma 7 — the `prisma-client-js` generator is gone; the new `prisma-client`
+// generator emits TypeScript into an explicit `output` dir (no more
+// node_modules/.prisma magic). This monorepo has three independent consumers
+// with their own build roots, so we emit one client per consumer rather than
+// share a single one across the ESM/CJS boundary. `moduleFormat` controls
+// __dirname (cjs) vs import.meta.url (esm) for locating the JS query compiler.
+//   - db  : ESM package, consumes its own client in src/index.ts + seed
+//   - api : ESM package (type:module, tsc → ESM), relative imports
+//   - web : CJS package built by Next (bundles), uses the @/ path alias
+// crime-data is intentionally NOT a consumer — it only ever needed the
+// CrimeCategory enum, which is now a local const (packages/crime-data is
+// decoupled from Prisma entirely).
+generator db_client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+  runtime      = "nodejs"
 }
 
+generator api_client {
+  provider     = "prisma-client"
+  output       = "../../../apps/api/src/generated/prisma"
+  moduleFormat = "esm"
+  runtime      = "nodejs"
+}
+
+generator web_client {
+  provider     = "prisma-client"
+  output       = "../../../apps/web/src/generated/prisma"
+  moduleFormat = "cjs"
+  runtime      = "nodejs"
+}
+
+// Prisma 7 no longer allows `url` in the datasource block — the connection
+// string moves to prisma.config.ts (used by Migrate/CLI) and the runtime
+// connection is supplied via the @prisma/adapter-pg driver adapter passed to
+// each `new PrismaClient({ adapter })`.
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // -----------------------------------------------------------------------------

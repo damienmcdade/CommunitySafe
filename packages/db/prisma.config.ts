@@ -14,7 +14,7 @@
 // .env file, we restore the auto-load by importing dotenv at the top
 // of this config — that's invoked before the CLI reads the schema.
 import { config as loadEnv } from "dotenv";
-import { defineConfig } from "prisma/config";
+import { defineConfig, env } from "prisma/config";
 
 loadEnv({ path: ".env" });
 loadEnv({ path: "../../.env" }); // monorepo root .env fallback
@@ -22,6 +22,12 @@ loadEnv({ path: "../../.env" }); // monorepo root .env fallback
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
+    path: "prisma/migrations",
     seed: "tsx prisma/seed.ts",
   },
+  // v7 — the connection URL is no longer allowed in schema.prisma's datasource
+  // block; the CLI (Migrate / db push / studio) reads it from here instead.
+  // Runtime PrismaClient connections use the @prisma/adapter-pg driver adapter,
+  // not this value.
+  datasource: { url: env("DATABASE_URL") },
 });
