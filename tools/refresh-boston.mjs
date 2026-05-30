@@ -38,7 +38,7 @@ console.log(`Downloading Boston CSV …`);
 const start = Date.now();
 const res = await fetch(CSV_URL, {
   redirect: "follow",
-  headers: { "User-Agent": "TravelSafe-refresh/1.0 (https://github.com/damienmcdade/TravelSafe)" },
+  headers: { "User-Agent": "CommunitySafe-refresh/1.0 (https://github.com/damienmcdade/TravelSafe)" },
 });
 if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
 await pipeline(Readable.fromWeb(res.body), createWriteStream(TMP_CSV));

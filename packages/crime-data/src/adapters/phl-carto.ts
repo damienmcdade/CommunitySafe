@@ -140,7 +140,7 @@ const PROVENANCE: DataProvenance = {
   disclaimer:
     "Incidents are reported by the Philadelphia Police Department and " +
     "geocoded to one of 158 OpenDataPhilly neighborhoods — not live, not " +
-    "street-level. TravelSafe does not track individuals.",
+    "street-level. CommunitySafe does not track individuals.",
 };
 
 async function fetchPhl(): Promise<Incident[]> {
@@ -156,7 +156,7 @@ async function fetchPhl(): Promise<Incident[]> {
     headers: {
       Accept: "application/json",
       "Content-Type": "application/x-www-form-urlencoded",
-      "User-Agent": "Mozilla/5.0 TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)",
+      "User-Agent": "Mozilla/5.0 CommunitySafe/0.1 (https://github.com/damienmcdade/TravelSafe)",
     },
     body: formBody,
   });

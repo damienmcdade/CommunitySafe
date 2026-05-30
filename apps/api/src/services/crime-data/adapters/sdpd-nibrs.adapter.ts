@@ -35,7 +35,7 @@ const PROVENANCE: DataProvenance = {
   granularity: "neighborhood",
   disclaimer:
     "Incidents are reported by the San Diego Police Department and aggregated to " +
-    "neighborhood/beat — not live, not street-level. TravelSafe does not track individuals.",
+    "neighborhood/beat — not live, not street-level. CommunitySafe does not track individuals.",
 };
 
 // Self-calibrating quintile risk bands, kept self-contained here to match

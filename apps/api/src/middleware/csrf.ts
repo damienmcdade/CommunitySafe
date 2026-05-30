@@ -25,7 +25,7 @@ import type { Request, Response, NextFunction } from "express";
 //     a negligible share of US traffic and the rate-limit + auth
 //     check still apply.
 //
-// Mobile clients: TravelSafe has no native app yet. If one ships,
+// Mobile clients: CommunitySafe has no native app yet. If one ships,
 // it should send Sec-Fetch-Site: none (its own request, not from a
 // hostile page) which passes the guard. No retrofit needed.
 

@@ -1,4 +1,4 @@
-# TravelSafe — Incidents and How We Prevent Them
+# CommunitySafe — Incidents and How We Prevent Them
 
 A running log of credibility-affecting bugs we've shipped, what caused
 them, and the invariants we added so they don't recur. Public-facing

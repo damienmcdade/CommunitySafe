@@ -80,7 +80,7 @@ async function fetchPage(offset: number): Promise<MplsRow[]> {
   url.searchParams.set("cacheHint", "true"); // v87 — Esri edge cache
   url.searchParams.set("f", "json");
   const res = await fetch(url, {
-    headers: { Accept: "application/json", "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
+    headers: { Accept: "application/json", "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
   });
   if (!res.ok) throw new Error(`Minneapolis ArcGIS ${res.status} offset=${offset}`);
   const body = await res.json() as { features?: Array<{ attributes: MplsRow }> };

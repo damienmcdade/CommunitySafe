@@ -154,7 +154,7 @@ function swrWrite<T>(path: string, data: T) {
     // We don't run a periodic GC — clearing on quota error is enough.
     window.localStorage.setItem(SWR_KEY_PREFIX + path, JSON.stringify({ fetchedAt: Date.now(), data }));
   } catch {
-    // QuotaExceededError: drop every TravelSafe SWR entry and try once more.
+    // QuotaExceededError: drop every CommunitySafe SWR entry and try once more.
     try {
       const toDelete: string[] = [];
       for (let i = 0; i < window.localStorage.length; i++) {

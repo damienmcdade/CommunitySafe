@@ -17,7 +17,7 @@ export default function SharePage() {
 
   return (
     <main className="max-w-md mx-auto px-6 py-16">
-      <h1 className="font-display text-3xl text-slate2-900">TravelSafe — shared location</h1>
+      <h1 className="font-display text-3xl text-slate2-900">CommunitySafe — shared location</h1>
       {error && <p className="mt-6 text-dusk-700">This link is no longer valid ({error}).</p>}
       {view && !error && (
         <section className="mt-6 surface p-6 text-sm text-slate2-700">

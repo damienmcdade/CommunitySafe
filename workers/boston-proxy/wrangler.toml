@@ -7,5 +7,5 @@ compatibility_flags = ["nodejs_compat"]
 #   https://travelsafe-boston-proxy.<your-cf-subdomain>.workers.dev
 #
 # Optional: bind a custom domain (e.g. boston-proxy.travelsafe.app) under
-# `routes` if you want a cleaner URL. Not required for TravelSafe — the
+# `routes` if you want a cleaner URL. Not required for CommunitySafe — the
 # default workers.dev URL works fine.

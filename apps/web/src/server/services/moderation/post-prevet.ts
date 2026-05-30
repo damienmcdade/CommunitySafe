@@ -42,7 +42,7 @@ export interface PreVetResult {
 const GUIDANCE = {
   short: `Posts must be at least ${POST_MIN_LEN} characters so they carry useful context.`,
   long: `Posts must be under ${POST_MAX_LEN} characters.`,
-  threat: "TravelSafe does not allow posts that threaten violence or call for retaliation. Describe what you saw, not what you would do.",
+  threat: "CommunitySafe does not allow posts that threaten violence or call for retaliation. Describe what you saw, not what you would do.",
   profanity: "Please rephrase without profanity or slurs.",
 } as const;
 

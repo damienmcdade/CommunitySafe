@@ -28,7 +28,7 @@ const PROVENANCE: DataProvenance = {
   granularity: "jurisdiction",
   disclaimer:
     "Crime-rate figures are jurisdiction-level annual aggregates published by SANDAG. " +
-    "TravelSafe does not track individuals or street-level incidents.",
+    "CommunitySafe does not track individuals or street-level incidents.",
 };
 
 // Static fallback bands (crime_rate per 1,000 population), the original

@@ -1,6 +1,6 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
-// Static-bundle iOS shell for TravelSafe. The web app builds to
+// Static-bundle iOS shell for CommunitySafe. The web app builds to
 // `out/` via `output: "export"` when MOBILE_BUILD=1 is set (see
 // next.config.ts), then `npx cap sync` copies it into the iOS
 // project's www/ directory.
@@ -11,7 +11,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
   appId: "app.communitysafe",
-  appName: "TravelSafe",
+  appName: "CommunitySafe",
   webDir: "out",
   // For initial bootstrap we point at the LIVE prod URL so the iOS
   // app renders the same React tree users see in browsers (full

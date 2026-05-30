@@ -117,7 +117,7 @@ const PROVENANCE: DataProvenance = {
   granularity: "neighborhood",
   disclaimer:
     "Incidents are reported by the Phoenix Police Department, aggregated to ZIP-level " +
-    "neighborhood groupings. Not live, not street-level. TravelSafe does not track individuals.",
+    "neighborhood groupings. Not live, not street-level. CommunitySafe does not track individuals.",
 };
 
 // Phoenix dates: "M/D/YYYY  H:MM:SSAM/PM" (note the double-space between

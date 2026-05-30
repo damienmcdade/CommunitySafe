@@ -10,7 +10,7 @@ officialAlertsRouter.get("/", async (_req, res, next) => {
       alerts: await getOfficialAlerts(),
       disclaimer:
         "These alerts come from official sources (currently the National Weather Service). " +
-        "They are independent of TravelSafe community posts.",
+        "They are independent of CommunitySafe community posts.",
     });
   } catch (err) {
     next(err);

@@ -101,7 +101,7 @@ const PROVENANCE: DataProvenance = {
     "neighborhood assigned by point-in-polygon geocoding against Colorado " +
     "Springs' 78 named neighborhood polygons. When a row lacks coordinates " +
     "we fall back to CSPD's patrol division (Sand Creek, Gold Hill, Stetson " +
-    "Hills, Falcon). Not live, not street-level. TravelSafe does not track " +
+    "Hills, Falcon). Not live, not street-level. CommunitySafe does not track " +
     "individuals.",
 };
 

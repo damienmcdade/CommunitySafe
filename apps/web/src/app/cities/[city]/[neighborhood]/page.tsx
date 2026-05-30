@@ -31,7 +31,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description: `Recent police-feed safety data for ${area.label} in ${city.label}, compared to the ${FBI_DATA_LABEL} national average. Updated hourly.`,
     alternates: { canonical: `/cities/${citySlug}/${areaSlug}` },
     openGraph: {
-      title: `${area.label}, ${city.label} · Safety overview · TravelSafe`,
+      title: `${area.label}, ${city.label} · Safety overview · CommunitySafe`,
       description: `${area.label}'s Safety Index, recent reports, and FBI national comparison — sourced from the official ${city.label} police open-data feed.`,
       type: "article",
     },
@@ -214,7 +214,7 @@ export default async function NeighborhoodLandingPage({ params }: Props) {
 
       <p className="surface-muted p-3 text-xs text-slate2-700 leading-snug" role="note">
         <strong className="text-slate2-900">How to read this:</strong>{" "}
-        TravelSafe summarizes publicly published police reports. Scores reflect historical reporting only — not
+        CommunitySafe summarizes publicly published police reports. Scores reflect historical reporting only — not
         predictions of future risk, and not a substitute for professional safety advice. Should not be used as the sole
         basis for housing, lending, insurance, or hiring decisions. See{" "}
         <Link href="/methodology" className="text-bay-700 hover:underline">/methodology</Link>{" "}

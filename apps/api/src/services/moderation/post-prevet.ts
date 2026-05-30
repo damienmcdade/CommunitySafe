@@ -77,7 +77,7 @@ const GUIDANCE = {
   appearance: "Describe behavior and location, not a person's appearance.",
   vague: "Describe the specific behavior you observed (e.g. 'trying door handles', 'taking packages') — 'suspicious' alone isn't enough to post.",
   threat: "Calls to confront or retaliate are not allowed. Rephrase to describe what you saw, not what you'd do.",
-  vigilante: "TravelSafe does not coordinate confronting, filming, or following individuals. Describe what you saw and report serious incidents to the police.",
+  vigilante: "CommunitySafe does not coordinate confronting, filming, or following individuals. Describe what you saw and report serious incidents to the police.",
   nameAccusation: "Please don't name an individual. Describe the behavior and location instead.",
 } as const;
 

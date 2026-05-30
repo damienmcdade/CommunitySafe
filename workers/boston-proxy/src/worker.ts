@@ -1,6 +1,6 @@
 // Cloudflare Worker that proxies Boston's CKAN datastore endpoint.
 //
-// Why this exists: data.boston.gov returns 0 records to TravelSafe's
+// Why this exists: data.boston.gov returns 0 records to CommunitySafe's
 // Vercel-hosted serverless functions for any limit ≥ 500, despite the same
 // requests succeeding in <1.5s from every dev machine. The block is at
 // Boston's CDN edge (almost certainly an ASN-level filter on Vercel's IPs);
@@ -15,7 +15,7 @@
 // Response is cached at the Cloudflare edge for 5 minutes, matching our
 // server-side adapter TTL, so steady-state traffic almost never hits CKAN.
 //
-// Free tier (100K req/day) is plenty — each TravelSafe request hits this
+// Free tier (100K req/day) is plenty — each CommunitySafe request hits this
 // at most twice per 5-minute cache window per region.
 
 interface Env {
@@ -71,7 +71,7 @@ export default {
       return jsonError(400, "missing_resource_id");
     }
 
-    // Cloudflare edge cache. Same TTL as the TravelSafe adapter's cache so
+    // Cloudflare edge cache. Same TTL as the CommunitySafe adapter's cache so
     // a fresh adapter pull always sees fresh upstream data within ≤ 5 min.
     const cache = caches.default;
     const cacheKey = new Request(upstream.toString(), { method: "GET" });
@@ -86,7 +86,7 @@ export default {
       headers: {
         Accept: "application/json",
         // Generic UA so CKAN treats us like any browser-side caller.
-        "User-Agent": "Mozilla/5.0 TravelSafe-Boston-Proxy/0.1",
+        "User-Agent": "Mozilla/5.0 CommunitySafe-Boston-Proxy/0.1",
       },
       // Cloudflare's fetch supports its own cache directives.
       cf: { cacheTtl: 300, cacheEverything: true },

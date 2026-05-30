@@ -126,7 +126,7 @@ const PROVENANCE: DataProvenance = {
   disclaimer:
     "Calls dispatched to the New Orleans Police Department, geocoded to one " +
     "of New Orleans' 73 named neighborhoods. Includes non-crime dispatches " +
-    "(welfare checks, business checks). TravelSafe does NOT read NOPD's " +
+    "(welfare checks, business checks). CommunitySafe does NOT read NOPD's " +
     "historical incident dataset (qtcu-97s9) because that dataset includes " +
     "offender/victim demographic columns we never display.",
 };

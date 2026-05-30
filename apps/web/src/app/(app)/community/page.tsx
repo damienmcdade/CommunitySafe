@@ -40,10 +40,10 @@ const KIND_TONE: Record<PostListItem["kind"], string> = {
 
 export default function CommunityPage() {
   const { city } = useCity();
-  // Globally-shared neighborhood selection — keeps TravelSafe in lockstep
+  // Globally-shared neighborhood selection — keeps CommunitySafe in lockstep
   // with Awareness, SafeZone, Trend Feed, Personal Safety, etc.
   const { area, setArea } = useArea(city.slug);
-  useDocumentTitle(`TravelSafe · ${area?.label ?? city.label}`);
+  useDocumentTitle(`CommunitySafe · ${area?.label ?? city.label}`);
 
   // P0 INCIDENT (2026-05-22) class of bug: never substitute `city.defaultArea`
   // for the area slug. For several cities (san-diego, cin-downtown, lv-
@@ -102,7 +102,7 @@ export default function CommunityPage() {
     <main className="space-y-5">
       <header className="page-hero flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-[0.18em] text-coral-700 font-medium">TravelSafe</p>
+          <p className="text-xs uppercase tracking-[0.18em] text-coral-700 font-medium">CommunitySafe</p>
           <h1 className="mt-1 font-display text-3xl sm:text-4xl text-slate2-900">
             Verified neighbor reports, side-by-side with the data
           </h1>
@@ -116,7 +116,7 @@ export default function CommunityPage() {
 
       <aside role="note" className="surface-muted px-4 py-3 text-xs text-slate2-700 leading-snug">
         Posts here are user-submitted observations, not professional safety advice and not a substitute for 911.
-        Reports are area-level; TravelSafe never identifies, tracks, or geolocates individual people.
+        Reports are area-level; CommunitySafe never identifies, tracks, or geolocates individual people.
         In an emergency, call 911.
       </aside>
 
@@ -147,12 +147,12 @@ export default function CommunityPage() {
             {(posts ?? []).map((p) => <PostCard key={p.id} post={p} />)}
             {/* v64 — global fallback when the current area/city has no
                 posts. Header makes clear these are from across
-                TravelSafe, not the user's selected area, so they
+                CommunitySafe, not the user's selected area, so they
                 aren't mistaken for local activity. */}
             {globalEmpty && (globalPosts ?? []).length > 0 && (
               <section className="space-y-2 mt-4">
                 <header className="flex items-baseline justify-between">
-                  <h3 className="font-display text-sm text-slate2-900">Recent posts from across TravelSafe</h3>
+                  <h3 className="font-display text-sm text-slate2-900">Recent posts from across CommunitySafe</h3>
                   <span className="text-xs text-slate2-500">{(globalPosts ?? []).length} shown</span>
                 </header>
                 <p className="text-xs text-slate2-500">

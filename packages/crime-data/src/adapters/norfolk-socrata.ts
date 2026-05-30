@@ -99,7 +99,7 @@ const PROVENANCE: DataProvenance = {
     "to one of ~50 named Norfolk neighborhoods (the city's published " +
     "Civic League boundaries). Block-level addresses only; per-incident " +
     "lat/lng is not published — discovery uses the city centroid as a " +
-    "placeholder. TravelSafe does not request demographic columns.",
+    "placeholder. CommunitySafe does not request demographic columns.",
 };
 
 function safeIso(raw: string | null | undefined): string | null {

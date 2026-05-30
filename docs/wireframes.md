@@ -1,4 +1,4 @@
-# TravelSafe Wireframes — Post-IA-v3
+# CommunitySafe Wireframes — Post-IA-v3
 
 ASCII wireframes for the 4 primary destinations + drawer routes at
 desktop (1280px) and mobile (375px) breakpoints. Reflects the IA
@@ -210,7 +210,7 @@ Legend:
 +----------------------------------------------------------------------+
 |  TabNav: [Now]  [Plan]  [Act*]  [Map]                       [⋯ More] |
 +----------------------------------------------------------------------+
-| Sub-tabs:  [Personal Safety*]  [TravelSafe]                       |
+| Sub-tabs:  [Personal Safety*]  [CommunitySafe]                       |
 +----------------------------------------------------------------------+
 | (Personal Safety tab renders SafetyPage:)                            |
 | +----------------------------------+  +---------------------------+  |

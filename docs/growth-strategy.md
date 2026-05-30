@@ -1,4 +1,4 @@
-# TravelSafe Growth & Retention Strategy
+# CommunitySafe Growth & Retention Strategy
 
 Working strategy for acquisition, activation, retention, and referral.
 Reflects the product as of the IA v3 redesign (commits `0d6a13d` +
@@ -38,7 +38,7 @@ intentionally underserves them — that's a feature, not a bug.
 
 ### Social
 
-- **Twitter/X** — a `@TravelSafeApp` account that posts non-alarming
+- **Twitter/X** — a `@CommunitySafeApp` account that posts non-alarming
   weekly summaries: "5 quietest neighborhoods in Chicago this week"
   rather than "shooting reported in X". The calm tone IS the
   differentiator from Citizen — lean into it.
@@ -46,7 +46,7 @@ intentionally underserves them — that's a feature, not a bug.
   neighborhoods we like" videos. Travel-creator partnerships are a
   natural fit; no paid endorsements, just data they can cite.
 - **Reddit** — answer questions in r/travel, r/SanFrancisco, etc.
-  with cited TravelSafe data + the methodology link. Earned, not
+  with cited CommunitySafe data + the methodology link. Earned, not
   spammy.
 
 ### Partnerships
@@ -130,7 +130,7 @@ The current /now landing accomplishes most of this — improvements:
 - **Trusted-contact invite flow** — the Personal Safety tab's
   trusted contacts already require email confirmation; this could
   double as a soft referral channel ("Trusted contacts: [accept]
-  [or set up your own TravelSafe]").
+  [or set up your own CommunitySafe]").
 - **No financial incentive program** — no "refer a friend, get $5"
   schemes. They erode trust in a safety product.
 

@@ -1,4 +1,4 @@
-/* TravelSafe service worker — handles incoming Web Push notifications.
+/* CommunitySafe service worker — handles incoming Web Push notifications.
  * Intentionally minimal: shows a single notification per push, with the
  * notification body as-supplied by the server (server-side rate limiting
  * and digest policy live in apps/api). */
@@ -16,9 +16,9 @@ self.addEventListener("push", (event) => {
   try {
     payload = event.data ? event.data.json() : {};
   } catch {
-    payload = { title: "TravelSafe", body: event.data ? event.data.text() : "" };
+    payload = { title: "CommunitySafe", body: event.data ? event.data.text() : "" };
   }
-  const title = payload.title || "TravelSafe";
+  const title = payload.title || "CommunitySafe";
   const options = {
     body: payload.body || "",
     tag: payload.tag || "travelsafe",

@@ -124,7 +124,7 @@ const PROVENANCE: DataProvenance = {
   disclaimer:
     "Incidents are reported by the DC Metropolitan Police Department, with neighborhood " +
     "assigned by point-in-polygon geocoding against DC's official Health Planning " +
-    "Neighborhood polygons. Not live, not street-level. TravelSafe does not track individuals.",
+    "Neighborhood polygons. Not live, not street-level. CommunitySafe does not track individuals.",
 };
 
 async function fetchPage(layer: number, offset: number): Promise<DcRow[]> {
@@ -138,7 +138,7 @@ async function fetchPage(layer: number, offset: number): Promise<DcRow[]> {
   url.searchParams.set("cacheHint", "true"); // v87 — Esri edge cache
   url.searchParams.set("f", "json");
   const res = await fetch(url, {
-    headers: { Accept: "application/json", "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
+    headers: { Accept: "application/json", "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
   });
   if (!res.ok) throw new Error(`DC ArcGIS layer=${layer} ${res.status} offset=${offset}`);
   const body = await res.json() as { features?: Array<{ attributes: DcRow }> };

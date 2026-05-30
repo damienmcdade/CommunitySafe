@@ -92,7 +92,7 @@ not there, either fix the service OR convert the column to citext.
 ### 8. `PushSubscription.endpoint` storage size — **low**
 
 `endpoint` is `String` (default 1GB Postgres TEXT). FCM/APNs endpoint
-URLs are typically <1KB. Not a real problem at TravelSafe's scale, but
+URLs are typically <1KB. Not a real problem at CommunitySafe's scale, but
 a `@db.VarChar(2048)` would document the expected upper bound and let
 the planner make better stats decisions.
 

@@ -4,7 +4,7 @@
 ///   - "Simple Assault" sounds dismissive of the victim's experience —
 ///     every assault is serious. NIBRS uses "simple" only as a
 ///     technical contrast to "aggravated" (no weapon, no serious
-///     bodily injury). The TravelSafe UI says "Non-Aggravated
+///     bodily injury). The CommunitySafe UI says "Non-Aggravated
 ///     Assault" instead.
 ///   - "All Other Offenses" is the FBI's NIBRS 90Z catch-all bucket.
 ///     The string tells the user nothing about what's actually inside.

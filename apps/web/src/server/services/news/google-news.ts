@@ -137,7 +137,7 @@ export async function getNews(query: string = DEFAULT_QUERY, windowDays: number 
     url.searchParams.set("ceid", "US:en");
     const res = await fetch(url, {
       headers: {
-        "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)",
+        "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/TravelSafe)",
         Accept: "application/rss+xml, application/xml, text/xml",
       },
     });

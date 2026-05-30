@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "About",
   description:
-    "Who builds TravelSafe, what it is and isn't, how it's funded, and how to reach the operator.",
+    "Who builds CommunitySafe, what it is and isn't, how it's funded, and how to reach the operator.",
 };
 
 const LAST_UPDATED = "2026-05-27";
@@ -14,14 +14,14 @@ export default function AboutPage() {
     <main className="max-w-3xl mx-auto px-4 py-10 space-y-6">
       <header>
         <p className="text-xs uppercase tracking-[0.18em] text-bay-700 font-medium">About</p>
-        <h1 className="mt-1 font-display text-3xl text-slate2-900">About TravelSafe</h1>
+        <h1 className="mt-1 font-display text-3xl text-slate2-900">About CommunitySafe</h1>
         <p className="mt-2 text-xs text-slate2-500">Last updated: {LAST_UPDATED}</p>
       </header>
 
       <section className="surface p-6 space-y-3 text-sm text-slate2-700 leading-relaxed">
-        <h2 className="font-display text-xl text-slate2-900">What TravelSafe is</h2>
+        <h2 className="font-display text-xl text-slate2-900">What CommunitySafe is</h2>
         <p>
-          TravelSafe is an independent neighborhood-safety information site for 37
+          CommunitySafe is an independent neighborhood-safety information site for 37
           US cities. It takes police-department open-data feeds and FBI Uniform
           Crime Reporting figures &mdash; both already public &mdash; and turns
           them into a single 0&ndash;100 Safety Index per neighborhood, plus
@@ -35,7 +35,7 @@ export default function AboutPage() {
       </section>
 
       <section className="surface p-6 space-y-3 text-sm text-slate2-700 leading-relaxed">
-        <h2 className="font-display text-xl text-slate2-900">What TravelSafe is not</h2>
+        <h2 className="font-display text-xl text-slate2-900">What CommunitySafe is not</h2>
         <ul className="list-disc pl-5 space-y-1">
           <li>Not an emergency service. Call 911 for an emergency.</li>
           <li>
@@ -58,7 +58,7 @@ export default function AboutPage() {
       <section className="surface p-6 space-y-3 text-sm text-slate2-700 leading-relaxed">
         <h2 className="font-display text-xl text-slate2-900">Who builds it</h2>
         <p>
-          TravelSafe is independently operated. The codebase, methodology, and
+          CommunitySafe is independently operated. The codebase, methodology, and
           adapter list are public on{" "}
           <a
             href="https://github.com/damienmcdade/TravelSafe"
@@ -77,7 +77,7 @@ export default function AboutPage() {
       <section className="surface p-6 space-y-3 text-sm text-slate2-700 leading-relaxed" id="founder">
         <h2 className="font-display text-xl text-slate2-900">Founder</h2>
         <p>
-          TravelSafe&rsquo;s founder is a{" "}
+          CommunitySafe&rsquo;s founder is a{" "}
           <strong>U.S. Army Veteran</strong>. The product was shaped around
           what actually keeps people safer at the neighborhood level: honest
           open data, moderated community input, and personal-safety tools
@@ -90,7 +90,7 @@ export default function AboutPage() {
       <section className="surface p-6 space-y-3 text-sm text-slate2-700 leading-relaxed">
         <h2 className="font-display text-xl text-slate2-900">How it&rsquo;s funded</h2>
         <p>
-          TravelSafe is free to browse without an account. Optional Personal
+          CommunitySafe is free to browse without an account. Optional Personal
           Safety features (Check-In timer, Live Share, Trusted Contacts) also
           carry no fee. Operating costs (cloud hosting, AI provider, push
           delivery) are covered by the operator. If contextual advertising is
@@ -109,7 +109,7 @@ export default function AboutPage() {
           <li>
             Email:{" "}
             <a
-              href="mailto:info@cyberwaveglobal.com?subject=TravelSafe%20inquiry"
+              href="mailto:info@cyberwaveglobal.com?subject=CommunitySafe%20inquiry"
               className="text-bay-700 underline"
             >
               info@cyberwaveglobal.com

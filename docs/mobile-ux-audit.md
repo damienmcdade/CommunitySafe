@@ -1,6 +1,6 @@
 # Mobile UX Audit (375px viewport)
 
-Static review of TravelSafe's major surfaces for common mobile pitfalls.
+Static review of CommunitySafe's major surfaces for common mobile pitfalls.
 Findings ordered by severity. Each finding cites the file + the specific
 class / pattern responsible, and suggests the fix.
 

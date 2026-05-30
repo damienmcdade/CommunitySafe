@@ -1,6 +1,6 @@
 import type { Config } from "tailwindcss";
 
-// TravelSafe design system — calm-but-alive, with a richer 2026 palette.
+// CommunitySafe design system — calm-but-alive, with a richer 2026 palette.
 // Anti-pattern guardrails still apply (no red-as-default, no alarmist red),
 // but colors are pushed saturation-wise so the UI feels active and modern.
 // Adds an indigo accent for a third color voice (used for callouts, sparingly).

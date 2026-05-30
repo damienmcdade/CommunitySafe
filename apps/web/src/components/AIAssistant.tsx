@@ -10,7 +10,7 @@ interface Message {
 const STORAGE_KEY = "travelsafe.assistant.v1";
 const INTRO: Message = {
   role: "assistant",
-  content: "Hi — I can answer questions about the US cities and counties TravelSafe tracks, their neighborhoods, and how they compare to the FBI national averages. Try \"what's the safest neighborhood in San Diego?\" or \"how does Chicago compare to Boston?\"",
+  content: "Hi — I can answer questions about the US cities and counties CommunitySafe tracks, their neighborhoods, and how they compare to the FBI national averages. Try \"what's the safest neighborhood in San Diego?\" or \"how does Chicago compare to Boston?\"",
 };
 
 /// Floating AI safety guide. Bottom-right pill on every app tab; click to
@@ -108,7 +108,7 @@ export function AIAssistant() {
   const QUICK_PROMPTS = [
     "What's the safest neighborhood in San Diego?",
     "How does Chicago compare to the national average?",
-    "Which cities does TravelSafe support?",
+    "Which cities does CommunitySafe support?",
   ];
 
   async function send(promptOverride?: string) {
@@ -187,13 +187,13 @@ export function AIAssistant() {
       <button
         ref={launcherRef}
         onClick={() => setOpen((o) => !o)}
-        aria-label={open ? "Close TravelSafe assistant" : "Open TravelSafe assistant"}
+        aria-label={open ? "Close CommunitySafe assistant" : "Open CommunitySafe assistant"}
         aria-expanded={open}
         aria-controls="travelsafe-assistant-panel"
         className="fixed bottom-5 right-5 z-[1500] flex items-center gap-2 px-4 py-2.5 rounded-full bg-slate2-900 text-white shadow-card-lift hover:shadow-glow-bay hover:-translate-y-0.5 active:scale-[0.97] transition-all"
       >
         <span className="inline-block w-1.5 h-1.5 rounded-full bg-bay-400 animate-pulse" />
-        <span className="text-sm font-medium">{open ? "Close" : "Ask TravelSafe"}</span>
+        <span className="text-sm font-medium">{open ? "Close" : "Ask CommunitySafe"}</span>
       </button>
 
       {open && (
@@ -205,7 +205,7 @@ export function AIAssistant() {
               click-to-close target. */}
           <button
             type="button"
-            aria-label="Close TravelSafe assistant"
+            aria-label="Close CommunitySafe assistant"
             onClick={() => setOpen(false)}
             className="fixed inset-0 z-[1499] bg-slate2-900/30 backdrop-blur-sm animate-fade-in"
           />
@@ -213,7 +213,7 @@ export function AIAssistant() {
             ref={panelRef}
             id="travelsafe-assistant-panel"
             role="dialog"
-            aria-label="TravelSafe assistant"
+            aria-label="CommunitySafe assistant"
             aria-modal="true"
             onKeyDown={onPanelKeyDown}
             // Centered modal: fixed positioning with translate-50/50
@@ -223,7 +223,7 @@ export function AIAssistant() {
           >
           <header className="flex items-center justify-between gap-2 px-4 py-3 border-b border-sand-200">
             <div>
-              <h2 className="font-display text-sm text-slate2-900">TravelSafe assistant</h2>
+              <h2 className="font-display text-sm text-slate2-900">CommunitySafe assistant</h2>
               <p className="text-[11px] uppercase tracking-wider text-slate2-500">Official data only · no personal advice</p>
             </div>
             <button

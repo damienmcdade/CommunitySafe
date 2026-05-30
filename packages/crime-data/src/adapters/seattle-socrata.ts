@@ -49,7 +49,7 @@ const PROVENANCE: DataProvenance = {
   disclaimer:
     "Incidents are reported by the Seattle Police Department and aggregated " +
     "to SPD's neighborhood reporting areas — not live, not street-level. " +
-    "TravelSafe does not track individuals.",
+    "CommunitySafe does not track individuals.",
 };
 
 function titleCase(s: string): string {

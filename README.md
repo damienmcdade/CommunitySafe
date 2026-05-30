@@ -1,4 +1,4 @@
-# TravelSafe
+# CommunitySafe
 
 # SafeZone Engine: Location-Risk Analytics & Modular UI
 
@@ -60,7 +60,7 @@ Built natively in **React Native (Expo)** and decoupled via an **API-first backe
 1. **Clone the repository:**
    ```bash
    git clone https://github.com/damienmcdade/TravelSafe.git
-   cd TravelSafe
+   cd CommunitySafe
    ```
 
 2. **Configure environment variables:**
@@ -156,7 +156,7 @@ pre-vetter, registry link-out component) and in review.
 ## Architecture
 
 ```
-TravelSafe/                 # npm workspaces monorepo
+CommunitySafe/                 # npm workspaces monorepo
 ├── apps/
 │   ├── web/                # Next.js (App Router) + Tailwind   → deploys to Vercel
 │   └── api/                # Express + JWT + Prisma client     → deploys to Railway
@@ -194,7 +194,7 @@ via the service worker in `apps/web/public/sw.js`.
 
 ```bash
 git clone git@github.com:damienmcdade/TravelSafe.git
-cd TravelSafe
+cd CommunitySafe
 cp .env.example .env             # fill in values
 npm install
 docker run --name travelsafe-pg -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres:16
@@ -250,7 +250,7 @@ npm run lint         # lint every workspace
 
 ```bash
 git add .
-git commit -m "Initial TravelSafe scaffold"
+git commit -m "Initial CommunitySafe scaffold"
 git push -u origin main
 ```
 
@@ -283,9 +283,9 @@ See [`.env.example`](./.env.example) for the full annotated list. Highlights:
 | Register / login | `/register`, `/login` | `POST /auth/register`, `POST /auth/login` — only needed for posting / trusted contacts / check-in timer |
 | Awareness (citywide by default) | `/threats` | `GET /crime-data/citywide`, `GET /crime-data/insights?…`, location search via `GET /geo/lookup`, geo opt-in |
 | Crime Map | `/map` | Leaflet + OpenStreetMap, circle markers per neighborhood sized by incident volume + calm color bands |
-| Official alerts sidebar | (on TravelSafe + Neighborhood Watch) | `GET /official-alerts` — currently National Weather Service; SDPD press releases and CHP TODO |
-| Live community pulse | (on TravelSafe) | `GET /community/stream` (SSE) — new VERIFIED posts insert in real time |
-| AI compose coach | (in TravelSafe composer) | `POST /ai/compose-feedback` streams from `anthropic/claude-haiku-4-5` via Vercel AI Gateway; falls back silently when `AI_GATEWAY_API_KEY` is unset |
+| Official alerts sidebar | (on CommunitySafe + Neighborhood Watch) | `GET /official-alerts` — currently National Weather Service; SDPD press releases and CHP TODO |
+| Live community pulse | (on CommunitySafe) | `GET /community/stream` (SSE) — new VERIFIED posts insert in real time |
+| AI compose coach | (in CommunitySafe composer) | `POST /ai/compose-feedback` streams from `anthropic/claude-haiku-4-5` via Vercel AI Gateway; falls back silently when `AI_GATEWAY_API_KEY` is unset |
 | Onboarding — alert categories | `/onboarding/alert-preferences` | `PUT /preferences/alerts` |
 | Onboarding — trusted contacts | `/onboarding/trusted-contacts` | `POST /contacts`, `GET /contacts` (max 5) |
 | Threat Detection | `/threats` | `GET /crime-data/alerts?neighborhood=…` + push when entering higher-incident area |
@@ -295,7 +295,7 @@ See [`.env.example`](./.env.example) for the full annotated list. Highlights:
 | &nbsp;&nbsp;↳ Live share | | `POST /safety/live-share`, `GET /share/:token` (web), `DELETE /safety/live-share/:id` |
 | &nbsp;&nbsp;↳ Safe route | | `POST /safety/safe-route` (area-risk flagged, area-level only) |
 | Trusted contact opt-in | `/contacts/confirm/:token` | `POST /contacts/:id/confirm`, `POST /contacts/:id/resend` |
-| TravelSafe — City Scanner | `/community` | `GET /crime-data/area-stats?jurisdiction=…`, `GET /community/posts` |
+| CommunitySafe — City Scanner | `/community` | `GET /crime-data/area-stats?jurisdiction=…`, `GET /community/posts` |
 | Official registry link-out | `/community` (panel) | static link, never re-displays individuals |
 | Submit warning | `/community` (modal) | `POST /community/posts` → pre-vetter → verification queue |
 | Report / block / mute | `/community` | `POST /moderation/reports`, `POST /moderation/block`, `POST /moderation/mute` |

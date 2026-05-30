@@ -11,7 +11,7 @@ import type { NextConfig } from "next";
 //     content-sniffing a response into an unexpected MIME type
 //     (the classic XSS path on image upload endpoints).
 //   X-Frame-Options: DENY. Defeats clickjacking — nothing embeds
-//     TravelSafe in an iframe, including ourselves.
+//     CommunitySafe in an iframe, including ourselves.
 //   Referrer-Policy: strict-origin-when-cross-origin. Modern
 //     default — sends only the origin to third parties, full URL
 //     to same-origin.

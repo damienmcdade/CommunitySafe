@@ -122,7 +122,7 @@ const PROVENANCE: DataProvenance = {
   granularity: "neighborhood",
   disclaimer:
     "These are Cleveland Division of Police Part-1 Crime Incident records — the " +
-    "same FBI NIBRS-classified reports CDP submits to UCR. TravelSafe aggregates " +
+    "same FBI NIBRS-classified reports CDP submits to UCR. CommunitySafe aggregates " +
     "by CDP's Statistical Planning Area (NEIGHBORHOOD field) and reports the violent " +
     "(Aggravated Assault / Robbery / Murder / Rape) and property (Burglary / Larceny " +
     "/ Motor Vehicle Theft / Arson) totals. Some incidents may be reclassified or " +
@@ -136,7 +136,7 @@ interface CleFeature {
 
 async function fetchPageOnce(url: URL): Promise<CleFeature[]> {
   const res = await fetch(url, {
-    headers: { Accept: "application/json", "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
+    headers: { Accept: "application/json", "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/TravelSafe)" },
   });
   if (!res.ok) throw new Error(`Cleveland ArcGIS ${res.status}`);
   const body = await res.json() as { features?: CleFeature[]; error?: { code?: number; message?: string } };

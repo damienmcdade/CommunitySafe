@@ -35,8 +35,8 @@ const CFS_CITIES: Record<string, number> = {
 const CITY_LIST_FOR_PROMPT = CITIES.map((c) => c.label).join(", ");
 
 const SYSTEM_PROMPT = `
-You are TravelSafe's AI safety guide. Your job: answer user questions about
-the ${CITIES.length} US cities TravelSafe supports, drawing ONLY on the live
+You are CommunitySafe's AI safety guide. Your job: answer user questions about
+the ${CITIES.length} US cities CommunitySafe supports, drawing ONLY on the live
 tools available to you. The tools wrap official city police open-data feeds
 (NIBRS or calls-for-service depending on the city) and the FBI's Crime in
 the Nation ${NATIONAL_YEAR} national averages.
@@ -66,7 +66,7 @@ RULES OF ENGAGEMENT
 TONE
 Calm, factual, neutral. Never alarmist, never reassuring in a way that
 hides risk. If a user asks something the tools don't cover (a city
-TravelSafe doesn't support, a question about a specific named person, a
+CommunitySafe doesn't support, a question about a specific named person, a
 question requiring web search), say plainly that you can't answer it
 from your sources and suggest what you CAN show them.
 
@@ -149,7 +149,7 @@ async function citySummary(slug: string) {
     source: provenance ? { label: provenance.source, url: provenance.datasetUrl } : null,
     methodology_url: METHODOLOGY_URL,
     cfs_calibration: CFS_CITIES[slug] ?? null,
-    note: "Counts are from the most recent cached window for the city's official feed. Cities differ in publication cadence; see TravelSafe's source notes per city.",
+    note: "Counts are from the most recent cached window for the city's official feed. Cities differ in publication cadence; see CommunitySafe's source notes per city.",
   };
 }
 
@@ -186,7 +186,7 @@ async function neighborhoodDetail(slug: string, area_query: string) {
     dominant_category: hit.dominantCategory,
     risk_level: hit.riskLevel,
     source: provenance ? { label: provenance.source, url: provenance.datasetUrl } : null,
-    note: "Risk level is a 1-5 bucket derived from incident count in the cached window — not a calendar-year rate. For the A-E Safety Index grade users see in the UI, call area_grade. TravelSafe categorizes by NIBRS group: PERSONS = violent (assault, robbery, etc.), PROPERTY = theft/burglary/etc., SOCIETY = drugs/weapons/order offenses.",
+    note: "Risk level is a 1-5 bucket derived from incident count in the cached window — not a calendar-year rate. For the A-E Safety Index grade users see in the UI, call area_grade. CommunitySafe categorizes by NIBRS group: PERSONS = violent (assault, robbery, etc.), PROPERTY = theft/burglary/etc., SOCIETY = drugs/weapons/order offenses.",
   };
 }
 
@@ -274,13 +274,13 @@ export async function streamAssistant(messages: Array<{ role: "user" | "assistan
   const tools = {
     list_supported_cities: tool({
       description:
-        `Return the ${CITIES.length} TravelSafe-supported cities with slugs, ${POPULATION_VINTAGE} population (US Census Bureau), data-source type (NIBRS vs calls-for-service), and CFS calibration factor where applicable. Call when the user asks "what cities do you support?" or hasn't named one yet.`,
+        `Return the ${CITIES.length} CommunitySafe-supported cities with slugs, ${POPULATION_VINTAGE} population (US Census Bureau), data-source type (NIBRS vs calls-for-service), and CFS calibration factor where applicable. Call when the user asks "what cities do you support?" or hasn't named one yet.`,
       inputSchema: z.object({}),
       execute: async () => listSupportedCities(),
     }),
     city_summary: tool({
       description:
-        "Return a citywide overview for a TravelSafe-supported city: total incidents in the recent window, top 10 neighborhoods by incident count, top 10 offenses citywide, and the per-category breakdown for each top area. Use this whenever the user asks about a city overall (e.g., 'how does Chicago compare', 'what's the busiest area in Seattle'). Returns a source URL — cite it.",
+        "Return a citywide overview for a CommunitySafe-supported city: total incidents in the recent window, top 10 neighborhoods by incident count, top 10 offenses citywide, and the per-category breakdown for each top area. Use this whenever the user asks about a city overall (e.g., 'how does Chicago compare', 'what's the busiest area in Seattle'). Returns a source URL — cite it.",
       inputSchema: z.object({
         city_slug: z.string().describe("One of: " + citySlugList().join(", ")),
       }),

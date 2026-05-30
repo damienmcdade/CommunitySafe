@@ -34,7 +34,7 @@ export const CITIES: CityInfo[] = [
   // Illinois — Chicago is the 4th live city.
   { slug: "chicago",       label: "Chicago",       state: "IL", stateLabel: "Illinois",   defaultArea: "chi-loop",      centroid: { lat: 41.88,  lng: -87.63  }, status: "live", source: "Chicago Crimes 2001-Present · data.cityofchicago.org" },
   // Coming-soon roadmap. These entries surface the destination cities in the
-  // state/city wheel (greyed-out) so users see where TravelSafe is heading.
+  // state/city wheel (greyed-out) so users see where CommunitySafe is heading.
   // When each adapter lands they flip to status: "live".
   { slug: "new-york",      label: "New York City", state: "NY", stateLabel: "New York",       defaultArea: "ny-1st-precinct", centroid: { lat: 40.71, lng: -74.01 }, status: "live",        source: "NYPD Complaint Data · data.cityofnewyork.us" },
   { slug: "seattle",       label: "Seattle",       state: "WA", stateLabel: "Washington",     defaultArea: "sea-downtown",   centroid: { lat: 47.61,  lng: -122.33 }, status: "live",        source: "SPD Crime Data · data.seattle.gov" },
@@ -89,7 +89,7 @@ export const CITIES: CityInfo[] = [
   { slug: "honolulu",      label: "Honolulu",      state: "HI", stateLabel: "Hawaii",         defaultArea: "honolulu",         centroid: { lat: 21.31, lng: -157.86 }, status: "live",        source: "HPD Crime Incidents · data.honolulu.gov (Socrata)" },
 ];
 
-/// All US states with at least one TravelSafe city, sorted alphabetically.
+/// All US states with at least one CommunitySafe city, sorted alphabetically.
 /// Computed from CITIES; do not edit by hand.
 export const STATES: Array<{ abbr: string; label: string; cities: number }> = (() => {
   const m = new Map<string, { label: string; cities: number }>();

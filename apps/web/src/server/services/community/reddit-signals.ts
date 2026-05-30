@@ -14,7 +14,7 @@ import { cityForArea } from "../crime-data/cities";
 // - We do NOT pull comments (just thread titles + a short excerpt) — keeps
 //   the risk of repeating personal attacks / doxxing / harassment lower.
 // - The user always sees a "via Reddit" attribution and clicks through to
-//   the original thread; we never present this as TravelSafe's own content.
+//   the original thread; we never present this as CommunitySafe's own content.
 // - NSFW / over-18 posts are filtered out by Reddit's own flag.
 
 const CITY_SUBREDDITS: Record<string, string> = {
@@ -100,7 +100,7 @@ export async function getCommunitySignals(areaSlug: string): Promise<{ source: s
       headers: {
         Accept: "application/json",
         // Reddit gets pickier about UAs over time; use a browser-shaped one.
-        "User-Agent": "Mozilla/5.0 (compatible; TravelSafe/0.1; +https://github.com/damienmcdade/TravelSafe)",
+        "User-Agent": "Mozilla/5.0 (compatible; CommunitySafe/0.1; +https://github.com/damienmcdade/TravelSafe)",
       },
     });
     if (!res.ok) throw new Error(`Reddit ${res.status}`);
@@ -136,7 +136,7 @@ export async function getCommunitySignals(areaSlug: string): Promise<{ source: s
       newsUrl.searchParams.set("hl", "en-US");
       newsUrl.searchParams.set("gl", "US");
       newsUrl.searchParams.set("ceid", "US:en");
-      const res = await fetch(newsUrl, { headers: { Accept: "application/rss+xml", "User-Agent": "TravelSafe/0.1" } });
+      const res = await fetch(newsUrl, { headers: { Accept: "application/rss+xml", "User-Agent": "CommunitySafe/0.1" } });
       if (res.ok) {
         const xml = await res.text();
         const items = xml.split(/<item>/i).slice(1, SIGNAL_LIMIT + 1);

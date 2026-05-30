@@ -53,7 +53,7 @@ export async function getOfficialAlerts(): Promise<OfficialAlert[]> {
     const res = await fetch("https://api.weather.gov/alerts/active?area=CA", {
       headers: {
         Accept: "application/geo+json",
-        "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)",
+        "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/TravelSafe)",
       },
       signal: AbortSignal.timeout(8_000),
     });

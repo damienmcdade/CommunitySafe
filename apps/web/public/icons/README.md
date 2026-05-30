@@ -1,4 +1,4 @@
-# TravelSafe — Icon System (v65)
+# CommunitySafe — Icon System (v65)
 
 ## Concept
 Guardian angel hovering above a modern city skyline. Glowing wings + halo
@@ -39,8 +39,8 @@ universal.
 
 ## Regenerating PNGs from the SVG
 ```bash
-SVG=/Users/damiengantt-mcdade/TravelSafe/apps/web/public/icons/icon.svg
-RES=/Users/damiengantt-mcdade/TravelSafe/apps/web/android/app/src/main/res
+SVG=/Users/damiengantt-mcdade/CommunitySafe/apps/web/public/icons/icon.svg
+RES=/Users/damiengantt-mcdade/CommunitySafe/apps/web/android/app/src/main/res
 
 # Web
 magick -background none -density 600 $SVG -resize 1024x1024 apps/web/public/icons/icon-1024.png

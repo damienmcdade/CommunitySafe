@@ -1,5 +1,5 @@
 // =============================================================================
-// TravelSafe Prisma schema
+// CommunitySafe Prisma schema
 //
 // HARD RULES (enforced by absence — do not add fields here):
 //   * NO demographic fields anywhere (ethnicity, gender, sexual orientation,
@@ -238,7 +238,7 @@ enum PostStatus {
   REJECTED      // never visible
 }
 
-/// TravelSafe post categories. These are intentionally original names —
+/// CommunitySafe post categories. These are intentionally original names —
 /// do not mirror Ring/Nextdoor/Citizen taxonomy.
 enum PostKind {
   HEADS_UP        // suspicious activity / something off

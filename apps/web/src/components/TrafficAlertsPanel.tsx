@@ -44,7 +44,7 @@ export function TrafficAlertsPanel() {
       </header>
       <p className="mt-1 text-xs text-slate2-500">
         Active CHP collisions and road closures near {city.label}. From the official
-        CHP computer-aided-dispatch feed — independent of TravelSafe community posts.
+        CHP computer-aided-dispatch feed — independent of CommunitySafe community posts.
       </p>
       <ul className="mt-4 space-y-3">
         {incidents.map((a) => (

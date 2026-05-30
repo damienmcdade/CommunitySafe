@@ -61,6 +61,6 @@ export const GET = wrap(async (req: Request) => {
       "USGS Earthquakes (M2.5+ within 300km, past 72h), active AMBER Alerts " +
       "(Child Abduction Emergencies) for the user's state, and California " +
       "Highway Patrol traffic incidents (collisions and road closures near " +
-      "the city, California only). Independent of TravelSafe community posts.",
+      "the city, California only). Independent of CommunitySafe community posts.",
   });
 });

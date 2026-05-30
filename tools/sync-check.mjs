@@ -135,7 +135,7 @@ async function fetchJson(base, path) {
   const to = setTimeout(() => ctrl.abort(), 25_000);
   try {
     const res = await fetch(url, {
-      headers: { Accept: "application/json", "User-Agent": "TravelSafe-sync-check/1.0" },
+      headers: { Accept: "application/json", "User-Agent": "CommunitySafe-sync-check/1.0" },
       signal: ctrl.signal,
     });
     const text = await res.text();

@@ -39,7 +39,7 @@ const OUTPUT_FILE = path.join(REPO_ROOT, "packages/crime-data/src/data/honolulu-
 const SOCRATA = "https://data.honolulu.gov/resource/vg88-5rn5.json";
 const NOMINATIM = "https://nominatim.openstreetmap.org/search";
 const RATE_LIMIT_MS = 1100; // 1.1s between Nominatim requests
-const USER_AGENT = "TravelSafe-Geocoder/0.1 (damienmcdade17@gmail.com; one-time Honolulu PD address batch)";
+const USER_AGENT = "CommunitySafe-Geocoder/0.1 (damienmcdade17@gmail.com; one-time Honolulu PD address batch)";
 
 // Drop a sequence of digits + "BLOCK " prefix at the start; that's
 // the redaction marker HPD adds, and Nominatim doesn't recognize it.

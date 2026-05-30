@@ -86,7 +86,7 @@ export const GET = wrap(async (req: NextRequest) => {
       {
         error: "no_supported_city",
         message:
-          "These coordinates fall outside every city TravelSafe currently tracks. Supported cities: see /api/geo/areas.",
+          "These coordinates fall outside every city CommunitySafe currently tracks. Supported cities: see /api/geo/areas.",
       },
       { status: 404 },
     );

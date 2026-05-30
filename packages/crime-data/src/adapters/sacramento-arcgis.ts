@@ -112,7 +112,7 @@ const PROVENANCE: DataProvenance = {
   granularity: "neighborhood",
   disclaimer:
     "Incidents are reported by the Sacramento Police Department and grouped by Sacramento " +
-    "Neighborhood Association. Not live, not street-level. TravelSafe does not track individuals.",
+    "Neighborhood Association. Not live, not street-level. CommunitySafe does not track individuals.",
 };
 
 async function fetchPage(baseUrl: string, offset: number): Promise<SacRow[]> {

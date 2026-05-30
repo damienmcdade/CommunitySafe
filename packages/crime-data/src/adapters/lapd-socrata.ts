@@ -20,7 +20,7 @@ import { rdToNeighborhood, neighborhoodCentroids } from "../data/la-neighborhood
 // Part I/II heuristic — accuracy improves as a side effect.
 //
 // IMPORTANT: The dataset publishes incident metadata only.
-// TravelSafe's spec forbids displaying or storing victim/suspect
+// CommunitySafe's spec forbids displaying or storing victim/suspect
 // demographic data; we just don't request those columns.
 
 // v70 — switched primary to the "2026-to-Present" dataset (k7nn-b2ep)
@@ -124,7 +124,7 @@ const PROVENANCE: DataProvenance = {
     "Incidents are reported by the Los Angeles Police Department. The NIBRS feed " +
     "carries no coordinates, so each is mapped to one of 114 LA neighborhoods via " +
     "its reporting district (falling back to LAPD patrol division) — not live, not " +
-    "street-level. TravelSafe does not track individuals and intentionally ignores " +
+    "street-level. CommunitySafe does not track individuals and intentionally ignores " +
     "victim/suspect-demographic columns published by LAPD.",
 };
 

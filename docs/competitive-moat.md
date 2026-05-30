@@ -1,6 +1,6 @@
 # Competitive Moat Analysis
 
-How TravelSafe is defensible against Citizen, Nextdoor, Ring Neighbors,
+How CommunitySafe is defensible against Citizen, Nextdoor, Ring Neighbors,
 SpotCrime, AreaVibes, NeighborhoodScout, and adjacent products. This is
 an honest assessment — most of the moat is in execution discipline, not
 in any single technical capability.
@@ -29,7 +29,7 @@ signal not noise" persona explicitly. That's the wedge.
 
 ### 1. Data coverage + calibration (technical, real)
 
-Across 37 cities TravelSafe has:
+Across 37 cities CommunitySafe has:
 - Per-city adapters with custom calibration (NIBRS vs CFS, with
   per-city CFS scaling)
 - ACS-sourced population denominators for 1,800+ neighborhoods (not
@@ -49,7 +49,7 @@ others could replicate but the marginal value to them is low.
 
 ### 2. Calm-UX positioning (brand, durable)
 
-TravelSafe explicitly does NOT:
+CommunitySafe explicitly does NOT:
 - Send alarming push notifications
 - Use red-saturated palettes
 - Promote engagement via fear
@@ -87,7 +87,7 @@ First mover gets the credit even if competitors later copy.
 
 ### 4. Methodology transparency (trust, durable)
 
-Every Safety Score on TravelSafe is methodologically explainable:
+Every Safety Score on CommunitySafe is methodologically explainable:
 - What window was used
 - What population denominator was applied
 - What national baseline it's compared against
@@ -117,7 +117,7 @@ the more verified contributors active in an area, the more useful
 the community surface becomes for the next visitor.
 
 Citizen and Nextdoor have analogous systems but burdened by their
-moderation problems — TravelSafe's combination of trust badges +
+moderation problems — CommunitySafe's combination of trust badges +
 strict anti-profiling content rules + AI pre-vetting is the
 defensible part.
 
@@ -188,7 +188,7 @@ work shipped this past quarter is the structural lead.
 
 ### Scenario D: An insurance carrier builds it in-house
 
-Lemonade or Hippo could plausibly build a TravelSafe-equivalent
+Lemonade or Hippo could plausibly build a CommunitySafe-equivalent
 internally for their app. Distribution would be limited to their
 policyholders.
 

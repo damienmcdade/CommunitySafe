@@ -25,7 +25,7 @@ export function DataDisclaimer({ size = "sm", prefix }: Props) {
       role="note"
     >
       {prefix && <strong className="text-slate2-900">{prefix}</strong>}{prefix ? " " : ""}
-      TravelSafe summarizes publicly published police reports. Scores reflect
+      CommunitySafe summarizes publicly published police reports. Scores reflect
       historical reporting only — not predictions of future risk, and not a
       substitute for professional safety advice. Should not be used as the sole
       basis for housing, lending, insurance, or hiring decisions — verify each

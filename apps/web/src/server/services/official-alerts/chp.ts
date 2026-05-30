@@ -168,7 +168,7 @@ export async function getChpIncidents(
       const res = await fetch(FEED_URL, {
         headers: {
           Accept: "application/vnd.google-earth.kml+xml, application/xml, text/xml",
-          "User-Agent": "TravelSafe/0.1 (https://github.com/damienmcdade/TravelSafe)",
+          "User-Agent": "CommunitySafe/0.1 (https://github.com/damienmcdade/TravelSafe)",
         },
         signal: AbortSignal.timeout(8_000),
       });

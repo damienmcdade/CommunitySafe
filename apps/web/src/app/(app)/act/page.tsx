@@ -8,11 +8,11 @@ type ActTab = "tools" | "community";
 
 const TABS: Array<{ id: ActTab; label: string; sublabel: string }> = [
   { id: "tools",     label: "Personal Safety", sublabel: "Emergency, check-in, location sharing" },
-  { id: "community", label: "TravelSafe",   sublabel: "Neighbor reports + community signals" },
+  { id: "community", label: "CommunitySafe",   sublabel: "Neighbor reports + community signals" },
 ];
 
 /// `/act` — Act workflow hub. Hosts the Personal Safety tools and the
-/// TravelSafe feed as sub-tabs. Both are user-action surfaces (the
+/// CommunitySafe feed as sub-tabs. Both are user-action surfaces (the
 /// user is *doing* something rather than browsing or investigating)
 /// so they share a hub. Old /safety and /community URLs still work
 /// and now route through here.

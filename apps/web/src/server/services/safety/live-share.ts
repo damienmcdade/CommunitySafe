@@ -56,10 +56,10 @@ export async function createLiveShare(
     const c = classifyContact(contactRaw);
     const url = buildShareUrl(token);
     const msg =
-      `TravelSafe: your contact is sharing their live location with you ` +
+      `CommunitySafe: your contact is sharing their live location with you ` +
       `until ${expiresAt.toLocaleString()}. ` +
       `Open ${url} — the link stops working at expiry, or sooner if revoked.`;
-    const subject = "TravelSafe — your contact is sharing their location";
+    const subject = "CommunitySafe — your contact is sharing their location";
     if (c.kind === "email") {
       const r = await sendEmail(c.value, subject, msg);
       delivery = { kind: "email", sent: r.ok, reason: r.reason };

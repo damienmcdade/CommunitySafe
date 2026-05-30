@@ -26,7 +26,7 @@ interface WatchResp {
   disclaimer: string;
 }
 
-// Color-tag accents per card group — matches the rest of TravelSafe's palette.
+// Color-tag accents per card group — matches the rest of CommunitySafe's palette.
 const GROUP_TAG: Record<WatchCard["group"], { label: string; tone: string; ring: string }> = {
   "official":  { label: "Official",  tone: "text-bay-700",  ring: "ring-bay-200" },
   "reporting": { label: "Reporting", tone: "text-coral-700", ring: "ring-coral-200" },
@@ -224,7 +224,7 @@ export default function NeighborhoodWatchPage() {
           <div>
             <h2 className="font-display text-lg text-slate2-900">Pick a different {city.label} neighborhood</h2>
             <p className="text-xs text-slate2-500 mt-0.5">
-              {cityAreas.length} supported neighborhood{cityAreas.length === 1 ? "" : "s"}. The wheel only shows neighborhoods TravelSafe tracks for {city.label}.
+              {cityAreas.length} supported neighborhood{cityAreas.length === 1 ? "" : "s"}. The wheel only shows neighborhoods CommunitySafe tracks for {city.label}.
             </p>
           </div>
           <button

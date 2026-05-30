@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Methodology",
   description:
-    "How TravelSafe computes the Safety Index, where the data comes from, and the limitations of the math.",
+    "How CommunitySafe computes the Safety Index, where the data comes from, and the limitations of the math.",
 };
 
 const LAST_UPDATED = "2026-05-26";
@@ -17,7 +17,7 @@ export default function MethodologyPage() {
         <h1 className="mt-1 font-display text-3xl text-slate2-900">How the Safety Index works</h1>
         <p className="mt-2 text-xs text-slate2-500">Last updated: {LAST_UPDATED}</p>
         <p className="mt-3 text-sm text-slate2-700 max-w-2xl">
-          TravelSafe translates two public datasets into one easy-to-read 0&ndash;100 number using
+          CommunitySafe translates two public datasets into one easy-to-read 0&ndash;100 number using
           arithmetic, not predictions. This page is the canonical source — if any in-app caption
           conflicts with the description here, the in-app caption is wrong and should be fixed.
         </p>
@@ -27,7 +27,7 @@ export default function MethodologyPage() {
         <h2 className="font-display text-xl text-slate2-900">Data sources</h2>
         <ol className="list-decimal pl-5 space-y-2">
           <li>
-            <strong className="text-slate2-900">City open-data portals.</strong> Each of TravelSafe&apos;s
+            <strong className="text-slate2-900">City open-data portals.</strong> Each of CommunitySafe&apos;s
             37 supported cities publishes police-incident records through an official open-data feed
             (SDPD NIBRS, LAPD Crime Data, SFPD Incident Reports, Chicago CPD, NYPD Complaint Data,
             Seattle SPD, Boston BPD, DC MPD, Philadelphia PPD, Colorado Springs, Detroit, Oakland, Cincinnati,
@@ -206,7 +206,7 @@ export default function MethodologyPage() {
       <section className="surface p-6 space-y-3 text-sm text-slate2-700 leading-relaxed">
         <h2 className="font-display text-xl text-slate2-900">Demographic data exclusion</h2>
         <p>
-          TravelSafe explicitly does NOT collect, display, or analyze race, ethnicity, religion, age,
+          CommunitySafe explicitly does NOT collect, display, or analyze race, ethnicity, religion, age,
           gender, or sexual-orientation data from any source. Every adapter explicitly enumerates
           allowed fields before querying the upstream feed; demographic columns are filtered at the
           adapter layer regardless of what the city publishes. This is enforced in code; see{" "}
@@ -218,10 +218,10 @@ export default function MethodologyPage() {
       <section className="surface p-6 space-y-3 text-sm text-slate2-700 leading-relaxed">
         <h2 className="font-display text-xl text-slate2-900">Individual identification</h2>
         <p>
-          TravelSafe aggregates data to the neighborhood level only. Individual people are never
+          CommunitySafe aggregates data to the neighborhood level only. Individual people are never
           identified, named, or tracked. Crime-Map drill-down dots show offense type and the block
           (street-level) where a report was published &mdash; they do not surface victim or suspect
-          names. TravelSafe posts are anonymous and run through a pre-vetter that blocks names,
+          names. CommunitySafe posts are anonymous and run through a pre-vetter that blocks names,
           addresses below the block level, and license plates.
         </p>
       </section>

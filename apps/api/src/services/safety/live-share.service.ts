@@ -21,8 +21,8 @@ export async function createLiveShare(userId: string, opts: { durationMinutes: n
   if (opts.contactEmail) {
     await sendEmail(
       opts.contactEmail,
-      "TravelSafe — your contact is sharing their location",
-      `A TravelSafe user is sharing their live location with you until ${expiresAt.toISOString()}.\n\nOpen: ${buildShareUrl(token)}\n\nThe link will stop working at expiry, or sooner if revoked.`,
+      "CommunitySafe — your contact is sharing their location",
+      `A CommunitySafe user is sharing their live location with you until ${expiresAt.toISOString()}.\n\nOpen: ${buildShareUrl(token)}\n\nThe link will stop working at expiry, or sooner if revoked.`,
     );
   }
   return { id: link.id, token, expiresAt, shareUrl: buildShareUrl(token) };

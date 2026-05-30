@@ -135,7 +135,7 @@ const PROVENANCE: DataProvenance = {
   disclaimer:
     "Incidents are reported by the Oakland Police Department, with neighborhood " +
     "assigned by point-in-polygon geocoding against Oakland's 131 named neighborhoods. " +
-    "Not live, not street-level. TravelSafe does not track individuals.",
+    "Not live, not street-level. CommunitySafe does not track individuals.",
 };
 
 function safeIso(raw: string | null | undefined): string {

@@ -7,7 +7,7 @@ import { FBI_DATA_LABEL } from "@/lib/data-vintage";
 export const metadata: Metadata = {
   title: "All supported cities",
   description:
-    "TravelSafe surfaces neighborhood-level safety data for 30 US cities. Browse the full list and drill into any city's safety overview.",
+    "CommunitySafe surfaces neighborhood-level safety data for 30 US cities. Browse the full list and drill into any city's safety overview.",
   alternates: { canonical: "/cities" },
 };
 
@@ -65,7 +65,7 @@ export default function CitiesIndexPage() {
           guardrail. */}
       <p className="surface-muted p-3 text-xs text-slate2-700 leading-snug" role="note">
         <strong className="text-slate2-900">How to read this:</strong>{" "}
-        TravelSafe summarizes publicly published police reports. Scores reflect
+        CommunitySafe summarizes publicly published police reports. Scores reflect
         historical reporting only — not predictions of future risk, and not a
         substitute for professional safety advice. Should not be used as the sole
         basis for housing, lending, insurance, or hiring decisions — verify each

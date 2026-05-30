@@ -31,7 +31,7 @@ const RULES: ExplainerRule[] = [
     explain: {
       label: "Non-Aggravated Assault",
       description:
-        "Unlawful attack causing minor injury, or threatening violence without a weapon. The FBI's NIBRS manual labels this 13B \"Simple Assault\" — TravelSafe surfaces it as \"Non-Aggravated Assault\" because every assault is serious to the person involved. Distinguished from Aggravated Assault by the absence of a deadly weapon and the lack of serious bodily injury.",
+        "Unlawful attack causing minor injury, or threatening violence without a weapon. The FBI's NIBRS manual labels this 13B \"Simple Assault\" — CommunitySafe surfaces it as \"Non-Aggravated Assault\" because every assault is serious to the person involved. Distinguished from Aggravated Assault by the absence of a deadly weapon and the lack of serious bodily injury.",
     },
   },
   {
@@ -309,7 +309,7 @@ export function explainOffense(offenseName: string): OffenseExplanation {
     label: offenseName,
     description:
       "This offense label is published directly by the city's police-data feed " +
-      "and isn't in TravelSafe's NIBRS dictionary yet. The FBI's NIBRS User " +
+      "and isn't in CommunitySafe's NIBRS dictionary yet. The FBI's NIBRS User " +
       "Manual (cde.ucr.cjis.gov) publishes the canonical definitions, and the " +
       "city's own open-data portal (cited inline on the methodology page) " +
       "documents any local extensions. If a label looks wrong to you, please " +

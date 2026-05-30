@@ -10,7 +10,7 @@ import { FBI_DATA_LABEL } from "@/lib/data-vintage";
 export const runtime = "edge";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const alt = "TravelSafe — neighborhood-level safety awareness across 30 US cities";
+export const alt = "CommunitySafe — neighborhood-level safety awareness across 30 US cities";
 
 export default function RootOgImage() {
   return new ImageResponse(
@@ -36,7 +36,7 @@ export default function RootOgImage() {
             opacity: 0.85,
           }}
         >
-          TravelSafe
+          CommunitySafe
         </div>
         <div
           style={{
