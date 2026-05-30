@@ -110,10 +110,11 @@ export default function AboutPage() {
             rel="noopener noreferrer"
             className="text-bay-700 underline"
           >
-            Cyberwave Global
+            CyberWave Technologies LLC
           </a>{" "}
-          (cyberwaveglobal.com) — the entity responsible for this site and the
-          data controller for the purposes of its{" "}
+          (cyberwaveglobal.com), a California limited liability company — the
+          entity responsible for this site and the data controller for the
+          purposes of its{" "}
           <Link href="/privacy" className="text-bay-700 underline">Privacy Policy</Link> and{" "}
           <Link href="/terms" className="text-bay-700 underline">Terms of Use</Link>. Reach
           us at{" "}

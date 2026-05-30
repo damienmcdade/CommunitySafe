@@ -19,8 +19,8 @@ export default function PrivacyPage() {
         <p className="mt-2 text-xs text-slate2-500">Last updated: {LAST_UPDATED}</p>
         <p className="mt-2 text-sm text-slate2-700 leading-relaxed">
           CommunitySafe is operated by{" "}
-          <a href="https://cyberwaveglobal.com" target="_blank" rel="noopener noreferrer" className="text-bay-700 hover:underline">Cyberwave Global</a>{" "}
-          (cyberwaveglobal.com), the <strong>data controller</strong> for the purposes of the
+          <a href="https://cyberwaveglobal.com" target="_blank" rel="noopener noreferrer" className="text-bay-700 hover:underline">CyberWave Technologies LLC</a>{" "}
+          (cyberwaveglobal.com), a California limited liability company and the <strong>data controller</strong> for the purposes of the
           GDPR, the CCPA/CPRA, and equivalent laws. Privacy questions and data-subject requests:{" "}
           <a href="mailto:info@cyberwaveglobal.com?subject=CommunitySafe%20privacy%20request" className="text-bay-700 hover:underline">info@cyberwaveglobal.com</a>.
         </p>
