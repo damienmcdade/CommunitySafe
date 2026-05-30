@@ -11,6 +11,7 @@ import { titleCaseOffense } from "../lib/titlecase-offense.js";
 // has repeatedly missed JSON files in this path, but TS modules are always
 // in the bundle.
 import { bostonSnapshot as snapshot } from "../data/boston-snapshot.js";
+import { bostonPolygons } from "../data/boston-neighborhoods.js";
 
 // City of Boston — Crime Incident Reports (BPD).
 //
@@ -118,14 +119,67 @@ function enrich(district: string | undefined): string {
   return DISTRICT_NEIGHBORHOODS[d] ?? `BPD District ${d}`;
 }
 
+// v97 — neighborhood-level upgrade. BPD rows carry Lat/Long, so each
+// incident can be geocoded into one of the 26 official Boston
+// neighborhoods (blackmad/neighborhoods) via bbox-prefiltered ray
+// casting — same self-contained pattern as the Philadelphia / New
+// Orleans adapters. This lifts Boston from 12 district anchors to 26
+// neighborhoods. Rows without usable coordinates fall back to the
+// district→anchor mapping so coverage never regresses.
+interface PolyIndex { name: string; bbox: [number, number, number, number]; rings: number[][][] }
+const POLY_INDEX: PolyIndex[] = bostonPolygons.map((p) => {
+  const rings: number[][][] = p.geometry.type === "Polygon"
+    ? (p.geometry.coordinates as number[][][])
+    : (p.geometry.coordinates as number[][][][]).flat();
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const ring of rings) for (const [x, y] of ring) {
+    if (x < minX) minX = x; if (x > maxX) maxX = x;
+    if (y < minY) minY = y; if (y > maxY) maxY = y;
+  }
+  return { name: p.name, bbox: [minX, minY, maxX, maxY], rings };
+});
+
+function pointInRing(x: number, y: number, ring: number[][]): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+    const intersect = ((yi > y) !== (yj > y)) && (x < ((xj - xi) * (y - yi)) / (yj - yi || 1e-12) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function geocodeBoston(lng: number, lat: number): string | null {
+  for (const p of POLY_INDEX) {
+    const [minX, minY, maxX, maxY] = p.bbox;
+    if (lng < minX || lng > maxX || lat < minY || lat > maxY) continue;
+    let parity = 0;
+    for (const ring of p.rings) if (pointInRing(lng, lat, ring)) parity++;
+    if (parity % 2 === 1) return p.name;
+  }
+  return null;
+}
+
+// Geocode by coordinate when available; else fall back to the BPD
+// district anchor. NaN/0 coordinates (BPD's null-island sentinel) skip
+// straight to the district fallback.
+function areaForBoston(lat: number, lon: number, district: string | undefined): string {
+  if (!Number.isNaN(lat) && !Number.isNaN(lon) && lat !== 0 && lon !== 0) {
+    const hood = geocodeBoston(lon, lat);
+    if (hood) return hood;
+  }
+  return enrich(district);
+}
+
 const PROVENANCE: DataProvenance = {
   source: "Boston Police Department Crime Incident Reports (City of Boston Open Data, CKAN)",
   datasetUrl: "https://data.boston.gov/dataset/crime-incident-reports-august-2015-to-date-source-new-system",
   recency: `Bundled snapshot from BPD CSV (generated ${snapshot.generated_at})`,
-  granularity: "beat",
+  granularity: "neighborhood",
   disclaimer:
-    "Incidents are reported by the Boston Police Department and aggregated to " +
-    "BPD's 12 districts — not live, not street-level. CommunitySafe does not track individuals. " +
+    "Incidents are reported by the Boston Police Department and geocoded to one of " +
+    "26 official Boston neighborhoods (incidents without coordinates fall back to BPD's " +
+    "12 districts) — not live, not street-level. CommunitySafe does not track individuals. " +
     "Boston data ships as a bundled snapshot because data.boston.gov rejects Vercel's IP " +
     "range; refresh by running `node tools/refresh-boston.mjs` and committing the result.",
 };
@@ -159,7 +213,7 @@ function rowsFromSnapshot(): Incident[] {
     const lon = r.Long ? Number(r.Long) : NaN;
     return {
       id: `bos-${r.INCIDENT_NUMBER ?? i}`,
-      area: enrich(r.DISTRICT),
+      area: areaForBoston(lat, lon, r.DISTRICT),
       occurredAt: safeIsoFromBostonDate(r.OCCURRED_ON_DATE),
       nibrsCategory: mapToNibrs({ OFFENSE_DESCRIPTION: r.OFFENSE_DESCRIPTION }),
       ibrOffenseDescription: titleCaseOffense(r.OFFENSE_DESCRIPTION),
@@ -211,7 +265,7 @@ async function fetchBoston(): Promise<Incident[]> {
     const lon = Number(r.Long);
     return {
       id: `bos-${r.INCIDENT_NUMBER ?? i}`,
-      area: enrich(r.DISTRICT),
+      area: areaForBoston(lat, lon, r.DISTRICT),
       occurredAt: safeIsoFromBostonDate(r.OCCURRED_ON_DATE),
       nibrsCategory: mapToNibrs(r),
       ibrOffenseDescription: titleCaseOffense(r.OFFENSE_DESCRIPTION),
@@ -297,7 +351,7 @@ async function fetchBostonFromCSV(): Promise<Incident[]> {
     const lon = Number(row.Long);
     return {
       id: `bos-${row.INCIDENT_NUMBER || i}`,
-      area: enrich(row.DISTRICT),
+      area: areaForBoston(lat, lon, row.DISTRICT),
       occurredAt: safeIsoFromBostonDate(row.OCCURRED_ON_DATE),
       nibrsCategory: mapToNibrs(row),
       ibrOffenseDescription: titleCaseOffense(row.OFFENSE_DESCRIPTION),
