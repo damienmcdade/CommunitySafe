@@ -377,6 +377,13 @@ const PART1_PROPERTY_EXCLUDE = [
   /leaving scene/i,
   /property damage/i,
   /\btrespass/i,
+  // v100 — Kansas City classifies traffic / hit-and-run events as PROPERTY
+  // (its PROPERTY keys include "VEHICULAR"): "VEHICULAR - NON-INJURY",
+  // "OCR - VEHICULAR NON-INJURY HIT AND RUN", "VEHICULAR - INJURY" (~400/window).
+  // None are UCR Part-1 property (burglary / larceny / MV-theft / arson).
+  // Safe fleet-wide — a traffic collision is never Part-1 property.
+  /\bvehicular\b/i,
+  /hit and run/i,
 ];
 
 // Default-INCLUDE filter: trust the adapter's NIBRS classification

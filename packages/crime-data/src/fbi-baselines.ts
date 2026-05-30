@@ -91,6 +91,14 @@ const MANUAL_BASELINE_OVERRIDES: Record<string, Partial<Pick<CityFbiBaseline, "v
   "chicago": { violent: 620, property: 3700 },
   // CDE understated Oakland's 2023 spike (~1900 violent / ~7200 property).
   "oakland": { violent: 1900 },
+  // v100 — Dallas. Stored base (576/3070) was off in BOTH directions vs the
+  // authoritative FBI 2024 figures (4 aggregators agree): violent 658
+  // (8,698 offenses / ~1.32M; murder 180 + rape ~480 + robbery ~2,230 + agg
+  // assault 5,818), property 3,352 (44,295; the city's huge ~14.5k auto-theft
+  // volume). Raising violent EXPOSES a real open-data under-capture (the DPD
+  // feed carries almost no family-violence aggravated assault — only ~7/87d),
+  // tracked separately; the baseline must still be the true FBI rate.
+  "dallas": { violent: 658, property: 3352 },
   // CDE base is the older year; SF crime rose in 2024 (~560 / ~3400).
   "san-francisco": { violent: 560, property: 3400 },
   // KCMO is high-crime; CDE base ran ~10% low (~1500 violent).
