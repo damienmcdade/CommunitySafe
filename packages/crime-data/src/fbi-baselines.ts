@@ -66,7 +66,11 @@ const BASE_FBI_BASELINES: Record<string, CityFbiBaseline> = {
   "atlanta":      { violent: 841,  property: 3748, year: 2024, ori: "GAAPD0000" },
   "indianapolis": { violent: 878,  property: 3336, year: 2024, ori: "INIPD0000" },
   "raleigh":      { violent: 489,  property: 2819, year: 2024, ori: "NC0920100" },
-  "tucson":       { violent: 533,  property: 3415, year: 2024, ori: "AZ0100100" },
+  // v100 — refined to FBI UCR 2024 city figures (violent 589.7 / property
+  // 3,313.1 per 100k; verified against AZ MAP Dashboard + NeighborhoodScout).
+  // The prior 533/3415 was a slightly-stale curated estimate; the CDE
+  // per-agency API pull (1448 / 11626) is incomplete/implausible — do NOT use it.
+  "tucson":       { violent: 590,  property: 3313, year: 2024, ori: "AZ0100100" },
   // v95p2 — Honolulu (HPD ORI HI0010100). FBI CDE 2024 reported
   // rates. Honolulu is structurally lower-crime than mainland peer
   // cities and these baselines reflect that.
@@ -89,7 +93,9 @@ const MANUAL_BASELINE_OVERRIDES: Record<string, Partial<Pick<CityFbiBaseline, "v
   // measurement (agg assault 04A + agg battery 04B + robbery 03 + CSA 02 +
   // homicide 01A) from the same open-data feed the app scores against.
   "chicago": { violent: 620, property: 3700 },
-  // CDE understated Oakland's 2023 spike (~1900 violent / ~7200 property).
+  // CDE understated Oakland's 2023 violent spike (~1900 vs base 1475);
+  // property stays at the 2025 base (5255) — the ~7200 figure was Oakland's
+  // 2023 peak, not the current year, so we do NOT use it.
   "oakland": { violent: 1900 },
   // v100 — Dallas. Stored base (576/3070) was off in BOTH directions vs the
   // authoritative FBI 2024 figures (4 aggregators agree): violent 658
