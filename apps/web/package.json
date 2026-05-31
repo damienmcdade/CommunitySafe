@@ -21,6 +21,7 @@
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@travelsafe/crime-data": "*",
+    "@vercel/blob": "^2.4.0",
     "ai": "^6.0.0",
     "bcryptjs": "^2.4.3",
     "csv-parse": "^5.5.6",

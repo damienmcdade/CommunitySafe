@@ -82,6 +82,12 @@ const Env = z.object({
   // which is fine for dev but rate-limited / best-effort for production.
   OPENROUTESERVICE_API_KEY: z.string().optional(),
 
+  // Vercel Blob (optional). When a Blob store is provisioned, Vercel injects
+  // BLOB_READ_WRITE_TOKEN automatically; with it set, community posts can carry
+  // a user-uploaded photo (Ring-Neighbors-style). Unset → the photo button is
+  // disabled and /api/community/upload returns 503 (text posts still work).
+  BLOB_READ_WRITE_TOKEN: z.string().optional(),
+
   // Redis (optional). When set, live community updates (SSE) fan out through
   // Redis pub/sub so an event emitted on one serverless instance reaches SSE
   // clients held open on a DIFFERENT instance. Unset → in-process EventEmitter

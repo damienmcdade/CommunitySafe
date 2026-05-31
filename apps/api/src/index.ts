@@ -43,6 +43,7 @@ import { aiRouter } from "./routes/ai.routes.js";
 import { officialAlertsRouter } from "./routes/official-alerts.routes.js";
 import { safezoneRouter } from "./routes/safezone.routes.js";
 import { startCheckInWorker } from "./services/safety/check-in.worker.js";
+import { startProximityWorker } from "./services/safety/proximity.worker.js";
 import { startDigestWorker } from "./services/push/digest.worker.js";
 // v96p2 — startWarmWorker import removed from the call path. See
 // the boot section below for the rationale.
@@ -290,6 +291,7 @@ installPooledDispatcher();
 const server = app.listen(env.LISTEN_PORT, () => {
   console.log(`[api] listening on :${env.LISTEN_PORT} (env=${env.NODE_ENV})`);
   startCheckInWorker();
+  startProximityWorker();
   startDigestWorker();
   // v96p2 — startWarmWorker() permanently removed from the boot path.
   // The 6-cycle deployment-log scan confirmed pods OOM at ~+15 min

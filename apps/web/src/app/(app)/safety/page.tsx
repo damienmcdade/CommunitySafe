@@ -4,6 +4,7 @@ import { api, useAnonymousAuth, useApi } from "@/lib/api-client";
 import { requestLocation } from "@/lib/geolocation";
 import { SafetyTipsPanel } from "@/components/SafetyTipsPanel";
 import { TrustedContactsManager } from "@/components/TrustedContactsManager";
+import { SavedPlacesPanel } from "@/components/SavedPlacesPanel";
 import { useCity } from "@/lib/use-city";
 import { useArea } from "@/lib/use-area";
 import { useDocumentTitle } from "@/lib/use-document-title";
@@ -80,6 +81,7 @@ export default function PersonalSafetyPage() {
           emergency dial. The emergency panel, safety tips, and
           registry/account follow below. */}
       <SosPanel />
+      <SavedPlacesPanel />
       <CheckInPanel />
       <LiveSharePanel />
 

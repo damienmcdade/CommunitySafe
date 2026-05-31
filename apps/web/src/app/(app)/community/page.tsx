@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, useApi } from "@/lib/api-client";
 import { useArea } from "@/lib/use-area";
 import { useDocumentTitle } from "@/lib/use-document-title";
@@ -17,6 +17,7 @@ interface AreaStats { area: string; crimeRate: number | null; riskLevel: 1|2|3|4
 interface PostListItem {
   id: string;
   body: string;
+  imageUrl?: string | null;
   kind: "HEADS_UP" | "AREA_HAZARD" | "LOST_FOUND" | "SAFETY_NOTICE";
   createdAt: string;
   reviewedAt: string | null;
@@ -260,6 +261,15 @@ function PostCard({ post }: { post: PostListItem }) {
         <CommunityReportedLabel reviewedAt={post.reviewedAt} />
       </header>
       <pre className="mt-3 whitespace-pre-wrap text-slate2-900 font-sans">{post.body}</pre>
+      {post.imageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={post.imageUrl}
+          alt="Photo attached to this community post"
+          loading="lazy"
+          className="mt-3 rounded-xl max-h-96 w-auto object-contain border border-bay-100"
+        />
+      )}
       <footer className="mt-4 flex flex-wrap items-center gap-2 text-xs">
         <ReactButton onClick={() => react("HELPFUL")}    busy={busy === "HELPFUL"}   done={confirmed === "HELPFUL"}   color="bay">Helpful</ReactButton>
         <ReactButton onClick={() => react("CONFIRMED")}  busy={busy === "CONFIRMED"} done={confirmed === "CONFIRMED"} color="sage">I saw this too</ReactButton>
@@ -305,6 +315,35 @@ function PostComposer({ areaSlug, onPosted }: { areaSlug: string; onPosted: () =
   const [guidance, setGuidance] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
+  // Photo attachment (Ring-style). Uploaded to Vercel Blob via /community/upload;
+  // null until a photo is chosen. uploadsDisabled flips true on a 503 so we hide
+  // the control on deployments without a Blob store.
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadsDisabled, setUploadsDisabled] = useState(false);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
+  async function onPickPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (e.target) e.target.value = ""; // allow re-picking the same file
+    if (!file) return;
+    setUploadError(null);
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/community/upload", { method: "POST", body: fd, credentials: "include" });
+      if (res.status === 503) { setUploadsDisabled(true); setUploadError("Photo uploads aren’t enabled on this deployment."); return; }
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) { setUploadError(json.message || "Upload failed."); return; }
+      setImageUrl(json.url as string);
+    } catch (err) {
+      setUploadError((err as Error).message);
+    } finally {
+      setUploading(false);
+    }
+  }
 
   const { text: aiFeedback, status: aiStatus, start: aiStart } = useTextStream("/ai/compose-feedback");
 
@@ -323,10 +362,10 @@ function PostComposer({ areaSlug, onPosted }: { areaSlug: string; onPosted: () =
     try {
       await api<{ autoPublished: boolean }>("/community/posts", {
         method: "POST",
-        body: JSON.stringify({ areaSlug, kind, what, where, when }),
+        body: JSON.stringify({ areaSlug, kind, what, where, when, imageUrl: imageUrl ?? undefined }),
       });
       setSuccess("Posted. Thanks for sharing.");
-      setWhat(""); setWhere(""); setWhen("");
+      setWhat(""); setWhere(""); setWhen(""); setImageUrl(null);
       onPosted();
     } catch (err) {
       const e = err as Error & { body?: { guidance?: string } };
@@ -383,7 +422,32 @@ function PostComposer({ areaSlug, onPosted }: { areaSlug: string; onPosted: () =
         {aiStatus === "disabled" && (
           <p className="text-xs text-slate2-500">AI coaching is off — set <code>GOOGLE_GENERATIVE_AI_API_KEY</code> on Vercel (free key at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="underline">aistudio.google.com</a>).</p>
         )}
-        <button type="submit" disabled={busy} className="btn-primary disabled:opacity-50">
+        {/* Photo attachment (Ring-style). Hidden on deployments without a Blob store. */}
+        {!uploadsDisabled && (
+          <div>
+            <input ref={fileRef} type="file" accept="image/*" onChange={onPickPhoto} className="hidden" aria-hidden />
+            {imageUrl ? (
+              <div className="flex items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={imageUrl} alt="Attached photo preview" className="h-16 w-16 rounded-lg object-cover border border-bay-100" />
+                <button type="button" onClick={() => setImageUrl(null)} className="text-xs text-slate2-500 hover:text-coral-700 underline">
+                  Remove photo
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                className="text-sm px-3 py-1.5 rounded-lg border border-bay-200 text-slate2-700 hover:bg-bay-50 disabled:opacity-50"
+              >
+                {uploading ? "Uploading…" : "📷 Add a photo"}
+              </button>
+            )}
+            {uploadError && <p className="mt-1 text-xs text-coral-700">{uploadError}</p>}
+          </div>
+        )}
+        <button type="submit" disabled={busy || uploading} className="btn-primary disabled:opacity-50">
           {busy ? "Posting…" : "Post anonymously"}
         </button>
         {guidance && <p id="post-guidance" role="alert" className="text-sm text-amber2-700">{guidance}</p>}

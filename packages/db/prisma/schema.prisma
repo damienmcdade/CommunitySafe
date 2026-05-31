@@ -145,6 +145,7 @@ model User {
   pushSubscriptions PushSubscription[]
   checkInTimers     CheckInTimer[]
   liveShareLinks    LiveShareLink[]
+  savedPlaces       SavedPlace[]
   reviewActions     PostReviewAction[]
   suspensionEvents  SuspensionEvent[]
   securityAudits    SecurityAuditLog[]  @relation("UserSecurityAudits")
@@ -157,6 +158,30 @@ model User {
   // is sparse (most rows have deletedAt = null) so the planner uses it
   // to short-circuit the soft-delete check.
   @@index([deletedAt])
+}
+
+// -----------------------------------------------------------------------------
+// Saved Places — "Alert Zones" (proximity safety alerts, à la Citizen)
+// -----------------------------------------------------------------------------
+
+/// A place a registered user cares about (home, work, a relative's address).
+/// The proximity worker checks recent incidents within `radiusM` and pushes a
+/// safety alert when something new appears nearby. lastAlertAt + lastSeenIncidentAt
+/// dedupe so the user isn't re-notified about incidents they've already heard about.
+model SavedPlace {
+  id                 String   @id @default(cuid())
+  userId             String
+  label              String   // "Home", "Work", "Mom's"
+  lat                Float
+  lng                Float
+  radiusM            Int      @default(800)   // alert radius in meters (~½ mile)
+  alertsEnabled      Boolean  @default(true)
+  lastAlertAt        DateTime?                // last time we pushed an alert for this place
+  lastSeenIncidentAt DateTime?                // newest incident timestamp we've already alerted on
+  createdAt          DateTime @default(now())
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // -----------------------------------------------------------------------------
@@ -316,6 +341,9 @@ model Post {
   areaId          String     // REQUIRED — posts are area-level, never address-level
   kind            PostKind
   body            String     @db.Text
+  // Optional attached photo (Ring-Neighbors-style "caught on camera"). Stored
+  // as a Vercel Blob URL; null when the post is text-only.
+  imageUrl        String?
   status          PostStatus @default(PENDING)
 
   reviewedAt      DateTime?

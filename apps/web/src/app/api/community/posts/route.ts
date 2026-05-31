@@ -15,6 +15,8 @@ const Body = z.object({
   what:  z.string().min(1).max(800),
   where: z.string().min(1).max(200),
   when:  z.string().min(1).max(200),
+  // Optional Vercel Blob URL from /api/community/upload (Ring-style photo).
+  imageUrl: z.string().url().startsWith("https://").max(1024).optional(),
 });
 
 function compose(input: { what: string; where: string; when: string }) {
@@ -114,6 +116,7 @@ export const POST = wrap(async (req: NextRequest) => {
       areaId: area.id,
       kind: input.kind,
       body,
+      imageUrl: input.imageUrl ?? null,
       status: PostStatus.VERIFIED,
       reviewedAt: new Date(),
       flags: { create: vet.flags.map((f) => ({ kind: f.kind, detail: f.detail })) },
