@@ -133,7 +133,26 @@ async function fetchAgencyAnnual(ori, offense) {
     if (n === 12) annual.push({ year: Number(year), rate: sum });
   }
   annual.sort((a, b) => b.year - a.year);
-  return annual[0] ?? null; // most-recent complete year
+  // v99 — plausibility guard. "12 months present" does NOT mean "fully
+  // reported": several agencies (verified Baltimore, Fort Worth) have a
+  // most-recent year where all 12 months exist in the CDE but with
+  // implausibly low rates (Baltimore 2025 summed to ~37/100k violent vs
+  // ~1617 the year before) because the agency's filing for that year is
+  // incomplete. Naively taking annual[0] would CRATER the baseline and
+  // wreck every per-capita safety score for that city. So: if the newest
+  // complete year's rate collapses to < 55% of the prior complete year,
+  // treat it as an incomplete filing and fall back to the prior year.
+  // (A genuine YoY drop is never that steep for a major-city PD.)
+  for (let i = 0; i < annual.length; i++) {
+    const cur = annual[i];
+    const prev = annual[i + 1];
+    if (!prev || cur.rate >= 0.55 * prev.rate) return cur;
+    console.warn(
+      `  [guard] ${ori}/${offense}: ${cur.year} rate ${cur.rate} is <55% of ${prev.year} (${prev.rate}) ` +
+      `— treating ${cur.year} as an incomplete filing, falling back to ${prev.year}`,
+    );
+  }
+  return annual[annual.length - 1] ?? null; // all years suspect → oldest available
 }
 
 async function main() {
