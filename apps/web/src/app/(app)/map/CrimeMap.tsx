@@ -576,8 +576,16 @@ export default function CrimeMap() {
           </div>
         )}
         {polyError && (
-          <div className="absolute top-3 left-3 right-3 z-[400] surface-muted px-3 py-1.5 text-xs text-coral-700">
-            {polyError}
+          // v102 — graceful boundary-missing state. A few live cities
+          // (Baltimore, Fort Worth, Honolulu, Long Beach) don't yet ship a
+          // neighborhood-boundary GeoJSON, so the choropleth can't draw.
+          // Show an honest, non-alarming note (not a red error) and point
+          // users to the working surfaces — the neighborhood selector and
+          // the data cards — instead of leaving a broken-looking blank map.
+          <div className="absolute top-3 left-3 right-3 z-[400] bg-amber-50 border border-amber-200 rounded-md px-3 py-2 text-xs text-amber-900">
+            An interactive boundary map for {city.label} isn&apos;t available yet. Pick a
+            neighborhood from the selector above, or use the {city.label} data cards
+            (Safety Index, trends, recent reports) — those are fully live for this city.
           </div>
         )}
         {polygonMismatch && (
