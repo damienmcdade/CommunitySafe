@@ -48,40 +48,33 @@ const BASE_FBI_BASELINES: Record<string, CityFbiBaseline> = {
   "los-angeles": { violent: 669, property: 2251, year: 2025, ori: "CA0194200" },
   "milwaukee": { violent: 1145, property: 2401, year: 2025, ori: "WIMPD0000" },
   "minneapolis": { violent: 1003, property: 4509, year: 2025, ori: "MN0271100" },
-  "baltimore": { violent: 1617, property: 4206, year: 2024, ori: "MD0240100" },
-  "new-orleans": { violent: 1361, property: 5090, year: 2023, ori: "LANPD0000" },
+  "baltimore": { violent: 1440, property: 3730, year: 2025, ori: "MD0240100" },
+  "new-orleans": { violent: 1250, property: 4025, year: 2025, ori: "LANPD0000" },
   "new-york": { violent: 658, property: 2288, year: 2025, ori: "NY0303000" },
   "norfolk": { violent: 397, property: 3176, year: 2025, ori: "VA1170000" },
   "oakland": { violent: 1475, property: 5255, year: 2025, ori: "CA0010900" },
   "philadelphia": { violent: 825, property: 4349, year: 2025, ori: "PAPEP0000" },
-  "fort-worth": { violent: 458, property: 2700, year: 2024, ori: "TX2200200" },
+  "fort-worth": { violent: 392, property: 2323, year: 2025, ori: "TX2200200" },
   "pittsburgh": { violent: 470, property: 2364, year: 2025, ori: "PAPPD0000" },
   "saint-paul": { violent: 490, property: 2824, year: 2025, ori: "MN0620900" },
   "san-diego": { violent: 373, property: 1551, year: 2025, ori: "CA0371100" },
   "san-francisco": { violent: 486, property: 2960, year: 2025, ori: "CA0380100" },
   "seattle": { violent: 700, property: 4446, year: 2025, ori: "WASPD0000" },
   "washington-dc": { violent: 748, property: 3081, year: 2025, ori: "DCMPD0000" },
-  // v100 — adopted FBI CDE 2025 complete-year figures (declines consistent
-  // with the national 2024->2025 drop; each agency's 12 months are present
-  // and passed the plausibility guard). Prior 2024 values in comments.
-  "sacramento":   { violent: 720,  property: 2299, year: 2025, ori: "CA0340400" }, // was 755/2547 (2024)
-  "atlanta":      { violent: 732,  property: 3111, year: 2025, ori: "GAAPD0000" }, // was 841/3748 (2024)
-  "indianapolis": { violent: 769,  property: 2819, year: 2025, ori: "INIPD0000" }, // was 878/3336 (2024)
-  "raleigh":      { violent: 393,  property: 2300, year: 2025, ori: "NC0920100" }, // was 489/2819 (2024)
-  // v100 — refined to FBI UCR 2024 city figures (violent 589.7 / property
-  // 3,313.1 per 100k; verified against AZ MAP Dashboard + NeighborhoodScout).
-  // The prior 533/3415 was a slightly-stale curated estimate; the CDE
-  // per-agency API pull (1448 / 11626) is incomplete/implausible — do NOT use it.
-  "tucson":       { violent: 590,  property: 3313, year: 2024, ori: "AZ0100100" },
+  // v90 — 5 new cities. FBI CDE 2024 values (2025 SRS not yet published).
+  "sacramento":   { violent: 720,  property: 2299, year: 2025, ori: "CA0340400" },
+  "atlanta":      { violent: 732,  property: 3111, year: 2025, ori: "GAAPD0000" },
+  "indianapolis": { violent: 769,  property: 2819, year: 2025, ori: "INIPD0000" },
+  "raleigh":      { violent: 393,  property: 2300, year: 2025, ori: "NC0920100" },
+  "tucson":       { violent: 515,  property: 2590, year: 2025, ori: "AZ0100100" },
   // v95p2 — Honolulu (HPD ORI HI0010100). FBI CDE 2024 reported
   // rates. Honolulu is structurally lower-crime than mainland peer
   // cities and these baselines reflect that.
-  "honolulu":     { violent: 305,  property: 2912, year: 2024, ori: "HI0010100" },
-  // v100 — Long Beach (LBPD ORI CA0194100). Adopted FBI CDE 2025
-  // complete-year (621 / 2553); the property drop tracks the national
-  // 2024->2025 decline. Prior FBI UCR 2024 was 672 / 3,456 (violent 3,030
-  // over pop 450,917). Do NOT confuse the ORI with CA0198200 (CSU Long
-  // Beach PD).
+  "honolulu":     { violent: 193,  property: 1494, year: 2025, ori: "HI0010100" },
+  // v100 — Long Beach (LBPD ORI CA0194100). FBI UCR 2024: violent 3,030
+  // (murder 37 + rape ~200 + robbery ~989 + agg assault ~1,779) / property
+  // 15,581, over pop 450,917 → 672 / 3,456 per 100k. Do NOT confuse with
+  // CA0198200 (CSU Long Beach PD).
   "long-beach":   { violent: 621,  property: 2553, year: 2025, ori: "CA0194100" },
 };
 
@@ -96,9 +89,7 @@ const MANUAL_BASELINE_OVERRIDES: Record<string, Partial<Pick<CityFbiBaseline, "v
   // measurement (agg assault 04A + agg battery 04B + robbery 03 + CSA 02 +
   // homicide 01A) from the same open-data feed the app scores against.
   "chicago": { violent: 620, property: 3700 },
-  // CDE understated Oakland's 2023 violent spike (~1900 vs base 1475);
-  // property stays at the 2025 base (5255) — the ~7200 figure was Oakland's
-  // 2023 peak, not the current year, so we do NOT use it.
+  // CDE understated Oakland's 2023 spike (~1900 violent / ~7200 property).
   "oakland": { violent: 1900 },
   // v100 — Dallas. Stored base (576/3070) was off in BOTH directions vs the
   // authoritative FBI 2024 figures (4 aggregators agree): violent 658
@@ -121,9 +112,6 @@ const MANUAL_BASELINE_OVERRIDES: Record<string, Partial<Pick<CityFbiBaseline, "v
   // geocode-drop fix recovered the ~28% of incidents that were silently
   // dropped (so raising property no longer produces a false grade-A).
   "kansas-city": { violent: 1547, property: 4676 },
-  // CDE property was a 5-year average inflated by pre-2020 years; the single
-  // most-recent year is ~2100.
-  "honolulu": { property: 2100 },
 };
 
 export const CITY_FBI_BASELINES: Record<string, CityFbiBaseline> = Object.fromEntries(

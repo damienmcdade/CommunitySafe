@@ -93,7 +93,7 @@ const CFS_CALIBRATION: Record<string, CfsScale> = {
   // cities, baseline 1361). Unlike Las Vegas/Boise (CFS OVER-counts violent),
   // NOLA's CFS keyword filter misses violent calls coded generically, so the
   // persons scale compensates UP. Property (0.99×) is accurate → stays 0.80.
-  "new-orleans":   { persons: 1.4, property: 0.80, sourceType: "cfs" },
+  "new-orleans":   { persons: 1.29, property: 0.63, sourceType: "cfs" },
   // v99 — Las Vegas split. Raw violent ran ~2.9× FBI (LVMPD CFS coarse),
   // raw property ~1.1×; the single 0.50 scale put property at 0.54×. Persons
   // 0.34 (→~1.0×), property 0.93 (→~1.0×).
@@ -119,7 +119,7 @@ const CFS_CALIBRATION: Record<string, CfsScale> = {
   // WeaponUsed proxy. Neither violent rate can be filtered to UCR Part-1
   // aggravated assault, so it's calibrated to the city's FBI baseline in
   // aggregate (persons ≈ 1 / observed-over-count). Property is accurate → 1.0.
-  "honolulu":      { persons: 0.56, property: 1.0, sourceType: "coarse" },
+  "honolulu":      { persons: 0.35, property: 1.0, sourceType: "coarse" },
   "milwaukee":     { persons: 0.53, property: 1.0, sourceType: "coarse" },
   // v99 — Washington DC publishes ONLY "ASSAULT W/DANGEROUS WEAPON" (weapon-
   // involved) in its open Crime Incidents feed; the FBI counts ALL aggravated
@@ -149,7 +149,7 @@ const CFS_CALIBRATION: Record<string, CfsScale> = {
   // robbery forced to PERSONS), so persons stays 1.0. Scale property ×1.64
   // to recover the authoritative FBI property rate and avoid false safety,
   // and flag it via the partial disclaimer.
-  "long-beach":    { persons: 1.0, property: 1.64, sourceType: "partial" },
+  "long-beach":    { persons: 1.0, property: 1.21, sourceType: "partial" },
   // v100 — Dallas. The DPD public feed (qv6i-rri7) STRUCTURALLY REDACTS two big
   // slices of FBI violent crime: (1) rape / sex offenses — ZERO rows in the
   // person-crime feed (FBI Dallas ~480/yr); (2) family-violence aggravated
@@ -171,7 +171,7 @@ const CFS_CALIBRATION: Record<string, CfsScale> = {
   // 2700) over a 259-day window — without calibration Fort Worth false-grades A.
   // Scale persons ×2.49 and property ×1.31 to recover the FBI baseline (→ grade
   // C, matching its own baseline) + the partial-feed disclaimer.
-  "fort-worth":    { persons: 2.49, property: 1.31, sourceType: "partial" },
+  "fort-worth":    { persons: 2.13, property: 1.13, sourceType: "partial" },
   // v100 — Denver / Cambridge / Indianapolis cluster. (Phoenix was removed in
   // v101 — its upstream feed froze at 2025-12-24 and no replacement exists;
   // Baltimore + Fort Worth replaced Phoenix + Nashville.) FBI baselines
@@ -199,7 +199,7 @@ const CFS_CALIBRATION: Record<string, CfsScale> = {
   //     returns EMPTY — that env gap, not this scale, is the real Denver risk.
   "denver":        { persons: 1.95, property: 1.0, sourceType: "partial" },
   "cambridge":     { persons: 1.65, property: 1.0, sourceType: "partial" },
-  "indianapolis":  { persons: 1.64, property: 1.0, sourceType: "partial" },
+  "indianapolis":  { persons: 1.44, property: 1, sourceType: "partial" },
 };
 
 /// Per-category rate-calibration lookup (1.0 for NIBRS adapters not in the
