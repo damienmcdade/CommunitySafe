@@ -17,7 +17,7 @@ const BASE = "https://data.cambridgema.gov/resource/xuad-73uj.json";
 const ROW_LIMIT = 5_000;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
-registerRowCache(() => { cache = null; });
+registerRowCache(() => { cache = null; }, "cambridge-socrata");
 
 interface CamRow {
   file_number?: string;

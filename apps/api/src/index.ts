@@ -58,7 +58,7 @@ import { startDigestWorker } from "./services/push/digest.worker.js";
 // was the heap-spike OOM source, and once made read-only it only ever
 // reported NO_WARM_DATA — dead weight either way.
 import { startAuditRetentionWorker } from "./services/audit/retention.worker.js";
-import { evictAllRowCaches, registeredRowCacheCount } from "@travelsafe/crime-data/cache-registry";
+import { evictAllRowCaches, evictColdRowCaches, registeredRowCacheCount } from "@travelsafe/crime-data/cache-registry";
 import { Agent, setGlobalDispatcher } from "undici";
 import { globalLimiter } from "./middleware/rate-limit.js";
 import { csrfGuard } from "./middleware/csrf.js";
@@ -118,22 +118,44 @@ function installPooledDispatcher(): void {
 // backstop for any remaining organic spike, giving ~1.9GB of headroom
 // to the cap and re-checking every 8s.
 const HEAP_HIGH_WATER_MB = 1700;
+// v99 — LRU eviction. Phase 1 evicts the COLD adapter caches (everything
+// except the few most-recently-served cities) so active users don't get a
+// cold upstream refetch every time memory blips. Phase 2 is the original
+// all-or-nothing eviction, kept verbatim as the OOM safety fallback: if
+// dropping the cold caches didn't pull heap back under the high-water mark,
+// we still nuke EVERYTHING (and GC), exactly as before. So the crash-
+// prevention guarantee is unchanged; this only spares the hot cities when
+// the cold ones were enough.
+const HEAP_KEEP_HOT = 3;
 let lastEvictAt: string | null = null;
 let evictCount = 0;
 function startMemoryWatchdog(): void {
   const gc = (globalThis as { gc?: () => void }).gc;
+  const heapMB = () => process.memoryUsage().heapUsed / 1024 / 1024;
   const timer = setInterval(() => {
-    const usedMB = process.memoryUsage().heapUsed / 1024 / 1024;
+    const usedMB = heapMB();
     if (usedMB < HEAP_HIGH_WATER_MB) return;
     const before = Math.round(usedMB);
-    const cleared = evictAllRowCaches();
+
+    // Phase 1 — drop cold caches, keep the hottest few warm.
+    let cleared = evictColdRowCaches(HEAP_KEEP_HOT);
     if (gc) gc();
-    const after = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
+    let after = Math.round(heapMB());
+    let phase = "cold";
+
+    // Phase 2 — safety fallback. Still over the line? Evict everything.
+    if (heapMB() >= HEAP_HIGH_WATER_MB) {
+      cleared += evictAllRowCaches();
+      if (gc) gc();
+      after = Math.round(heapMB());
+      phase = "cold+full";
+    }
+
     lastEvictAt = new Date().toISOString();
     evictCount += 1;
     console.warn(
       `[mem-watchdog] heap ${before}MB >= ${HEAP_HIGH_WATER_MB}MB high-water -> ` +
-      `evicted ${cleared}/${registeredRowCacheCount()} adapter caches, gc -> ${after}MB`,
+      `${phase} eviction: cleared ${cleared}/${registeredRowCacheCount()} adapter caches, gc -> ${after}MB`,
     );
   }, 8_000);
   // Don't keep the event loop alive solely for the watchdog.

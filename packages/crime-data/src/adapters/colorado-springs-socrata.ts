@@ -29,7 +29,7 @@ const BASE = "https://policedata.coloradosprings.gov/resource/bc88-hemr.json";
 const ROW_LIMIT = 50_000;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
-registerRowCache(() => { cache = null; });
+registerRowCache(() => { cache = null; }, "colorado-springs-socrata");
 
 interface CoSpRow {
   casenumber?: string;

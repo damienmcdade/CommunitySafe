@@ -17,7 +17,7 @@ const PAGE_SIZE = 2000;
 const PAGES = 25;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
-registerRowCache(() => { cache = null; });
+registerRowCache(() => { cache = null; }, "raleigh-arcgis");
 
 interface RduRow {
   case_number?: string;

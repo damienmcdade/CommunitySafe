@@ -37,7 +37,7 @@ interface Cache {
   labelToRows: Map<string, Incident[]>;
 }
 let cache: Cache | null = null;
-registerRowCache(() => { cache = null; });
+registerRowCache(() => { cache = null; }, "oakland-socrata");
 function buildOaklandIndexes(rows: Incident[]): Pick<Cache, "slugToLabel" | "labelToRows"> {
   const slugToLabel = new Map<string, string>();
   const labelToRows = new Map<string, Incident[]>();

@@ -30,7 +30,7 @@ const RESOURCE_ID = "bd41992a-987a-4cca-8798-fbe1cd946b07";
 const ROW_LIMIT = 30_000;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
-registerRowCache(() => { cache = null; });
+registerRowCache(() => { cache = null; }, "pittsburgh-ckan");
 
 interface PghRow {
   Report_Number?: string;

@@ -23,7 +23,7 @@ const PAGE_SIZE = 2000; // = server maxRecordCount
 const PAGES = 8;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
-registerRowCache(() => { cache = null; });
+registerRowCache(() => { cache = null; }, "long-beach-arcgis");
 
 interface LbFeature {
   attributes: {

@@ -30,7 +30,7 @@ const BASE = "https://data.cincinnati-oh.gov/resource/7aqy-xrv9.json";
 const ROW_LIMIT = 50_000;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
-registerRowCache(() => { cache = null; });
+registerRowCache(() => { cache = null; }, "cincinnati-socrata");
 
 interface CinRow {
   incident_no?: string;

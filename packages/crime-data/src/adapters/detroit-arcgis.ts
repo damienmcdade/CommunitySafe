@@ -34,7 +34,7 @@ interface Cache {
   labelToRows: Map<string, Incident[]>;
 }
 let cache: Cache | null = null;
-registerRowCache(() => { cache = null; });
+registerRowCache(() => { cache = null; }, "detroit-arcgis");
 
 interface DetroitRow {
   crime_id?: string;

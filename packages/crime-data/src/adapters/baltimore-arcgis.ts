@@ -23,7 +23,7 @@ const PAGES = 30;
 const WINDOW_DAYS = 400;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
-registerRowCache(() => { cache = null; });
+registerRowCache(() => { cache = null; }, "baltimore-arcgis");
 
 interface BpdFeature {
   attributes: {

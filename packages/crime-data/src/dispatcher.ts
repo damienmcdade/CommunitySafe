@@ -1,6 +1,7 @@
 import { env } from "./env.js";
 import type { AreaRiskAlert, AreaStats, CrimeDataAdapter, Incident } from "./types.js";
 import { dedupe } from "./lib/inflight.js";
+import { touchRowCache } from "./cache-registry.js";
 import { displayOffenseLabel } from "./lib/offense-display-label.js";
 import { MS_PER_DAY } from "./lib/time-constants.js";
 // Adapter modules moved to @travelsafe/crime-data in v34. The three
@@ -20,6 +21,11 @@ const adapters: Record<string, CrimeDataAdapter> = {
 };
 
 async function tryAdapter<T>(adapter: CrimeDataAdapter, run: (a: CrimeDataAdapter) => Promise<T>): Promise<T | null> {
+  // v99 — mark this adapter's row cache as just-used so the memory
+  // watchdog's LRU eviction keeps actively-served cities warm. Every
+  // auto-mode read path (getIncidents / getAreaStats / getRecentReports /
+  // citywide fan-out) funnels through here, so one touch covers them all.
+  touchRowCache(adapter.name);
   try {
     return await run(adapter);
   } catch (err) {

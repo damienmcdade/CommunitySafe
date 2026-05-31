@@ -23,7 +23,7 @@ const BASE = "https://data.buffalony.gov/resource/d6g9-xbgu.json";
 const ROW_LIMIT = 5_000;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
-registerRowCache(() => { cache = null; });
+registerRowCache(() => { cache = null; }, "buffalo-socrata");
 
 interface BufRow {
   case_number?: string;

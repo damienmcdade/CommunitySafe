@@ -25,7 +25,7 @@ const BASE = "https://www.dallasopendata.com/resource/qv6i-rri7.json";
 const ROW_LIMIT = 30_000;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
-registerRowCache(() => { cache = null; });
+registerRowCache(() => { cache = null; }, "dallas-socrata");
 
 interface DallasRow {
   incidentnum?: string;

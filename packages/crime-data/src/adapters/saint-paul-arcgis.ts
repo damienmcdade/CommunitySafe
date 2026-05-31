@@ -32,7 +32,7 @@ const PAGE_SIZE = 1000;
 const PAGES = 45;  // v99 — 45 × 1000 = 45k contiguous crime rows ≈ 14 months (Saint Paul ~38k crimes/yr after the proactive filter)
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
-registerRowCache(() => { cache = null; });
+registerRowCache(() => { cache = null; }, "saint-paul-arcgis");
 
 interface SpRow {
   CASE_NUMBER?: number;

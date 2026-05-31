@@ -24,7 +24,7 @@ const TABLE = "incidents_part1_part2";
 const ROW_LIMIT = 30_000;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
-registerRowCache(() => { cache = null; });
+registerRowCache(() => { cache = null; }, "phl-carto");
 
 interface PhlRow {
   objectid?: number;

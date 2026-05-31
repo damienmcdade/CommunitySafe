@@ -38,7 +38,7 @@ const HISTORICAL_BASE = "https://data.lacity.org/resource/y8y3-fqfu.json";
 // 10-minute client refresh.
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
-registerRowCache(() => { cache = null; });
+registerRowCache(() => { cache = null; }, "lapd-socrata");
 
 interface SodaRow {
   caseno?: string;

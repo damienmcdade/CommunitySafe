@@ -42,7 +42,7 @@ interface Cache {
   labelToRows: Map<string, Incident[]>;
 }
 let cache: Cache | null = null;
-registerRowCache(() => { cache = null; });
+registerRowCache(() => { cache = null; }, "honolulu-socrata");
 
 interface HnlRow {
   objectid?: string;

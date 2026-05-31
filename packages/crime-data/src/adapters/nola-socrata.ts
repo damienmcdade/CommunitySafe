@@ -26,7 +26,7 @@ const BASE = "https://data.nola.gov/resource/es9j-6y5d.json";
 const ROW_LIMIT = 50_000;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
-registerRowCache(() => { cache = null; });
+registerRowCache(() => { cache = null; }, "nola-socrata");
 
 interface NolaRow {
   nopd_item?: string;

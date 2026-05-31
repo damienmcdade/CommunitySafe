@@ -29,7 +29,7 @@ const PAGE_SIZE = 2000;
 const PAGES = 30;  // ~60k incidents covers full Sacramento PD annual volume
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
-registerRowCache(() => { cache = null; });
+registerRowCache(() => { cache = null; }, "sacramento-arcgis");
 
 interface SacRow {
   Record_ID?: string;

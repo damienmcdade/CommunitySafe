@@ -16,7 +16,7 @@ const BASE = "https://data.sfgov.org/resource/wg3w-h783.json";
 // causing repeated stale-looking responses).
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
-registerRowCache(() => { cache = null; });
+registerRowCache(() => { cache = null; }, "sfpd-socrata");
 
 interface SodaRow {
   incident_id?: string;

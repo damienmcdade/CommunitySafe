@@ -26,7 +26,7 @@ const PAGE_SIZE = 2000;
 const PAGES = 30;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
-registerRowCache(() => { cache = null; });
+registerRowCache(() => { cache = null; }, "charlotte-arcgis");
 
 interface CmpdRow {
   YEAR?: string;

@@ -142,7 +142,7 @@ async function fetchPage(offset: number, signal?: AbortSignal): Promise<RawRow[]
 
 interface Cache { fetchedAt: number; rows: Incident[]; areas: KnownArea[] }
 let cache: Cache | null = null;
-registerRowCache(() => { cache = null; });
+registerRowCache(() => { cache = null; }, "milwaukee-ckan");
 let lastDiscovered: { fetchedAt: number; areas: KnownArea[] } | null = null;
 
 // Milwaukee metro centroid — last-resort fallback when a neighborhood
