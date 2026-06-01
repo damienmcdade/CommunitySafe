@@ -366,4 +366,54 @@ export const PHOTOS: Record<string, string[]> = {
     "https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/Long_Beach_CA_Photo_D_Ramey_Logan.jpg/1920px-Long_Beach_CA_Photo_D_Ramey_Logan.jpg",
     "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Downtown_Long_Beach_California_Aerial.jpg/1920px-Downtown_Long_Beach_California_Aerial.jpg",
   ],
+  "austin": [
+    // Downtown Austin skyline, December 2023 (daytime)
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Austin_Texas_skyline%2C_December_2023_-_Day.jpg/1920px-Austin_Texas_skyline%2C_December_2023_-_Day.jpg",
+    // Austin skyline 2018 — downtown high-rise cluster
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Austin%2C_Texas_Skyline_2018.jpg/1920px-Austin%2C_Texas_Skyline_2018.jpg",
+    // Downtown skyline at dusk in 2016
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/Austin_Texas_skyline_at_dusk_in_2016.jpg/1920px-Austin_Texas_skyline_at_dusk_in_2016.jpg",
+    // Skyline reflected over the Colorado River (Lady Bird Lake)
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Colorado_River_and_Austin%2C_Texas_Skyline_%2846879015824%29.jpg/1920px-Colorado_River_and_Austin%2C_Texas_Skyline_%2846879015824%29.jpg",
+  ],
+  "phoenix": [
+    // Phoenix skyline with the desert mountains behind
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/Phoenix_skyline_Arizona_USA.jpg/1920px-Phoenix_skyline_Arizona_USA.jpg",
+    // Downtown Phoenix skyline high-rise cluster
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Downtown_Phoenix_Skyline_%286974043971%29.jpg/1920px-Downtown_Phoenix_Skyline_%286974043971%29.jpg",
+    // Downtown Phoenix skyline lit at night
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/58/Downtown_Phoenix_Skyline_Lights.jpg/1920px-Downtown_Phoenix_Skyline_Lights.jpg",
+    // Phoenix skyline from South Mountain at night
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Phoenix_Skyline_from_South_Mountain_at_Night.2010.jpg/1920px-Phoenix_Skyline_from_South_Mountain_at_Night.2010.jpg",
+  ],
+  "jacksonville": [
+    // Jacksonville downtown skyline panorama over the St. Johns River
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Jacksonville_Skyline_Panorama_2.jpg/1920px-Jacksonville_Skyline_Panorama_2.jpg",
+    // Jacksonville skyline panorama (riverfront)
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Jacksonville_Skyline_Panorama_3.jpg/1920px-Jacksonville_Skyline_Panorama_3.jpg",
+    // Downtown Jacksonville, south view (2016)
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Skyline_of_Jacksonville_FL%2C_South_view_20160706_1.jpg/1920px-Skyline_of_Jacksonville_FL%2C_South_view_20160706_1.jpg",
+    // Jacksonville skyline at night (2025)
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/Jacksonville_Florida_Night_Skyline_New_Year_2025.jpg/1920px-Jacksonville_Florida_Night_Skyline_New_Year_2025.jpg",
+  ],
+  "virginia-beach": [
+    // Virginia Beach oceanfront — boardwalk and shoreline (2024)
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Virginia_Beach_Oceanfront_2024-08-31.jpg/1920px-Virginia_Beach_Oceanfront_2024-08-31.jpg",
+    // King Neptune statue — iconic Virginia Beach boardwalk landmark
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/King_Neptune%2C_Virginia_Beach.jpg/1920px-King_Neptune%2C_Virginia_Beach.jpg",
+    // Virginia Beach oceanfront beach and resort strip
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/Beach_at_Virginia_Beach_Oceanfront_01.jpg/1920px-Beach_at_Virginia_Beach_Oceanfront_01.jpg",
+    // Oceanfront looking south down the resort strip
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/Beach_at_Virginia_Beach_Oceanfront_-_Facing_South.jpg/1920px-Beach_at_Virginia_Beach_Oceanfront_-_Facing_South.jpg",
+  ],
+  "gainesville": [
+    // Downtown Gainesville, Florida
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Downtown_Gainesville%2C_FL.jpg/1920px-Downtown_Gainesville%2C_FL.jpg",
+    // Downtown Gainesville street view
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Gainesville%2C_FL_Downtown.jpg/1920px-Gainesville%2C_FL_Downtown.jpg",
+    // Century Tower — landmark carillon at the University of Florida
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/Century_Tower_%28University_of_Florida%29.jpg/1920px-Century_Tower_%28University_of_Florida%29.jpg",
+    // Ben Hill Griffin Stadium ("The Swamp") — UF landmark
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/Ben_Hill_Griffin_Stadium_-_Florida_Gators.jpg/1920px-Ben_Hill_Griffin_Stadium_-_Florida_Gators.jpg",
+  ],
 };

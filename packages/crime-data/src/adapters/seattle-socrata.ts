@@ -74,6 +74,14 @@ async function fetchSeattle(): Promise<Incident[]> {
   return rows.map((r, i) => {
     const lat = Number(r.latitude);
     const lon = Number(r.longitude);
+    // v104 — SPD uses (-1,-1) as a missing-geocode sentinel and occasionally
+    // emits other out-of-range junk. The old `!== 0` guard let -1,-1 through,
+    // which dragged neighborhood centroids ~80mi east — the all-cities audit
+    // flagged Seattle as the only off-map city. Keep a point ONLY when both
+    // coords land inside the Seattle bounding box; otherwise the incident still
+    // counts but carries no map point.
+    const geocoded = Number.isFinite(lat) && Number.isFinite(lon)
+      && lat > 47.3 && lat < 47.85 && lon > -122.6 && lon < -122.2;
     // SPD prints neighborhood in ALL CAPS ("BITTERLAKE", "HIGHLAND PARK"). We
     // title-case it on intake so it reads naturally everywhere and matches
     // the polygon file's casing.
@@ -88,8 +96,8 @@ async function fetchSeattle(): Promise<Incident[]> {
       ibrOffenseDescription: r.nibrs_offense_code_description?.trim() || r.offense_category?.trim() || "Unknown",
       beat: r.beat ?? null,
       blockLabel: undefined,
-      lat: !isNaN(lat) && lat !== 0 ? lat : undefined,
-      lng: !isNaN(lon) && lon !== 0 ? lon : undefined,
+      lat: geocoded ? lat : undefined,
+      lng: geocoded ? lon : undefined,
     };
   });
 }
