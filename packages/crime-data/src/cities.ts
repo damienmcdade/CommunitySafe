@@ -45,6 +45,9 @@ import { honoluluAdapter, getDiscoveredAreasHonolulu } from "./adapters/honolulu
 import { longBeachAdapter, getDiscoveredAreasLongBeach } from "./adapters/long-beach-arcgis.js";
 import { austinAdapter, getDiscoveredAreasAustin } from "./adapters/austin-socrata.js";
 import { phoenixAdapter, getDiscoveredAreasPhoenix } from "./adapters/phoenix-ckan.js";
+import { jacksonvilleAdapter, getDiscoveredAreasJacksonville } from "./adapters/jacksonville-arcgis.js";
+import { virginiaBeachAdapter, getDiscoveredAreasVirginiaBeach } from "./adapters/virginia-beach-arcgis.js";
+import { gainesvilleAdapter, getDiscoveredAreasGainesville } from "./adapters/gainesville-socrata.js";
 
 // City registry.
 //
@@ -391,6 +394,34 @@ export const CITIES: CityEntry[] = [
     adapter: phoenixAdapter,
     discover: getDiscoveredAreasPhoenix,
   },
+  {
+    // Jacksonville, FL — 41st city. JSO "NIBRS Incidents" ArcGIS FeatureServer:
+    // incident-level NIBRS points + ZipCode, grouped by ZIP (35 areas).
+    slug: "jacksonville",
+    label: "Jacksonville",
+    bbox: { south: 30.10, west: -81.90, north: 30.58, east: -81.39 },
+    adapter: jacksonvilleAdapter,
+    discover: getDiscoveredAreasJacksonville,
+  },
+  {
+    // Virginia Beach, VA — 42nd city. VBPD "Police Offense Reports" ArcGIS
+    // (no lat/lng); bucketed by the pre-joined Subdivision name (333 mapped,
+    // numeric/beat-code/blank → "Unmapped").
+    slug: "virginia-beach",
+    label: "Virginia Beach",
+    bbox: { south: 36.68, west: -76.23, north: 36.94, east: -75.91 },
+    adapter: virginiaBeachAdapter,
+    discover: getDiscoveredAreasVirginiaBeach,
+  },
+  {
+    // Gainesville, FL — 43rd city. GPD "Crime Responses" Socrata (lat/lng +
+    // free-text narrative); point-in-polygon to 12 GPD patrol zones.
+    slug: "gainesville",
+    label: "Gainesville",
+    bbox: { south: 29.58, west: -82.45, north: 29.72, east: -82.20 },
+    adapter: gainesvilleAdapter,
+    discover: getDiscoveredAreasGainesville,
+  },
 ];
 
 export function cityFromLatLng(point: { lat: number; lng: number }): CityEntry | null {
@@ -486,6 +517,9 @@ export function cityForArea(slug: string): CityEntry {
   if (slug.startsWith("lb-")   || slug === "long-beach")   return CITIES[37];
   if (slug.startsWith("atx-")  || slug === "austin")       return CITIES[38];
   if (slug.startsWith("phx-")  || slug === "phoenix")      return CITIES[39];
+  if (slug.startsWith("jax-")  || slug === "jacksonville") return CITIES[40];
+  if (slug.startsWith("vb-")   || slug === "virginia-beach") return CITIES[41];
+  if (slug.startsWith("gnv-")  || slug === "gainesville")  return CITIES[42];
   return CITIES[0];
 }
 

@@ -34,6 +34,9 @@ export const CITY_POPULATION: Record<string, number> = {
   "colorado-springs": 488_664,
   "austin":          961_855,  // 2020 US Census
   "phoenix":       1_608_139,  // 2020 US Census
+  "jacksonville":    949_611,  // 2020 US Census
+  "virginia-beach":  459_470,  // 2020 US Census
+  "gainesville":     141_085,  // 2020 US Census
   "denver":          716_577,  // v70 — US Census Bureau Vintage 2024 estimate
   "detroit":         633_218,
   "washington-dc":   678_972,
