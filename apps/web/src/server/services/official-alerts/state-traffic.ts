@@ -695,7 +695,6 @@ function dcConfig(layerUrl: string, kind: "block" | "closure" | "detour"): Layer
       const subtype = str(props.subtype);
       const desc = str(props.description);
       const closuretype = str(props.closuretype).toLowerCase();
-      const problem = subtype.replace(/_/g, " ").toLowerCase() || desc || "closure";
       const fullClosure = /full closure/.test(closuretype) || kind === "closure";
       let severity: OfficialAlert["severity"];
       if (kind === "closure") {
