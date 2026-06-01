@@ -1315,7 +1315,6 @@ export async function getSafetyScore(areaSlug: string, areaLabel: string): Promi
   // to module top (PER_AREA_MS_PER_DAY collapsed into the shared
   // MS_PER_DAY since they're literally identical).
   const nowMsArea = Date.now();
-  const windowStartMsArea = nowMsArea - PER_AREA_RATE_WINDOW_DAYS * MS_PER_DAY;
 
   // v80 — parse timestamps once per row (same as the citywide variant).
   const tsPerArea: number[][] = incidentsPerArea.map((arr) => {
@@ -1327,16 +1326,27 @@ export async function getSafetyScore(areaSlug: string, areaLabel: string): Promi
     return out;
   });
 
-  // Oldest row across the FULL response — drives windowDays only.
+  // Oldest + newest non-future row across the FULL response.
   let dataEarliestMsArea = nowMsArea;
+  let dataLatestMsArea = 0;
   for (let a = 0; a < incidentsPerArea.length; a++) {
     const tsList = tsPerArea[a];
     for (let k = 0; k < tsList.length; k++) {
       const t = tsList[k];
       if (t <= 0 || t > nowMsArea) continue;
       if (t < dataEarliestMsArea) dataEarliestMsArea = t;
+      if (t > dataLatestMsArea) dataLatestMsArea = t;
     }
   }
+  // v106 — anchor the rate window to the data's NEWEST row for lagged/stale
+  // feeds, mirroring the citywide path (anchorMs above). The per-area path was
+  // missing this fix: with a hard now-365d window, a stale feed (Phoenix frozen
+  // at 2025-12-31, KC ~54d lag) only partially overlaps the data, so the
+  // numerator counts ~half the incidents while windowDays stays ~365 — per-
+  // neighborhood rates undercount ~2× and grades read one-two letters too
+  // lenient. Fresh feeds (latest within 14d of now) keep the wall-clock anchor.
+  const anchorMsArea = (dataLatestMsArea > 0 && nowMsArea - dataLatestMsArea > 14 * MS_PER_DAY) ? dataLatestMsArea : nowMsArea;
+  const windowStartMsArea = anchorMsArea - PER_AREA_RATE_WINDOW_DAYS * MS_PER_DAY;
 
   // Citywide totals across every tracked neighborhood, within the
   // CLOCK-anchored window.
@@ -1348,7 +1358,7 @@ export async function getSafetyScore(areaSlug: string, areaLabel: string): Promi
     for (let k = 0; k < arr.length; k++) {
       const t = tsList[k];
       if (t <= 0) continue;
-      if (t < windowStartMsArea || t > nowMsArea) continue;
+      if (t < windowStartMsArea || t > anchorMsArea) continue;
       const i = arr[k];
       const cat = i.nibrsCategory as "PERSONS" | "PROPERTY" | "SOCIETY";
       const desc = i.ibrOffenseDescription;
@@ -1418,8 +1428,8 @@ export async function getSafetyScore(areaSlug: string, areaLabel: string): Promi
   // as the citywide variant). The per-area count above shares this
   // window via the per-area incident loop. Rounded to a 7-day boundary
   // to absorb sub-day cache drift; see roundWindowDays for rationale.
-  const rawWindowDays = dataEarliestMsArea < nowMsArea
-    ? Math.min(PER_AREA_RATE_WINDOW_DAYS, Math.max(1, Math.round((nowMsArea - dataEarliestMsArea) / MS_PER_DAY)))
+  const rawWindowDays = dataEarliestMsArea < anchorMsArea
+    ? Math.min(PER_AREA_RATE_WINDOW_DAYS, Math.max(1, Math.round((anchorMsArea - dataEarliestMsArea) / MS_PER_DAY)))
     : 0;
   const windowDays = roundWindowDays(rawWindowDays);
 

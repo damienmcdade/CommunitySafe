@@ -90,8 +90,10 @@ export async function getCitywideCrimeMix(citySlug: string, topN = 12): Promise<
 }
 
 async function computeCitywideCrimeMix(citySlug: string, topN: number): Promise<CrimeMix> {
+  // v106 — was returning an empty citySlug-labeled payload for an unknown
+  // ?city= slug; reject so the route 404s instead of implying "0 incidents".
   const city = cityBySlug(citySlug);
-  if (!city) return { area: citySlug, windowDays: 0, asOf: null, totalIncidents: 0, topOffenses: [] };
+  if (!city) throw new Error(`city_not_supported: ${citySlug}`);
   const areas = await city.discover().catch(() => []);
   // Soft-fail per area — one slow/broken adapter call shouldn't drop the
   // whole citywide aggregate. Same posture as crimeData.getCitywide.

@@ -163,7 +163,10 @@ async function fetchGainesville(): Promise<Incident[]> {
   const rows = await fetchSocrata<GnvRow>("Gainesville GPD", {
     url: BASE,
     select: "id,narrative,offense_date,offense_hour_of_day,latitude,longitude,address,location",
-    where: "location IS NOT NULL",
+    // v106 — was "location IS NOT NULL", which dropped ~761 rows that carry
+    // scalar latitude/longitude but a null `location` Point (the mapper below
+    // already falls back to lat/lng) → ~10% undercount. Keep any geocodable row.
+    where: "latitude IS NOT NULL OR location IS NOT NULL",
     windowDays: WINDOW_DAYS,
     dateField: "offense_date",
     order: "offense_date DESC",

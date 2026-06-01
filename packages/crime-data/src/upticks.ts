@@ -1,5 +1,5 @@
 import { crimeData } from "./dispatcher.js";
-import { cityBySlug, CITIES } from "./cities.js";
+import { cityBySlug } from "./cities.js";
 import { dedupe } from "./lib/inflight.js";
 import { withComputeLimit } from "./lib/compute-limit.js";
 import { MS_PER_DAY as DAY } from "./lib/time-constants.js";
@@ -37,7 +37,10 @@ export async function getCitywideUpticks(citySlug: string): Promise<UpticksRespo
 }
 
 async function computeCitywideUpticks(citySlug: string): Promise<UpticksResponse> {
-  const city = cityBySlug(citySlug) ?? CITIES[0];
+  // v106 — was `?? CITIES[0]`, which silently served San Diego upticks for any
+  // unrecognized ?city= slug (data bleed). Reject so the route returns 404.
+  const city = cityBySlug(citySlug);
+  if (!city) throw new Error(`city_not_supported: ${citySlug}`);
   const now = Date.now();
   const recentCutoff = new Date(now - 7 * DAY);
   const priorCutoff = new Date(now - 14 * DAY);

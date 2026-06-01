@@ -6,6 +6,7 @@ import { crimeData } from "@travelsafe/crime-data/dispatcher";
 import type { Incident } from "@travelsafe/crime-data/types";
 import { cityBySlug } from "@travelsafe/crime-data/cities";
 import { dedupe } from "@travelsafe/crime-data/lib/inflight";
+import { withComputeLimit } from "@travelsafe/crime-data/cache-registry";
 
 const WEEKS = 12;
 const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
@@ -98,7 +99,10 @@ export async function getAreaInsights(area: string): Promise<AreaInsights> {
 /// Citywide variant — same shape, fans out across every tracked area.
 /// Mirrors apps/web/src/server/services/crime-data/insights.getCitywideInsights.
 export async function getCitywideInsights(citySlug: string): Promise<AreaInsights> {
-  return dedupe(`insights:${citySlug}`, () => computeCitywideInsights(citySlug));
+  // v106 — gate through the per-city compute limiter (was the last ungated
+  // citywide composer): it fans out getIncidents across every area, a full
+  // cold city load. Under a concurrent multi-city burst this OOM'd the box.
+  return dedupe(`insights:${citySlug}`, () => withComputeLimit(citySlug, () => computeCitywideInsights(citySlug)));
 }
 
 async function computeCitywideInsights(citySlug: string): Promise<AreaInsights> {

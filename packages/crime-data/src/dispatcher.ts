@@ -74,56 +74,67 @@ export const crimeData = {
     const mode = env.CRIME_DATA_ADAPTER;
     if (mode !== "auto") return adapters[mode].getAreaStats(area);
     // Route by city: LA-prefixed slugs hit LAPD, others hit SDPD primary.
-    const cityAdapter = cityForArea(area).adapter;
-    const stats = await tryAdapter(cityAdapter, (a) => a.getAreaStats(area));
-    if (stats) {
-      lkgAreaStats.set(area, stats);
-      return stats;
-    }
-    // SANDAG jurisdiction-level stats still answer for city-of-SD overview.
-    if (cityAdapter === sdpdNibrsAdapter) {
-      const sandag = await tryAdapter(sandagSocrataAdapter, (a) => a.getAreaStats(area));
-      if (sandag) {
-        lkgAreaStats.set(area, sandag);
-        return sandag;
+    const city = cityForArea(area);
+    // v106 — gate the cold adapter row-load through the per-city compute
+    // limiter, same key as the citywide composers so composer-internal calls
+    // piggyback this city's slot (no deadlock). A burst of distinct-city
+    // per-area requests (the last ungated OOM vector) now shares slots.
+    return withComputeLimit(city.slug, async () => {
+      const cityAdapter = city.adapter;
+      const stats = await tryAdapter(cityAdapter, (a) => a.getAreaStats(area));
+      if (stats) {
+        lkgAreaStats.set(area, stats);
+        return stats;
       }
-    }
-    // LKG fallback before mock — a previously-cached real response
-    // beats a synthetic mock when the upstream is briefly down.
-    const lkg = lkgAreaStats.get(area);
-    if (lkg) return lkg;
-    if (!MOCK_FALLBACK_ALLOWED) return null;
-    return mockAdapter.getAreaStats(area);
+      // SANDAG jurisdiction-level stats still answer for city-of-SD overview.
+      if (cityAdapter === sdpdNibrsAdapter) {
+        const sandag = await tryAdapter(sandagSocrataAdapter, (a) => a.getAreaStats(area));
+        if (sandag) {
+          lkgAreaStats.set(area, sandag);
+          return sandag;
+        }
+      }
+      // LKG fallback before mock — a previously-cached real response
+      // beats a synthetic mock when the upstream is briefly down.
+      const lkg = lkgAreaStats.get(area);
+      if (lkg) return lkg;
+      if (!MOCK_FALLBACK_ALLOWED) return null;
+      return mockAdapter.getAreaStats(area);
+    });
   },
 
   async getIncidents(area: string, opts?: { limit?: number; since?: Date }): Promise<Incident[]> {
     const mode = env.CRIME_DATA_ADAPTER;
     if (mode !== "auto") return adapters[mode].getIncidents(area, opts);
-    const cityAdapter = cityForArea(area).adapter;
-    const incidents = await tryAdapter(cityAdapter, (a) => a.getIncidents(area, opts));
-    if (incidents && incidents.length > 0) {
-      lkgIncidents.set(area, incidents);
-      return incidents;
-    }
-    const lkg = lkgIncidents.get(area);
-    if (lkg && lkg.length > 0) return lkg;
-    if (!MOCK_FALLBACK_ALLOWED) return incidents ?? [];
-    return incidents ?? (await mockAdapter.getIncidents(area, opts));
+    const city = cityForArea(area);
+    return withComputeLimit(city.slug, async () => {
+      const incidents = await tryAdapter(city.adapter, (a) => a.getIncidents(area, opts));
+      if (incidents && incidents.length > 0) {
+        lkgIncidents.set(area, incidents);
+        return incidents;
+      }
+      const lkg = lkgIncidents.get(area);
+      if (lkg && lkg.length > 0) return lkg;
+      if (!MOCK_FALLBACK_ALLOWED) return incidents ?? [];
+      return incidents ?? (await mockAdapter.getIncidents(area, opts));
+    });
   },
 
   async getRecentReports(area: string, opts?: { limit?: number }): Promise<Incident[]> {
     const mode = env.CRIME_DATA_ADAPTER;
     if (mode !== "auto") return adapters[mode].getRecentReports(area, opts);
-    const cityAdapter = cityForArea(area).adapter;
-    const reports = await tryAdapter(cityAdapter, (a) => a.getRecentReports(area, opts));
-    if (reports && reports.length > 0) {
-      lkgRecentReports.set(area, reports);
-      return reports;
-    }
-    const lkg = lkgRecentReports.get(area);
-    if (lkg && lkg.length > 0) return lkg;
-    if (!MOCK_FALLBACK_ALLOWED) return reports ?? [];
-    return reports ?? (await mockAdapter.getRecentReports(area, opts));
+    const city = cityForArea(area);
+    return withComputeLimit(city.slug, async () => {
+      const reports = await tryAdapter(city.adapter, (a) => a.getRecentReports(area, opts));
+      if (reports && reports.length > 0) {
+        lkgRecentReports.set(area, reports);
+        return reports;
+      }
+      const lkg = lkgRecentReports.get(area);
+      if (lkg && lkg.length > 0) return lkg;
+      if (!MOCK_FALLBACK_ALLOWED) return reports ?? [];
+      return reports ?? (await mockAdapter.getRecentReports(area, opts));
+    });
   },
 
   /// Citywide aggregate for the Awareness tab default view. Sums incidents

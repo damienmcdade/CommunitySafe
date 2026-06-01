@@ -171,6 +171,9 @@ crimeDataRouter.get("/mix", async (req, res, next) => {
     const area = q.neighborhood ?? q.jurisdiction ?? "san-diego";
     return res.json(await getCrimeMix(area, q.days));
   } catch (err) {
+    if (err instanceof Error && err.message.startsWith("city_not_supported:")) {
+      return res.status(404).json({ error: "city_not_supported", message: err.message.slice("city_not_supported:".length).trim() });
+    }
     next(err);
   }
 });
@@ -181,6 +184,9 @@ crimeDataRouter.get("/upticks", async (req, res, next) => {
     res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=900");
     return res.json(await getCitywideUpticks(citySlug));
   } catch (err) {
+    if (err instanceof Error && err.message.startsWith("city_not_supported:")) {
+      return res.status(404).json({ error: "city_not_supported", message: err.message.slice("city_not_supported:".length).trim() });
+    }
     next(err);
   }
 });
