@@ -201,7 +201,66 @@ async function fetchArcgisTraffic(
   centroid: { lat: number; lng: number },
   radiusKm: number,
 ): Promise<OfficialAlert[]> {
-  const features = await loadLayer(cfg, Date.now());
+  return projectNear(await loadLayer(cfg, Date.now()), centroid, radiusKm);
+}
+
+// ---------------------------------------------------------------------------
+// Generic GeoJSON-feed fetcher (WZDx) + cache
+// ---------------------------------------------------------------------------
+//
+// WZDx (Work Zone Data Exchange) feeds are plain GeoJSON FeatureCollections
+// served at a fixed URL (no ArcGIS /query), where each feature's attributes
+// live under `properties.core_details`. They reuse the same parse-cache +
+// haversine-radius path as the ArcGIS configs — only the URL handling and the
+// per-feature mapping differ — so a `FeedConfig` mirrors `LayerConfig` but
+// carries the full feed URL and an optional browser User-Agent (some hosts
+// 403 / hang on the default UA).
+
+interface FeedConfig {
+  // Full GeoJSON feed URL (fetched as-is, no query params appended).
+  feedUrl: string;
+  // Override the User-Agent (WZDx hosts behind a CDN want a browser UA).
+  userAgent?: string;
+  toAlert: (props: Props, lng: number, lat: number) => OfficialAlert | null;
+}
+
+const BROWSER_UA = "Mozilla/5.0 (compatible; CommunitySafe/1.0)";
+
+async function loadFeed(cfg: FeedConfig, now: number): Promise<ParsedFeature[]> {
+  const hit = cache.get(cfg.feedUrl);
+  if (hit && now - hit.fetchedAt < CACHE_TTL_MS) return hit.features;
+  try {
+    const res = await fetch(cfg.feedUrl, {
+      headers: {
+        Accept: "application/geo+json, application/json",
+        "User-Agent": cfg.userAgent ?? USER_AGENT,
+      },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) return hit?.features ?? [];
+    const json = (await res.json()) as {
+      features?: { properties?: Props; geometry?: GeoJsonGeometry }[];
+    };
+    const parsed: ParsedFeature[] = [];
+    for (const f of json.features ?? []) {
+      const point = representativePoint(f.geometry ?? null);
+      if (!point) continue;
+      const alert = cfg.toAlert(f.properties ?? {}, point.lng, point.lat);
+      if (!alert) continue;
+      parsed.push({ alert, lat: point.lat, lng: point.lng });
+    }
+    cache.set(cfg.feedUrl, { fetchedAt: now, features: parsed });
+    return parsed;
+  } catch {
+    return hit?.features ?? [];
+  }
+}
+
+function projectNear(
+  features: ParsedFeature[],
+  centroid: { lat: number; lng: number },
+  radiusKm: number,
+): OfficialAlert[] {
   return features
     .map((f) => ({ f, km: haversineKm({ lat: f.lat, lng: f.lng }, centroid) }))
     .filter(({ km }) => km <= radiusKm)
@@ -212,6 +271,14 @@ async function fetchArcgisTraffic(
     )
     .slice(0, MAX_ALERTS)
     .map(({ f }) => f.alert);
+}
+
+async function fetchFeedTraffic(
+  cfg: FeedConfig,
+  centroid: { lat: number; lng: number },
+  radiusKm: number,
+): Promise<OfficialAlert[]> {
+  return projectNear(await loadFeed(cfg, Date.now()), centroid, radiusKm);
 }
 
 // ---------------------------------------------------------------------------
@@ -251,15 +318,26 @@ function classifyByKeyword(text: string): OfficialAlert["severity"] {
 
 const AGENCY = {
   CA: "California Highway Patrol",
+  CO: "Colorado DOT (CoTrip)",
+  DC: "DDOT / HSEMA",
   FL: "Florida DOT (FL511)",
+  GA: "Georgia DOT (511GA)",
   IL: "Illinois DOT",
+  IN: "INDOT (TrafficWise)",
+  LA: "Louisiana DOTD (511LA)",
+  MA: "MassDOT",
   MD: "Maryland CHART",
   MI: "Michigan DOT (MiDrive)",
   MN: "Minnesota DOT (511)",
   MO: "Missouri DOT (MoDOT 511)",
   NC: "NCDOT (DriveNC)",
+  NV: "Nevada DOT (NVRoads)",
+  NY: "511NY",
+  OH: "Ohio DOT (OHGO)",
   PA: "PennDOT (511PA)",
   TX: "TxDOT (DriveTexas)",
+  VA: "VDOT (511 Virginia)",
+  WI: "Wisconsin DOT (511WI)",
 } as const;
 
 function mkAlert(
@@ -598,6 +676,409 @@ const TX_CONFIG: LayerConfig = {
   },
 };
 
+// --- District of Columbia (DDOT / HSEMA) -------------------------------------
+// Three sibling MapServer layers (Road Blocks / Closures / Detours) on the
+// same HSEMA_RoadClosures service, queried + merged. Verified fields: street,
+// subtype, description, direction, starttime/endtime (epoch ms), closuretype
+// ("Full Closure"/...), status. Geometry is Point (blocks) or LineString
+// (closures/detours) — representativePoint() handles both. Some Detour rows
+// omit subtype/status, so the mapper tolerates missing fields.
+//
+// Posture: a road CLOSURE (layer 1, or a "Full Closure" closuretype) is the
+// disruptive case → Severe when it reads as a hazard/incident, else Moderate;
+// blocks/detours are Minor (informational rerouting).
+function dcConfig(layerUrl: string, kind: "block" | "closure" | "detour"): LayerConfig {
+  return {
+    layerUrl,
+    toAlert(props, lng, lat) {
+      const street = str(props.street);
+      const subtype = str(props.subtype);
+      const desc = str(props.description);
+      const closuretype = str(props.closuretype).toLowerCase();
+      const problem = subtype.replace(/_/g, " ").toLowerCase() || desc || "closure";
+      const fullClosure = /full closure/.test(closuretype) || kind === "closure";
+      let severity: OfficialAlert["severity"];
+      if (kind === "closure") {
+        severity = /hazard|crash|collision|fire|police|incident|emergency/i.test(
+          `${subtype} ${desc}`,
+        )
+          ? "Severe"
+          : "Moderate";
+      } else {
+        // Blocks + detours are informational rerouting, even when the
+        // underlying closuretype is "Full Closure".
+        severity = fullClosure && /hazard|crash|fire|police/i.test(`${subtype} ${desc}`)
+          ? "Moderate"
+          : "Minor";
+      }
+      const id =
+        str(props.GlobalID) || str(props.OBJECTID) || `${lat.toFixed(4)},${lng.toFixed(4)}`;
+      return mkAlert(
+        "DC",
+        AGENCY.DC,
+        `${kind}:${id}`,
+        severity,
+        roadHeadline(street, subtype || desc || "Road closure"),
+        desc || `DDOT ${kind} on ${street || "the roadway"}.`,
+        toIso(props.starttime),
+        "https://ddot.dc.gov/",
+      );
+    },
+  };
+}
+
+const DC_CONFIGS: LayerConfig[] = [
+  dcConfig(
+    "https://maps2.dcgis.dc.gov/dcgis/rest/services/DDOT/HSEMA_RoadClosures/MapServer/0",
+    "block",
+  ),
+  dcConfig(
+    "https://maps2.dcgis.dc.gov/dcgis/rest/services/DDOT/HSEMA_RoadClosures/MapServer/1",
+    "closure",
+  ),
+  dcConfig(
+    "https://maps2.dcgis.dc.gov/dcgis/rest/services/DDOT/HSEMA_RoadClosures/MapServer/2",
+    "detour",
+  ),
+];
+
+// --- WZDx (Work Zone Data Exchange) feeds: WI / NY / NV / IN / LA -------------
+// Verified shape (511wi.gov, 511ny.org, nvroads.com, in.carsprogram.org,
+// 511la.org): GeoJSON FeatureCollection; per-feature attributes live under
+// `properties.core_details` with event_type (always "work-zone"), road_names
+// (string array), direction, description, update_date. Geometry is LineString
+// (most) or MultiPoint (511NY) — representativePoint() handles both. These are
+// construction / work-zone content (valid road-conditions, not crashes), so
+// they map to Minor — bumped to Moderate when the description mentions a
+// closure. The haversine radius cap keeps even the ~8.5k-feature NY feed small.
+type CoreDetails = {
+  event_type?: unknown;
+  road_names?: unknown;
+  direction?: unknown;
+  description?: unknown;
+  update_date?: unknown;
+};
+
+function toAlertWzdx(state: string, agency: string, url: string) {
+  return (props: Props, lng: number, lat: number): OfficialAlert | null => {
+    const core = (props.core_details ?? {}) as CoreDetails;
+    const roads = Array.isArray(core.road_names) ? core.road_names.map(str) : [];
+    const road = roads.find(Boolean) ?? "Roadway";
+    const desc = str(core.description);
+    const closure = /clos(ed|ure)/i.test(desc);
+    const severity: OfficialAlert["severity"] = closure ? "Moderate" : "Minor";
+    const id = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+    const headline = `${road}: ${desc ? desc.slice(0, 80) : "work zone"}`;
+    return mkAlert(
+      state,
+      agency,
+      id,
+      severity,
+      headline,
+      desc || `${agency} work zone on ${road}.`,
+      toIso(core.update_date),
+      url,
+    );
+  };
+}
+
+function wzdxConfig(state: keyof typeof AGENCY, feedUrl: string, link: string): FeedConfig {
+  return {
+    feedUrl,
+    userAgent: BROWSER_UA,
+    toAlert: toAlertWzdx(state, AGENCY[state], link),
+  };
+}
+
+const WI_CONFIG = wzdxConfig("WI", "https://511wi.gov/api/wzdx", "https://511wi.gov/");
+const NY_CONFIG = wzdxConfig("NY", "https://511ny.org/api/wzdx", "https://511ny.org/");
+const NV_CONFIG = wzdxConfig("NV", "https://www.nvroads.com/api/wzdx", "https://www.nvroads.com/");
+const IN_CONFIG = wzdxConfig(
+  "IN",
+  "https://in.carsprogram.org/carsapi_v1/api/wzdx",
+  "https://indot.carsprogram.org/",
+);
+const LA_CONFIG = wzdxConfig("LA", "https://511la.org/api/wzdx", "https://511la.org/");
+
+// --- Massachusetts (MassDOT) — XML incident feed -----------------------------
+// http://events.massdot.evbg.net/ — a real incident feed (crashes + planned
+// events), NOT just work zones. Requires a browser User-Agent (a default /
+// empty UA can return HTTP 000). The payload is small XML; we parse the
+// repeated <Event>…</Event> blocks with a regex (mirroring chp.ts's KML
+// split) rather than pull in an XML dependency. Verified fields: EventType,
+// EventSubType, RoadwayName, Direction, PrimaryLatitude, PrimaryLongitude,
+// LocationDescription, LaneBlockageDescription, EventStatus, EventStartDate.
+// Rows without a primary lat/lng are skipped. Severity: crash/collision →
+// Severe, incident → Moderate, else Minor.
+const MA_FEED_URL = "http://events.massdot.evbg.net/";
+
+function xmlField(block: string, tag: string): string {
+  const m = block.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`));
+  return m ? m[1].replace(/\s+/g, " ").trim() : "";
+}
+
+function parseMassDot(xml: string): ParsedFeature[] {
+  const out: ParsedFeature[] = [];
+  const blocks = xml.split("<Event>").slice(1);
+  for (const raw of blocks) {
+    const block = raw.split("</Event>")[0] ?? raw;
+    const lat = Number(xmlField(block, "PrimaryLatitude"));
+    const lng = Number(xmlField(block, "PrimaryLongitude"));
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0))
+      continue;
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) continue;
+    const type = xmlField(block, "EventType");
+    const subtype = xmlField(block, "EventSubType");
+    const road = xmlField(block, "RoadwayName");
+    const direction = xmlField(block, "Direction");
+    const locDesc = xmlField(block, "LocationDescription");
+    const lanes = xmlField(block, "LaneBlockageDescription");
+    const status = xmlField(block, "EventStatus");
+    const text = `${type} ${subtype}`.toLowerCase();
+    let severity: OfficialAlert["severity"];
+    if (/crash|collision/.test(text)) severity = "Severe";
+    else if (/incident/.test(text)) severity = "Moderate";
+    else severity = "Minor";
+    const id = xmlField(block, "EventId") || `${lat.toFixed(4)},${lng.toFixed(4)}`;
+    const problem = [subtype || type, direction].filter(Boolean).join(" ");
+    const descParts = [locDesc, lanes, status ? `Status: ${status}` : ""].filter(Boolean);
+    out.push({
+      lat,
+      lng,
+      alert: mkAlert(
+        "MA",
+        AGENCY.MA,
+        id,
+        severity,
+        roadHeadline(road, problem || "Traffic event"),
+        descParts.join(" — ") || "MassDOT traffic event.",
+        toIso(xmlField(block, "LastUpdate") || xmlField(block, "EventCreatedDate")),
+        "https://mass511.com/",
+      ),
+    });
+  }
+  return out;
+}
+
+async function loadMassDot(now: number): Promise<ParsedFeature[]> {
+  const hit = cache.get(MA_FEED_URL);
+  if (hit && now - hit.fetchedAt < CACHE_TTL_MS) return hit.features;
+  try {
+    const res = await fetch(MA_FEED_URL, {
+      headers: { Accept: "application/xml, text/xml", "User-Agent": BROWSER_UA },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) return hit?.features ?? [];
+    const features = parseMassDot(await res.text());
+    cache.set(MA_FEED_URL, { fetchedAt: now, features });
+    return features;
+  } catch {
+    return hit?.features ?? [];
+  }
+}
+
+async function fetchMassDot(
+  centroid: { lat: number; lng: number },
+  radiusKm: number,
+): Promise<OfficialAlert[]> {
+  return projectNear(await loadMassDot(Date.now()), centroid, radiusKm);
+}
+
+// ---------------------------------------------------------------------------
+// Env-key-gated feeds (GA / VA / OH — and CO until its keyless layer fills)
+// ---------------------------------------------------------------------------
+//
+// These providers require an API key. Each registry entry is ACTIVE only when
+// its env var is set: trafficAgencyForState() returns the agency only when the
+// key is present (so the panel honestly shows "not available" until a key is
+// added), and getStateTraffic() fetches only when keyed. Build the adapters
+// here; gate activation in the REGISTRY below.
+//
+//   GA_511_KEY      — Georgia DOT 511GA  (Iteris getevents)
+//   VDOT_API_KEY    — VDOT 511 Virginia  (Iteris getevents)
+//   OHGO_API_KEY    — Ohio DOT OHGO      (OHGO REST JSON)
+//   COTRIP_API_KEY  — Colorado DOT CoTrip (WZDx) — used only because the
+//                     keyless CoTrip ArcGIS alerts layer currently returns 0
+//                     features; re-check that layer to promote CO to keyless.
+
+function env(name: string): string | null {
+  const v = process.env[name];
+  return v && v.trim() ? v.trim() : null;
+}
+
+// Generic keyed-JSON fetcher: GET a URL (optionally with auth headers), pull
+// an array of records out of the payload, map each to an OfficialAlert, then
+// cache + haversine-filter exactly like the other paths.
+async function loadKeyedJson(
+  cacheKey: string,
+  url: string,
+  headers: Record<string, string>,
+  extract: (json: unknown) => unknown[],
+  toAlert: (rec: Props) => { alert: OfficialAlert; lat: number; lng: number } | null,
+  now: number,
+): Promise<ParsedFeature[]> {
+  const hit = cache.get(cacheKey);
+  if (hit && now - hit.fetchedAt < CACHE_TTL_MS) return hit.features;
+  try {
+    const res = await fetch(url, {
+      headers: { Accept: "application/json", "User-Agent": BROWSER_UA, ...headers },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) return hit?.features ?? [];
+    const json = (await res.json()) as unknown;
+    const parsed: ParsedFeature[] = [];
+    for (const rec of extract(json)) {
+      if (!rec || typeof rec !== "object") continue;
+      const mapped = toAlert(rec as Props);
+      if (mapped) parsed.push(mapped);
+    }
+    cache.set(cacheKey, { fetchedAt: now, features: parsed });
+    return parsed;
+  } catch {
+    return hit?.features ?? [];
+  }
+}
+
+// --- Iteris getevents (Georgia 511GA + Virginia 511) -------------------------
+// Shared schema across Iteris-hosted 511 sites; only host + env var differ.
+// getevents?key=<KEY>&format=json returns an array of MapEventData objects:
+// Latitude, Longitude, Severity, RoadwayName, DirectionOfTravel, Description,
+// EventType, EventSubType, LanesStatus, StartDate. (VA's public 511virginia.org
+// host 301-redirects to its SPA without a valid key; the keyed Iteris endpoint
+// resolves the data — gated off until VDOT_API_KEY is set, so it's inert now.)
+function iterisToAlert(state: string, agency: string, link: string) {
+  return (rec: Props) => {
+    const lat = Number(rec.Latitude);
+    const lng = Number(rec.Longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0))
+      return null;
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+    const road = str(rec.RoadwayName);
+    const type = str(rec.EventType);
+    const subtype = str(rec.EventSubType);
+    const desc = str(rec.Description);
+    const sevRaw = str(rec.Severity).toLowerCase();
+    const text = `${type} ${subtype} ${desc}`;
+    let severity: OfficialAlert["severity"];
+    if (sevRaw === "severe" || sevRaw === "major" || /fatal/i.test(text)) severity = "Severe";
+    else if (sevRaw === "moderate" || /crash|collision|closure|closed|incident/i.test(text))
+      severity = "Moderate";
+    else if (sevRaw === "minor") severity = "Minor";
+    else severity = classifyByKeyword(text);
+    const direction = str(rec.DirectionOfTravel);
+    const lanes = str(rec.LanesStatus);
+    const id =
+      str(rec.Id) || str(rec.EventId) || `${lat.toFixed(4)},${lng.toFixed(4)}`;
+    const problem = [subtype || type, direction].filter(Boolean).join(" ");
+    const descParts = [desc, lanes].filter(Boolean);
+    return {
+      lat,
+      lng,
+      alert: mkAlert(
+        state,
+        agency,
+        id,
+        severity,
+        roadHeadline(road, problem || "Traffic event"),
+        descParts.join(" — ") || `${agency} traffic event.`,
+        toIso(rec.StartDate),
+        link,
+      ),
+    };
+  };
+}
+
+function buildIteris(
+  state: string,
+  agency: string,
+  host: string,
+  link: string,
+  key: string,
+) {
+  const url = `${host}/api/getevents?key=${encodeURIComponent(key)}&format=json`;
+  const cacheKey = `iteris:${state}`;
+  return (centroid: { lat: number; lng: number }, radiusKm: number) =>
+    loadKeyedJson(
+      cacheKey,
+      url,
+      {},
+      (j) => (Array.isArray(j) ? j : []),
+      iterisToAlert(state, agency, link),
+      Date.now(),
+    ).then((feats) => projectNear(feats, centroid, radiusKm));
+}
+
+// --- Ohio DOT (OHGO) — REST JSON ---------------------------------------------
+// https://publicapi.ohgo.com/api/v1/incidents with header
+// `Authorization: APIKEY <KEY>` (401 "API key required" without it, verified).
+// Paged response: { results: [ { latitude, longitude, description, category,
+// roadName, direction, id, ... } ], ... }. Map incident objects to alerts.
+function ohgoToAlert(rec: Props) {
+  const lat = Number(rec.latitude ?? rec.Latitude);
+  const lng = Number(rec.longitude ?? rec.Longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0))
+    return null;
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  const desc = str(rec.description ?? rec.Description);
+  const category = str(rec.category ?? rec.Category);
+  const road = str(rec.roadName ?? rec.RoadName ?? rec.routeName);
+  const direction = str(rec.direction ?? rec.Direction);
+  const text = `${category} ${desc}`;
+  let severity: OfficialAlert["severity"];
+  if (/fatal|hazmat|all lanes? closed|road closed/i.test(text)) severity = "Severe";
+  else if (/crash|collision|accident|closure|closed|disabled/i.test(text))
+    severity = "Moderate";
+  else severity = "Minor";
+  const id = str(rec.id ?? rec.Id) || `${lat.toFixed(4)},${lng.toFixed(4)}`;
+  return {
+    lat,
+    lng,
+    alert: mkAlert(
+      "OH",
+      AGENCY.OH,
+      id,
+      severity,
+      roadHeadline(road, [category || "Incident", direction].filter(Boolean).join(" ")),
+      desc || "Ohio DOT (OHGO) traffic incident.",
+      toIso(rec.startTime ?? rec.StartTime),
+      "https://ohgo.com/",
+    ),
+  };
+}
+
+function buildOhgo(key: string) {
+  const url = "https://publicapi.ohgo.com/api/v1/incidents";
+  return (centroid: { lat: number; lng: number }, radiusKm: number) =>
+    loadKeyedJson(
+      "ohgo:OH",
+      url,
+      { Authorization: `APIKEY ${key}` },
+      (j) => {
+        const o = j as { results?: unknown[] } | unknown[];
+        if (Array.isArray(o)) return o;
+        return Array.isArray(o?.results) ? o.results : [];
+      },
+      ohgoToAlert,
+      Date.now(),
+    ).then((feats) => projectNear(feats, centroid, radiusKm));
+}
+
+// --- Colorado DOT (CoTrip) — WZDx, key-gated ---------------------------------
+// The keyless CoTrip ArcGIS alerts layer
+// (maps.codot.gov/.../CoTrip_Alerts_Points_(Live)_Public_View) currently
+// returns 0 features (re-verified), so CO falls back to the keyed CoTrip WZDx
+// feed: https://data.cotrip.org/api/v1/wzdx?apiKey=<KEY> (403 "Not Authorized"
+// without a key, verified). Same WZDx shape as WI/NY/etc.
+function buildCotrip(key: string) {
+  const cfg: FeedConfig = {
+    feedUrl: `https://data.cotrip.org/api/v1/wzdx?apiKey=${encodeURIComponent(key)}`,
+    userAgent: BROWSER_UA,
+    toAlert: toAlertWzdx("CO", AGENCY.CO, "https://www.cotrip.org/"),
+  };
+  return (centroid: { lat: number; lng: number }, radiusKm: number) =>
+    fetchFeedTraffic(cfg, centroid, radiusKm);
+}
+
 // --- Washington (WSDOT) — INTENTIONALLY NOT WIRED ----------------------------
 // The notes flagged that this layer's field names contain spaces and that
 // outFields=* errors. On live testing the quirk is worse: the
@@ -648,23 +1129,87 @@ function arcgisEntry(agency: string, cfg: LayerConfig): StateEntry {
   };
 }
 
+// Query several ArcGIS layers (e.g. DC's block/closure/detour siblings) and
+// merge them, re-applying the severe-first / nearest-first sort + cap across
+// the combined set so one layer can't crowd out a more severe row in another.
+function multiArcgisEntry(agency: string, cfgs: LayerConfig[]): StateEntry {
+  return {
+    agency,
+    build: async (centroid, radiusKm) => {
+      const now = Date.now();
+      const parsed = (await Promise.all(cfgs.map((c) => loadLayer(c, now)))).flat();
+      return projectNear(parsed, centroid, radiusKm);
+    },
+  };
+}
+
+function feedEntry(agency: string, cfg: FeedConfig): StateEntry {
+  return {
+    agency,
+    build: (centroid, radiusKm) => fetchFeedTraffic(cfg, centroid, radiusKm),
+  };
+}
+
+// Build an env-gated registry entry: returns an entry only when the env key is
+// present, so the state stays unsupported (agency → null, alerts → []) until a
+// key is configured.
+function keyedEntry(
+  agency: string,
+  envVar: string,
+  build: (key: string) => StateEntry["build"],
+): StateEntry | null {
+  const key = env(envVar);
+  if (!key) return null;
+  return { agency, build: build(key) };
+}
+
 const REGISTRY: Record<string, StateEntry> = {
+  // --- Keyless: live now ---
   CA: { agency: AGENCY.CA, build: buildCalifornia },
+  DC: multiArcgisEntry(AGENCY.DC, DC_CONFIGS),
   FL: arcgisEntry(AGENCY.FL, FL_CONFIG),
   IL: arcgisEntry(AGENCY.IL, IL_CONFIG),
+  IN: feedEntry(AGENCY.IN, IN_CONFIG),
+  LA: feedEntry(AGENCY.LA, LA_CONFIG),
+  MA: { agency: AGENCY.MA, build: fetchMassDot },
   MD: arcgisEntry(AGENCY.MD, MD_CONFIG),
   MI: arcgisEntry(AGENCY.MI, MI_CONFIG),
   MN: arcgisEntry(AGENCY.MN, MN_CONFIG),
   MO: arcgisEntry(AGENCY.MO, MO_CONFIG),
   NC: arcgisEntry(AGENCY.NC, NC_CONFIG),
+  NV: feedEntry(AGENCY.NV, NV_CONFIG),
+  NY: feedEntry(AGENCY.NY, NY_CONFIG),
   PA: arcgisEntry(AGENCY.PA, PA_CONFIG),
   TX: arcgisEntry(AGENCY.TX, TX_CONFIG),
+  WI: feedEntry(AGENCY.WI, WI_CONFIG),
 };
 
-// States with no usable free keyless feed are intentionally absent from
-// the registry (CO, DC, GA, IN, LA, MA, NV, NY, OH, VA, WI — plus WA, see
-// note above — and any other not listed): trafficAgencyForState → null,
-// getStateTraffic → [].
+// --- Env-key-gated: registered only when the matching env var is set. Until
+// then the state behaves like an unsupported one (agency → null, alerts → []),
+// so the panel honestly shows "not available". ---
+for (const [code, entry] of [
+  ["GA", keyedEntry(AGENCY.GA, "GA_511_KEY", (k) =>
+    buildIteris("GA", AGENCY.GA, "https://511ga.org", "https://511ga.org/", k),
+  )],
+  ["VA", keyedEntry(AGENCY.VA, "VDOT_API_KEY", (k) =>
+    buildIteris("VA", AGENCY.VA, "https://511virginia.org", "https://511virginia.org/", k),
+  )],
+  ["OH", keyedEntry(AGENCY.OH, "OHGO_API_KEY", (k) => buildOhgo(k))],
+  ["CO", keyedEntry(AGENCY.CO, "COTRIP_API_KEY", (k) => buildCotrip(k))],
+] as const) {
+  if (entry) REGISTRY[code] = entry;
+}
+
+// Supported states (this module + the special-cased CA CHP delegate):
+//   Keyless, live now: CA, DC, FL, IL, IN, LA, MA, MD, MI, MN, MO, NC, NV,
+//     NY, PA, TX, WI.
+//   Env-key-gated (active only when the env var is present, else unsupported):
+//     GA (GA_511_KEY), VA (VDOT_API_KEY), OH (OHGO_API_KEY), and CO
+//     (COTRIP_API_KEY — gated only because the keyless CoTrip ArcGIS layer is
+//     currently empty; promote CO to keyless once that layer returns features).
+// Every other state — including WA (see the WSDOT note above) and any state
+// with neither a keyless feed nor a configured key — is intentionally absent:
+// trafficAgencyForState → null, getStateTraffic → [].
 
 // ---------------------------------------------------------------------------
 // Public contract
