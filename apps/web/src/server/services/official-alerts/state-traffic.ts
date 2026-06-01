@@ -317,12 +317,14 @@ function classifyByKeyword(text: string): OfficialAlert["severity"] {
 // ---------------------------------------------------------------------------
 
 const AGENCY = {
+  AZ: "Arizona DOT (AZ511)",
   CA: "California Highway Patrol",
   CO: "Colorado DOT (CoTrip)",
   DC: "DDOT / HSEMA",
   FL: "Florida DOT (FL511)",
   GA: "Georgia DOT (511GA)",
   IL: "Illinois DOT",
+  ID: "Idaho Transportation Dept (511)",
   IN: "INDOT (TrafficWise)",
   LA: "Louisiana DOTD (511LA)",
   MA: "MassDOT",
@@ -798,6 +800,10 @@ const IN_CONFIG = wzdxConfig(
   "https://indot.carsprogram.org/",
 );
 const LA_CONFIG = wzdxConfig("LA", "https://511la.org/api/wzdx", "https://511la.org/");
+// AZ511 + Idaho 511 also publish keyless WZDx feeds (AZDOT / Arcadis), verified
+// live with features near Tucson (61) and Boise (101).
+const AZ_CONFIG = wzdxConfig("AZ", "https://az511.gov/api/wzdx", "https://az511.gov/");
+const ID_CONFIG = wzdxConfig("ID", "https://511.idaho.gov/api/wzdx", "https://511.idaho.gov/");
 
 // --- Massachusetts (MassDOT) — XML incident feed -----------------------------
 // http://events.massdot.evbg.net/ — a real incident feed (crashes + planned
@@ -1164,10 +1170,12 @@ function keyedEntry(
 
 const REGISTRY: Record<string, StateEntry> = {
   // --- Keyless: live now ---
+  AZ: feedEntry(AGENCY.AZ, AZ_CONFIG),
   CA: { agency: AGENCY.CA, build: buildCalifornia },
   DC: multiArcgisEntry(AGENCY.DC, DC_CONFIGS),
   FL: arcgisEntry(AGENCY.FL, FL_CONFIG),
   IL: arcgisEntry(AGENCY.IL, IL_CONFIG),
+  ID: feedEntry(AGENCY.ID, ID_CONFIG),
   IN: feedEntry(AGENCY.IN, IN_CONFIG),
   LA: feedEntry(AGENCY.LA, LA_CONFIG),
   MA: { agency: AGENCY.MA, build: fetchMassDot },
@@ -1200,8 +1208,8 @@ for (const [code, entry] of [
 }
 
 // Supported states (this module + the special-cased CA CHP delegate):
-//   Keyless, live now: CA, DC, FL, IL, IN, LA, MA, MD, MI, MN, MO, NC, NV,
-//     NY, PA, TX, WI.
+//   Keyless, live now: AZ, CA, DC, FL, ID, IL, IN, LA, MA, MD, MI, MN, MO,
+//     NC, NV, NY, PA, TX, WI.
 //   Env-key-gated (active only when the env var is present, else unsupported):
 //     GA (GA_511_KEY), VA (VDOT_API_KEY), OH (OHGO_API_KEY), and CO
 //     (COTRIP_API_KEY — gated only because the keyless CoTrip ArcGIS layer is
