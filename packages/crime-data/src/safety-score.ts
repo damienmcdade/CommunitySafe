@@ -863,7 +863,7 @@ function roundWindowDays(raw: number): number {
 /// city total rather than an even-split per-area approximation, so the
 /// comparison reflects the city's actual reported rate.
 export async function getCitywideSafetyScore(citySlug: string): Promise<SafetyScoreResponse> {
-  return dedupe(`safety-score:${citySlug}`, () => withComputeLimit(() => computeCitywideSafetyScore(citySlug)));
+  return dedupe(`safety-score:${citySlug}`, () => withComputeLimit(citySlug, () => computeCitywideSafetyScore(citySlug)));
 }
 
 async function computeCitywideSafetyScore(citySlug: string): Promise<SafetyScoreResponse> {

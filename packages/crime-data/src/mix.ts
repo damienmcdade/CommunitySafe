@@ -86,7 +86,7 @@ export async function getCrimeMix(area: string, _windowDays?: number, topN = 12)
 /// Safety Index all-100 regression. The response shape matches the
 /// per-area CrimeMix so the UI renders with one branch.
 export async function getCitywideCrimeMix(citySlug: string, topN = 12): Promise<CrimeMix> {
-  return dedupe(`mix:${citySlug}:${topN}`, () => withComputeLimit(() => computeCitywideCrimeMix(citySlug, topN)));
+  return dedupe(`mix:${citySlug}:${topN}`, () => withComputeLimit(citySlug, () => computeCitywideCrimeMix(citySlug, topN)));
 }
 
 async function computeCitywideCrimeMix(citySlug: string, topN: number): Promise<CrimeMix> {

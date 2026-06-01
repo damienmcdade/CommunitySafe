@@ -33,7 +33,7 @@ export interface UpticksResponse {
 }
 
 export async function getCitywideUpticks(citySlug: string): Promise<UpticksResponse> {
-  return dedupe(`upticks:${citySlug}`, () => withComputeLimit(() => computeCitywideUpticks(citySlug)));
+  return dedupe(`upticks:${citySlug}`, () => withComputeLimit(citySlug, () => computeCitywideUpticks(citySlug)));
 }
 
 async function computeCitywideUpticks(citySlug: string): Promise<UpticksResponse> {

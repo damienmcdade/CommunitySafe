@@ -130,7 +130,7 @@ export async function getCitywideTrend(citySlug: string, opts?: { windowDays?: n
   // The full citywide trend can serialize ~5000 bullets / ~760 KB, so a
   // bullets=0 fetch is ~60x smaller. Keyed into the dedupe id so the
   // trimmed and full variants don't collide.
-  return dedupe(`trend:${citySlug}:${wd}:${opts?.bulletLimit ?? "all"}`, () => withComputeLimit(() => computeCitywideTrend(citySlug, opts)));
+  return dedupe(`trend:${citySlug}:${wd}:${opts?.bulletLimit ?? "all"}`, () => withComputeLimit(citySlug, () => computeCitywideTrend(citySlug, opts)));
 }
 
 async function computeCitywideTrend(citySlug: string, opts?: { windowDays?: number; bulletLimit?: number }): Promise<TrendResponse> {
