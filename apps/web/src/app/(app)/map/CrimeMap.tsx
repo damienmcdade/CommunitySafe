@@ -352,6 +352,21 @@ export default function CrimeMap() {
     return { ...polygons, features: filtered };
   }, [polygons, polygonSlugByName]);
 
+  // v102 — adapter areas with NO matching polygon: neighborhoods the source
+  // agency never published a boundary for, plus the "Unmapped" bucket of
+  // incidents that fell outside every neighborhood polygon. They can't be
+  // drawn on the choropleth, so we list them in a footnote under the map
+  // (they remain searchable + in the data cards) rather than silently
+  // dropping them — honest about what the boundary data does and doesn't cover.
+  const unmappedAreas = useMemo(() => {
+    if (!areas || polygonSlugByName.size === 0) return [];
+    const covered = new Set(polygonSlugByName.values());
+    return areas
+      .filter((a) => a.jurisdiction.toLowerCase() === city.label.toLowerCase() && !covered.has(a.slug))
+      .map((a) => a.label)
+      .sort((a, b) => (a === "Unmapped" ? 1 : b === "Unmapped" ? -1 : a.localeCompare(b)));
+  }, [areas, polygonSlugByName, city.label]);
+
   // v83 — POLYGON-SYNC: orphan adapter areas (areas that have data
   // but no matching polygon in the city's GeoJSON file) get a
   // synthetic CircleMarker rendered at the adapter's published
@@ -672,6 +687,18 @@ export default function CrimeMap() {
           <ZoomController polygons={polygons} selectedName={selectedName} fallbackCenter={[city.centroid.lat, city.centroid.lng]} />
         </MapContainer>
       </div>
+
+      {/* v102 — honest footnote: neighborhoods with no published boundary
+          (plus the off-polygon "Unmapped" bucket) that can't be drawn on the
+          choropleth but still exist in the data + selector. */}
+      {unmappedAreas.length > 0 && (
+        <p className="mt-2 text-[11px] text-slate2-500 leading-snug" role="note">
+          <strong className="text-slate2-700">{unmappedAreas.length} area{unmappedAreas.length === 1 ? "" : "s"} not shown on the map</strong>
+          {" "}— {city.label}&apos;s open data has no published boundary for {unmappedAreas.length === 1 ? "it" : "these"}
+          {unmappedAreas.includes("Unmapped") ? " (and an “Unmapped” bucket for incidents that fell outside every neighborhood)" : ""}:
+          {" "}{unmappedAreas.join(", ")}. {unmappedAreas.length === 1 ? "It is" : "They’re"} still searchable above and included in the data cards.
+        </p>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* City-level legend always visible — explains the blended fill. */}
