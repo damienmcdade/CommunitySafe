@@ -7,6 +7,7 @@ import {
   getSafetyScore,
   getCitywideSafetyScore,
 } from "@/server/services/watch/safety-score";
+import { humanizeArea } from "@travelsafe/crime-data/cities";
 
 /// Two modes share this route:
 ///   ?city=<slug>                 → citywide aggregate vs FBI national rate
@@ -48,5 +49,8 @@ export const GET = wrap(async (req: NextRequest) => {
 
   const { city, area, label } = Query.parse(Object.fromEntries(req.nextUrl.searchParams));
   if (city) return NextResponse.json(await getCitywideSafetyScore(city), { headers: CACHE_HEADERS });
-  return NextResponse.json(await getSafetyScore(area!, label ?? area!), { headers: CACHE_HEADERS });
+  return NextResponse.json(
+    await getSafetyScore(area!, label && label !== area ? label : humanizeArea(area!)),
+    { headers: CACHE_HEADERS },
+  );
 });

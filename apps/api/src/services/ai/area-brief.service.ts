@@ -1,6 +1,6 @@
 import { aiConfigured, generateTextWithFallback } from "./provider.js";
 import { getCrimeMix } from "@travelsafe/crime-data/mix";
-import { cityForArea } from "@travelsafe/crime-data/cities";
+import { cityForArea, humanizeArea } from "@travelsafe/crime-data/cities";
 import { getRedis } from "../../lib/redis.js";
 
 // Per-neighborhood AI brief. Ported from apps/web for v38 — same
@@ -42,7 +42,9 @@ const CACHE_TTL_SECONDS = 6 * 60 * 60; // 6h per area
 // users saw blended/wrong AI briefs). v2 prefixes the city slug.
 // Bumping the version invalidates every poisoned v1 entry immediately
 // rather than waiting out the 6h TTL.
-const CACHE_KEY_PREFIX = "ai:area-brief:v2:";
+// v106 — bumped v2 -> v3 so briefs regenerate with the humanized neighborhood
+// name in the prose (was emitting the raw slug, e.g. "gnv-appletree").
+const CACHE_KEY_PREFIX = "ai:area-brief:v3:";
 const localCache = new Map<string, { fetchedAt: number; brief: string }>();
 const LOCAL_TTL_MS = CACHE_TTL_SECONDS * 1000;
 
@@ -107,7 +109,7 @@ export async function generateAreaBrief(area: string): Promise<string | null> {
 
   const userPrompt = `
 City: ${sanitize(city.label)}
-Neighborhood / area: ${sanitize(area)}
+Neighborhood / area: ${sanitize(humanizeArea(area))}
 Rolling window: ${mix?.windowDays ?? 30} days
 Dominant category: ${dominant}
 Total recent incidents: ${mix?.totalIncidents ?? 0}

@@ -9,4 +9,5 @@ export {
   cityForArea,
   cityFromLatLng,
   nearestCityByCentroid,
+  humanizeArea,
 } from "@travelsafe/crime-data/cities";

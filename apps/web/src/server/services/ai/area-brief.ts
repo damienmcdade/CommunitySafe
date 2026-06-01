@@ -1,7 +1,7 @@
 import "server-only";
 import { aiConfigured, generateTextWithFallback } from "./provider";
 import { getCrimeMix } from "../crime-data/mix";
-import { cityForArea } from "../crime-data/cities";
+import { cityForArea, humanizeArea } from "../crime-data/cities";
 
 // Plain-English per-neighborhood AI brief. Two short paragraphs:
 //   1. What kinds of incidents the area sees most (factual, from the mix)
@@ -83,7 +83,7 @@ export async function generateAreaBrief(area: string): Promise<string | null> {
 
   const userPrompt = `
 City: ${sanitize(city.label)}
-Neighborhood / area: ${sanitize(area)}
+Neighborhood / area: ${sanitize(humanizeArea(area))}
 Rolling window: ${mix?.windowDays ?? 30} days
 Dominant category: ${dominant}
 Total recent incidents: ${mix?.totalIncidents ?? 0}

@@ -8,7 +8,14 @@ import {
   getTrendForArea,
   getCitywideTrend,
 } from "@travelsafe/crime-data/trend-feed";
+import { humanizeArea } from "@travelsafe/crime-data/cities";
 import { getRedis } from "../lib/redis.js";
+
+// A label equal to the slug means the caller didn't supply a real display
+// name (the frontend warm-prefetch + direct API hits both do this). Derive a
+// human label so cards + headlines read "Azalea Trails", not "gnv-azalea-trails".
+const displayLabel = (area: string, label?: string): string =>
+  label && label !== area ? label : humanizeArea(area);
 
 export const safezoneRouter = Router();
 
@@ -89,7 +96,7 @@ safezoneRouter.get("/safety-score", async (req, res, next) => {
 
     const result = city
       ? await withScoreTimeout(getCitywideSafetyScore(city))
-      : await withScoreTimeout(getSafetyScore(area!, label ?? area!));
+      : await withScoreTimeout(getSafetyScore(area!, displayLabel(area!, label)));
     if (result === TIMEOUT) {
       return res.status(503).json({
         error: "warming_up",
@@ -136,7 +143,7 @@ safezoneRouter.get("/trend", async (req, res, next) => {
     const { city, area, label, days, bullets } = TrendQuery.parse(req.query);
     res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=900");
     if (city) return res.json(await getCitywideTrend(city, { windowDays: days, bulletLimit: bullets }));
-    return res.json(await getTrendForArea(area!, label ?? area!, { windowDays: days, bulletLimit: bullets }));
+    return res.json(await getTrendForArea(area!, displayLabel(area!, label), { windowDays: days, bulletLimit: bullets }));
   } catch (err) {
     next(err);
   }

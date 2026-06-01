@@ -539,3 +539,42 @@ export function cityForArea(slug: string): CityEntry {
 export function cityBySlug(slug: string): CityEntry | null {
   return CITIES.find((c) => c.slug === slug) ?? null;
 }
+
+// Routing prefix per city (mirrors the cityForArea chain). SD is "" because
+// its neighborhood slugs are bare and its few prefixed overrides
+// (la-jolla/oak-park) title-case correctly without stripping.
+const AREA_SLUG_PREFIX: Record<string, string> = {
+  "los-angeles": "la-", "san-francisco": "sf-", "chicago": "chi-", "seattle": "sea-",
+  "new-york": "ny-", "colorado-springs": "cosp-", "detroit": "det-", "washington-dc": "dc-",
+  "boston": "bos-", "philadelphia": "phl-", "oakland": "oak-", "cincinnati": "cin-",
+  "new-orleans": "nola-", "baton-rouge": "br-", "cambridge": "cam-", "dallas": "dal-",
+  "charlotte": "clt-", "baltimore": "balt-", "minneapolis": "mpls-", "cleveland": "cle-",
+  "milwaukee": "mke-", "las-vegas": "lv-", "boise": "bzi-", "buffalo": "buf-", "norfolk": "nor-",
+  "kansas-city": "kc-", "saint-paul": "sp-", "pittsburgh": "pgh-", "fort-worth": "fw-",
+  "denver": "den-", "sacramento": "sac-", "atlanta": "atl-", "indianapolis": "indy-",
+  "raleigh": "rdu-", "tucson": "tuc-", "honolulu": "hnl-", "long-beach": "lb-", "austin": "atx-",
+  "phoenix": "phx-", "jacksonville": "jax-", "virginia-beach": "vb-", "gainesville": "gnv-",
+  "tampa": "tpa-",
+};
+
+const COMPASS = new Set(["n", "s", "e", "w", "nw", "ne", "sw", "se"]);
+function titleCaseToken(t: string): string {
+  if (!t) return t;
+  if (COMPASS.has(t)) return t.toUpperCase();
+  if (/^\d+(st|nd|rd|th)?$/.test(t)) return t; // 13th, 42 — leave as-is
+  return t[0].toUpperCase() + t.slice(1);
+}
+
+/// Best-effort human label for an area slug when a caller doesn't supply an
+/// explicit &label= (AI brief, OG image, direct API hits, or a frontend that
+/// only has the slug). Strips the city's routing prefix and title-cases, e.g.
+/// "gnv-azalea-trails" -> "Azalea Trails", "oak-park" (SD) -> "Oak Park".
+/// The canonical discovered-area label is still preferred where available.
+export function humanizeArea(slug: string): string {
+  const city = cityForArea(slug);
+  if (slug === city.slug) return city.label;
+  const prefix = AREA_SLUG_PREFIX[city.slug] ?? "";
+  const core = prefix && slug.startsWith(prefix) ? slug.slice(prefix.length) : slug;
+  const label = core.split("-").map(titleCaseToken).join(" ").trim();
+  return label || city.label;
+}
