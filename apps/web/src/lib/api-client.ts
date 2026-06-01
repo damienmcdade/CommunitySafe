@@ -192,6 +192,18 @@ function swrWrite<T>(path: string, data: T) {
   }
 }
 
+// v103 — cold-cache cities return a friendly warming 503 (`upstream_timeout`
+// from /crime-data/citywide, `warming_up` from /safezone/safety-score) while
+// the adapter populates its row cache in the background and the next request
+// lands warm. Pre-v103 useApi surfaced that as a hard error, stranding the
+// Crime Map / score on an error surface until the user manually reloaded.
+// We now auto-retry those two specific errors a bounded number of times with
+// backoff so the page recovers on its own. Bounded (not infinite) so a feed
+// that's genuinely down still surfaces the error instead of retry-storming.
+const WARMING_ERROR_RE = /upstream_timeout|warming_up/i;
+const WARMING_MAX_RETRIES = 4;
+const WARMING_BACKOFF_MS = [2000, 3000, 5000, 8000];
+
 /// React hook that surfaces fetch errors directly. On mount it serves a
 /// stale-cached response immediately (if available within the SWR window),
 /// then revalidates in the background. Also refetches on dependency change,
@@ -218,11 +230,15 @@ export function useApi<T = unknown>(
   // dep changes (e.g. someone scrubbing through cities).
   const versionRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
+  // Bounded auto-retry state for cold-cache "warming" 503s (see WARMING_* above).
+  const warmRetryRef = useRef(0);
+  const warmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const reload = useCallback(async () => {
     if (!path) return;
     // Cancel any previous request before starting a new one.
     abortRef.current?.abort();
+    if (warmTimerRef.current != null) { clearTimeout(warmTimerRef.current); warmTimerRef.current = null; }
     const controller = new AbortController();
     abortRef.current = controller;
     const myVersion = ++versionRef.current;
@@ -231,21 +247,36 @@ export function useApi<T = unknown>(
     const hasCached = swrMs > 0 && swrRead<T>(path, swrMs) != null;
     if (!hasCached) setLoading(true);
     setError(null);
+    // When set, we've scheduled a warming retry and must NOT clear the loading
+    // skeleton in `finally` — keep it up through the backoff so the UI shows
+    // "still loading" rather than an empty/no-data flash.
+    let scheduledWarmRetry = false;
     try {
       const d = await api<T>(path, { signal: controller.signal });
       if (myVersion !== versionRef.current) return; // stale — newer request superseded us
       setData(d);
+      warmRetryRef.current = 0; // recovered — reset the warming budget
       if (swrMs > 0) swrWrite<T>(path, d);
     } catch (e) {
       // Suppress aborts entirely — they happen when the user navigates or
       // rapidly switches selection. Not an error condition.
       if ((e as { name?: string })?.name === "AbortError") return;
       if (myVersion !== versionRef.current) return; // stale errors also dropped
+      // Cold-cache warming 503 → retry a few times with backoff instead of
+      // stranding the user; the background warm + retry usually lands data.
+      if (WARMING_ERROR_RE.test((e as Error)?.message ?? "") && warmRetryRef.current < WARMING_MAX_RETRIES) {
+        const delay = WARMING_BACKOFF_MS[Math.min(warmRetryRef.current, WARMING_BACKOFF_MS.length - 1)];
+        warmRetryRef.current += 1;
+        scheduledWarmRetry = true;
+        warmTimerRef.current = setTimeout(() => { void reload(); }, delay);
+        return;
+      }
+      warmRetryRef.current = 0;
       setError(e as Error);
     } finally {
-      if (myVersion === versionRef.current) setLoading(false);
+      if (myVersion === versionRef.current && !scheduledWarmRetry) setLoading(false);
     }
-     
+
   }, [path, swrMs]);
 
   useEffect(() => {
@@ -262,7 +293,7 @@ export function useApi<T = unknown>(
     // the intended behavior — bumping the version is precisely how
     // we mark prior in-flight responses as stale.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    return () => { versionRef.current++; abortRef.current?.abort(); };
+    return () => { versionRef.current++; abortRef.current?.abort(); if (warmTimerRef.current != null) clearTimeout(warmTimerRef.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path, swrMs, ...deps]);
 
