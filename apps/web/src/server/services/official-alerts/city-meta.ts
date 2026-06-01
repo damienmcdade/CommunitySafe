@@ -46,4 +46,15 @@ export const OFFICIAL_ALERTS_CITY_META: Record<string, OfficialAlertsCityMeta> =
   "cleveland":         { slug: "cleveland",         label: "Cleveland",         state: "OH", centroid: { lat: 41.50, lng: -81.69 } },
   "miami":             { slug: "miami",             label: "Miami",             state: "FL", centroid: { lat: 25.76, lng: -80.19 } },
   "norfolk":           { slug: "norfolk",           label: "Norfolk",           state: "VA", centroid: { lat: 36.85, lng: -76.28 } },
+  // Added so every served city resolves here — without an entry a city gets NO
+  // official alerts (weather / earthquake / AMBER / road conditions) at all.
+  "boise":             { slug: "boise",             label: "Boise",             state: "ID", centroid: { lat: 43.62, lng: -116.20 } },
+  "buffalo":           { slug: "buffalo",           label: "Buffalo",           state: "NY", centroid: { lat: 42.89, lng: -78.88 } },
+  "denver":            { slug: "denver",            label: "Denver",            state: "CO", centroid: { lat: 39.74, lng: -104.99 } },
+  "honolulu":          { slug: "honolulu",          label: "Honolulu",          state: "HI", centroid: { lat: 21.31, lng: -157.86 } },
+  "long-beach":        { slug: "long-beach",        label: "Long Beach",        state: "CA", centroid: { lat: 33.77, lng: -118.19 } },
+  "pittsburgh":        { slug: "pittsburgh",        label: "Pittsburgh",        state: "PA", centroid: { lat: 40.44, lng: -80.00 } },
+  "sacramento":        { slug: "sacramento",        label: "Sacramento",        state: "CA", centroid: { lat: 38.58, lng: -121.49 } },
+  "saint-paul":        { slug: "saint-paul",        label: "Saint Paul",        state: "MN", centroid: { lat: 44.95, lng: -93.09 } },
+  "tucson":            { slug: "tucson",            label: "Tucson",            state: "AZ", centroid: { lat: 32.22, lng: -110.97 } },
 };
