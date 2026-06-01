@@ -3,6 +3,7 @@ import { z } from "zod";
 import { lookupLocation, allKnownAreas } from "../services/geo/lookup.service.js";
 import { cityBySlug } from "@travelsafe/crime-data/cities";
 import { getDiscoveredAreasStale as sdpdStale } from "@travelsafe/crime-data/adapters/sdpd-nibrs";
+import { withComputeLimit } from "@travelsafe/crime-data/cache-registry";
 
 export const geoRouter = Router();
 
@@ -34,7 +35,12 @@ geoRouter.get("/areas", async (req, res, next) => {
     if (citySlug) {
       const city = cityBySlug(citySlug);
       if (!city) return res.json({ areas: [] });
-      const areas = await city.discover().catch(() => []);
+      // v105 — gate discover() through the per-city compute limiter. /geo/areas
+      // does a full cold adapter row-load + area aggregation; under a burst of
+      // concurrent distinct-city requests (audits/scrapers) the ungated path
+      // OOM-crashed the box (502s). Same city-keyed gate the citywide composers
+      // use, so a /geo/areas + citywide for the same city share one slot.
+      const areas = await withComputeLimit(citySlug, () => city.discover()).catch(() => []);
       let stale = false;
       let staleMessage: string | undefined;
       if (citySlug === "san-diego" && sdpdStale()) {
