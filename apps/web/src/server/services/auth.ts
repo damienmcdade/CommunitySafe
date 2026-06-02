@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "../lib/prisma";
-import { signSession } from "../lib/jwt";
+import { signSession, signMfaPendingToken, verifyMfaPendingToken } from "../lib/jwt";
 import { env } from "../lib/env";
 import { HttpError } from "../lib/http";
 
@@ -69,6 +69,74 @@ export async function login(email: string, password: string) {
   }
 
   // Successful login — reset lockout counters.
+  if (user.failedAttempts > 0 || user.lockedUntil) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { failedAttempts: 0, lockedUntil: null },
+    });
+  }
+
+  // fix(audit pentest-authn-1 — CRITICAL): if MFA is enabled the password was
+  // only the FIRST factor. Previously the web login issued a full session token
+  // here regardless, silently ignoring the user's second factor — a password
+  // compromise meant full account takeover despite enrolled MFA. Now we withhold
+  // the session token and return a short-lived mfa_pending ticket; the client
+  // must exchange it + a valid TOTP code at /api/auth/mfa/verify. Mirrors the
+  // Express auth.service.ts behaviour so the two stacks can't drift.
+  if (user.mfaEnabled) {
+    return {
+      mfaRequired: true,
+      mfaPendingToken: signMfaPendingToken(user.id),
+      user: { id: user.id, email: user.email, displayName: user.displayName },
+    } as const;
+  }
+
+  return {
+    user: { id: user.id, email: user.email, displayName: user.displayName },
+    token: signSession({ uid: user.id, email: user.email }),
+  };
+}
+
+// fix(audit pentest-authn-1 + pentest-authn-3): second-factor verification.
+// Called after login() returns mfaRequired:true. Verifies the TOTP code against
+// the stored secret and, only then, issues the real session token. The same
+// per-account failed-attempt lockout that guards password login is applied here
+// so the TOTP step can't be brute-forced via distributed IPs (the per-IP edge
+// limiter alone doesn't catch that).
+export async function verifyMfaAndIssueTokens(mfaPendingToken: string, code: string) {
+  let uid: string;
+  try {
+    ({ uid } = verifyMfaPendingToken(mfaPendingToken));
+  } catch {
+    throw new HttpError(401, "invalid_mfa_pending_token");
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: uid } });
+  if (!user || user.permanentlyBanned || user.deletedAt) throw new HttpError(401, "invalid_credentials");
+  if (!user.mfaEnabled || !user.mfaSecret) throw new HttpError(400, "mfa_not_enabled");
+
+  if (user.lockedUntil && user.lockedUntil > new Date()) {
+    const mins = Math.ceil((+user.lockedUntil - Date.now()) / 60_000);
+    throw new HttpError(
+      423,
+      "account_locked",
+      `Account locked after repeated failed attempts. Try again in ${mins} minute${mins === 1 ? "" : "s"}.`,
+    );
+  }
+
+  const { verifyMfaCode } = await import("./mfa.service");
+  if (!verifyMfaCode(user.mfaSecret, code)) {
+    const fails = user.failedAttempts + 1;
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        failedAttempts: fails,
+        lockedUntil: fails >= MAX_FAILED_ATTEMPTS ? new Date(Date.now() + LOCKOUT_DURATION_MS) : null,
+      },
+    });
+    throw new HttpError(401, "mfa_invalid_code");
+  }
+
   if (user.failedAttempts > 0 || user.lockedUntil) {
     await prisma.user.update({
       where: { id: user.id },
