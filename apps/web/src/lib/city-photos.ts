@@ -1,429 +1,454 @@
-// v99 — moved out of CityBackdrop.tsx (a "use client" module). The server
+// v106 — moved out of CityBackdrop.tsx (a "use client" module). The server
 // /credits page imports PHOTOS to render attribution; importing it from a
-// client module pulled the entire ~32 KB URL map into a client chunk on a
-// static legal page. Living in this plain module, /credits consumes it at
-// build time with zero client JS, and CityBackdrop still imports it for the
-// backdrop rotation.
+// client module pulled the entire URL map into a client chunk on a static
+// legal page. Living in this plain module, /credits consumes it at build time
+// with zero client JS, and CityBackdrop still imports it for the rotation.
 //
-// Verified Wikimedia Commons photos of the actual cities (curl-checked
-// HTTP 200 + image/jpeg, 1920x1080 thumbs). Keyed by city slug.
+// Each city carries 8 verified Wikimedia Commons landscape photos rendered at
+// 1920x1080 (1080p) — the standard Commons 1920px thumb width — rotating every
+// 30 seconds (see CityBackdrop ROTATE_MS). URLs are resolved + HTTP-verified
+// via the Commons imageinfo API (tools/photos.mjs): mime image/jpeg|png,
+// landscape (w/h >= 1.25), min 1200px source. Keyed by city slug.
 
 export const PHOTOS: Record<string, string[]> = {
   "san-diego": [
-    // Downtown skyline (Wikipedia infobox panorama)
     "https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/San_Diego_skyline_18_%28cropped%29.jpg/1920px-San_Diego_skyline_18_%28cropped%29.jpg",
-    // Downtown San Diego — dense high-rise cluster
     "https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Downtown_San_Diego_02.jpg/1920px-Downtown_San_Diego_02.jpg",
-    // Petco Park ballpark with downtown skyline directly behind
     "https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/Petco_Park%2C_San_Diego.jpg/1920px-Petco_Park%2C_San_Diego.jpg",
-    // Gaslamp Quarter street view — historic urban district
     "https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Gaslamp_Quarter_01.jpg/1920px-Gaslamp_Quarter_01.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/San_Diego_Reflecting_Pond.jpg/1920px-San_Diego_Reflecting_Pond.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/San_Diego_Skyline_Day_JD111107.jpg/1920px-San_Diego_Skyline_Day_JD111107.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d2/San_Diego_Skyline_Night_JD081107.jpg/1920px-San_Diego_Skyline_Night_JD081107.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/SanDiegoSkyline.jpg/1920px-SanDiegoSkyline.jpg",
   ],
   "los-angeles": [
-    // Dense DTLA foreground with mountains far behind
     "https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/Los_Angeles_with_Mount_Baldy.jpg/1920px-Los_Angeles_with_Mount_Baldy.jpg",
-    // DTLA financial district skyscraper cluster
     "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/DTLA_%2850880465741%29.jpg/1920px-DTLA_%2850880465741%29.jpg",
-    // Los Angeles City Hall tower in the civic center
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Los_Angeles_City_Hall_2013.jpg/1920px-Los_Angeles_City_Hall_2013.jpg",
-    // Walt Disney Concert Hall on Grand Avenue
     "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Walt_Disney_Concert_Hall%2C_LA%2C_CA%2C_jjron_22.03.2012.jpg/1920px-Walt_Disney_Concert_Hall%2C_LA%2C_CA%2C_jjron_22.03.2012.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Los_Angeles_Pollution.jpg/1920px-Los_Angeles_Pollution.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Los_Angeles_Skyline_at_Night.jpg/1920px-Los_Angeles_Skyline_at_Night.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/Los_Angeles_Skyline_via_Elysian_Park.JPG/1920px-Los_Angeles_Skyline_via_Elysian_Park.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Los_Angeles_Skyline_telephoto_%282%29.jpg/1920px-Los_Angeles_Skyline_telephoto_%282%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Los_Angeles_skyline_2.jpg/1920px-Los_Angeles_skyline_2.jpg",
   ],
   "san-francisco": [
-    // Financial District skyline (lead image of the SF Financial District article)
     "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Financial_District%2C_San_Francisco.jpg/1920px-Financial_District%2C_San_Francisco.jpg",
-    // Downtown SF aerial — Salesforce / Transamerica towers
     "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/San_Francisco_Downtown_Aerial%2C_August_2025.jpg/1920px-San_Francisco_Downtown_Aerial%2C_August_2025.jpg",
-    // Painted Ladies row at Alamo Square with downtown behind
     "https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Painted_Ladies_San_Francisco_January_2013_panorama_2.jpg/1920px-Painted_Ladies_San_Francisco_January_2013_panorama_2.jpg",
-    // Lombard Street's famous crooked block — dense urban scene
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Lombard_Street_2020.jpg/1920px-Lombard_Street_2020.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/San_Francisco_at_Sunset.jpg/1920px-San_Francisco_at_Sunset.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/SanFrancisco_from_TwinPeaks_dusk_MC.jpg/1920px-SanFrancisco_from_TwinPeaks_dusk_MC.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/San_Francisco_with_approaching_fog.jpg/1920px-San_Francisco_with_approaching_fog.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Fort_Mason_Center_and_Downtown_San_Francisco.jpg/1920px-Fort_Mason_Center_and_Downtown_San_Francisco.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c6/Pano_of_Golden_Gate_Bridge_and_San_Francisco_from_Twin_Peaks_1_1.jpg/1920px-Pano_of_Golden_Gate_Bridge_and_San_Francisco_from_Twin_Peaks_1_1.jpg",
   ],
   "chicago": [
-    // Chicago Loop skyline April 2024 (Wikipedia infobox)
     "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Chicago_Skyline_in_April_2024_b.jpg/1920px-Chicago_Skyline_in_April_2024_b.jpg",
-    // Wide downtown panorama from Lake Michigan
     "https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Chicago_Skyline_in_September_2023_pano.jpg/1920px-Chicago_Skyline_in_September_2023_pano.jpg",
-    // Full Chicago skyline with North Side skyscrapers
     "https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Full_chicago_skyline.jpg/1920px-Full_chicago_skyline.jpg",
-    // Downtown Chicago at night along the Chicago River
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/DowntownChicagoILatNight.jpg/1920px-DowntownChicagoILatNight.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Chicago_Downtown_Panorama.jpg/1920px-Chicago_Downtown_Panorama.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Chicago_Skyline_Hi-Res.jpg/1920px-Chicago_Skyline_Hi-Res.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Chicago_sunrise_1.jpg/1920px-Chicago_sunrise_1.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Skyline_de_Chicago_desde_el_centro%2C_Illinois%2C_Estados_Unidos%2C_2012-10-20%2C_DD_06.jpg/1920px-Skyline_de_Chicago_desde_el_centro%2C_Illinois%2C_Estados_Unidos%2C_2012-10-20%2C_DD_06.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Chicago_from_North_Avenue_Beach_June_2015_panorama_2.jpg/1920px-Chicago_from_North_Avenue_Beach_June_2015_panorama_2.jpg",
   ],
   "seattle": [
-    // Aerial of Downtown Seattle financial district, July 2025
     "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Seattle_Downtown_Aerial%2C_July_2025_%28zoomed_and_perspective_corrected%29.jpg/1920px-Seattle_Downtown_Aerial%2C_July_2025_%28zoomed_and_perspective_corrected%29.jpg",
-    // Kerry Park panorama: Space Needle + downtown highrise cluster
     "https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/Seattle_skyline_panorama_from_Kerry_Park%2C_June_2022.jpg/1920px-Seattle_skyline_panorama_from_Kerry_Park%2C_June_2022.jpg",
-    // Downtown grid from the Columbia Center observation deck
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Seattle-Columbia-Center-looking-north-2320.jpg/1920px-Seattle-Columbia-Center-looking-north-2320.jpg",
-    // Downtown financial district from Smith Tower
     "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Seattle_downtown_from_smith_tower.jpg/1920px-Seattle_downtown_from_smith_tower.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/SeattleI5Skyline.jpg/1920px-SeattleI5Skyline.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/Seattle_3.jpg/1920px-Seattle_3.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/Seattle_7.jpg/1920px-Seattle_7.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Seattle_Skyline_At_Night.jpg/1920px-Seattle_Skyline_At_Night.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Seattle_Skyline-.jpg/1920px-Seattle_Skyline-.jpg",
   ],
   "new-york": [
-    // Empire State Building from Rockefeller Center
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/View_of_Empire_State_Building_from_Rockefeller_Center_New_York_City_dllu_%28cropped%29.jpg/1920px-View_of_Empire_State_Building_from_Rockefeller_Center_New_York_City_dllu_%28cropped%29.jpg",
-    // Times Square at night
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/New_york_times_square-terabass_%28cropped%29.jpg/1920px-New_york_times_square-terabass_%28cropped%29.jpg",
-    // Brooklyn Bridge cables framing Lower Manhattan skyline
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Spiderweb_BB_jeh.jpg/1920px-Spiderweb_BB_jeh.jpg",
-    // 10-mile Manhattan skyline panorama
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/10_mile_panorama_of_NYC%2C_Feb.%2C_2018.jpg/1920px-10_mile_panorama_of_NYC%2C_Feb.%2C_2018.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Skyline-New-York-City.jpg/1920px-Skyline-New-York-City.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/New_York_City_at_night_HDR.jpg/1920px-New_York_City_at_night_HDR.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/New_York_Midtown_Skyline_at_night_-_Jan_2006_edit1.jpg/1920px-New_York_Midtown_Skyline_at_night_-_Jan_2006_edit1.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/New_York_City_%28New_York%2C_USA%29%2C_Central_Park_--_2012_--_6731.jpg/1920px-New_York_City_%28New_York%2C_USA%29%2C_Central_Park_--_2012_--_6731.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/New_York_City_%28New_York%2C_USA%29%2C_Empire_State_Building_--_2012_--_6448_%28bw%29.jpg/1920px-New_York_City_%28New_York%2C_USA%29%2C_Empire_State_Building_--_2012_--_6448_%28bw%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Lower_Manhattan_from_Jersey_City_November_2014_panorama_2.jpg/1920px-Lower_Manhattan_from_Jersey_City_November_2014_panorama_2.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b6/Lower_Manhattan_from_Jersey_City_November_2014_panorama_3.jpg/1920px-Lower_Manhattan_from_Jersey_City_November_2014_panorama_3.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Long_Island_City_New_York_May_2015_panorama_3.jpg/1920px-Long_Island_City_New_York_May_2015_panorama_3.jpg",
   ],
   "colorado-springs": [
-    // Colorado Springs skyline with the Rockies behind
     "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Colorado_Springs_Skyline_%2854557268110%29.jpg/1920px-Colorado_Springs_Skyline_%2854557268110%29.jpg",
-    // Downtown Colorado Springs street-level view (Shankbone)
     "https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Downtown_Colorado_Springs_3_by_David_Shankbone.jpg/1920px-Downtown_Colorado_Springs_3_by_David_Shankbone.jpg",
-    // Downtown Colorado Springs from the east — Pikes Peak in the distance
     "https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Downtown_Colorado_Springs_from_the_east.jpg/1920px-Downtown_Colorado_Springs_from_the_east.jpg",
-    // Downtown Colorado Springs aerial-style crop (Shankbone)
     "https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Downtown_Colorado_Springs_by_David_Shankbone_cropped.jpg/1920px-Downtown_Colorado_Springs_by_David_Shankbone_cropped.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/BuschStadium_2006-05-30.jpg/1920px-BuschStadium_2006-05-30.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Downtown_Colorado_Springs_by_David_Shankbone.jpg/1920px-Downtown_Colorado_Springs_by_David_Shankbone.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/CoSpgs161.jpg/1920px-CoSpgs161.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/CC_COSPRINGS.jpg/1920px-CC_COSPRINGS.jpg",
   ],
   "detroit": [
-    // Detroit skyline viewed across the river from Windsor (September 2025)
     "https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/Detroit_Skyline_from_Windsor_2025-09-01.jpg/1920px-Detroit_Skyline_from_Windsor_2025-09-01.jpg",
-    // Renaissance Center cluster — signature Detroit skyline building
     "https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Renaissance_Center%2C_Detroit%2C_Michigan_from_S_2014-12-07.jpg/1920px-Renaissance_Center%2C_Detroit%2C_Michigan_from_S_2014-12-07.jpg",
-    // Guardian Building — iconic Art Deco skyscraper (2025)
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Guardian_Building_2025.jpg/1920px-Guardian_Building_2025.jpg",
-    // Campus Martius — downtown plaza framed by surrounding skyscrapers
     "https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/Campus_Martius%2C_Detroit%2C_MI.jpg/1920px-Campus_Martius%2C_Detroit%2C_MI.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Detroit_Skyline_1942d.jpg/1920px-Detroit_Skyline_1942d.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Detroit_Night_Skyline_Cropped_2.JPG/1920px-Detroit_Night_Skyline_Cropped_2.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Skyline_of_Detroit%2C_Michigan_from_S_2014-12-07.jpg/1920px-Skyline_of_Detroit%2C_Michigan_from_S_2014-12-07.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Belle_Isle_Bridge_and_Ambassador_Bridge%2C_against_Detroit%27s_Skyline%2C_Detroit%2C_Mich_%2872685%29.jpg/1920px-Belle_Isle_Bridge_and_Ambassador_Bridge%2C_against_Detroit%27s_Skyline%2C_Detroit%2C_Mich_%2872685%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Detroit_Skyline_%28123143197%29.jpeg/1920px-Detroit_Skyline_%28123143197%29.jpeg",
   ],
   "washington-dc": [
-    // Capitol Hill Historic District — dense urban row houses + Capitol view
     "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/DC_Capitol_Historic_District.jpg/1920px-DC_Capitol_Historic_District.jpg",
-    // Washington DC Chinatown gate + Penn Quarter buildings (October 2016)
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Washington_DC_Chinatown_-_a_-_Oct_2016.jpg/1920px-Washington_DC_Chinatown_-_a_-_Oct_2016.jpg",
-    // Georgetown — C&O Canal with historic urban frontage
     "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/USA-Georgetown_C%26O_Canal.jpg/1920px-USA-Georgetown_C%26O_Canal.jpg",
-    // Union Station — urban transit hub + Beaux-Arts architecture
     "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Union_Station_Washington_DC.jpg/1920px-Union_Station_Washington_DC.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Skyline_of_Washington%2C_seen_from_Saint_Elizabeths%2C_August_23%2C_2006.jpg/1920px-Skyline_of_Washington%2C_seen_from_Saint_Elizabeths%2C_August_23%2C_2006.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Washington_DC_Panorama.jpg/1920px-Washington_DC_Panorama.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/Georgetown%2C_Washington%2C_D.C._HDR.jpg/1920px-Georgetown%2C_Washington%2C_D.C._HDR.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/US_Navy_040709-N-0295M-004_The_Washington_Monument_and_Thomas_Jefferson_Memorial_fill_the_skyline_of_Washington%2C_D.C.jpg/1920px-US_Navy_040709-N-0295M-004_The_Washington_Monument_and_Thomas_Jefferson_Memorial_fill_the_skyline_of_Washington%2C_D.C.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Washington_dc_skyline.jpg/1920px-Washington_dc_skyline.jpg",
   ],
   "boston": [
-    // Boston skyline from Longfellow Bridge (September 2017 panorama)
     "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Boston_skyline_from_Longfellow_Bridge_September_2017_panorama_2.jpg/1920px-Boston_skyline_from_Longfellow_Bridge_September_2017_panorama_2.jpg",
-    // John Hancock Tower — Boston's iconic glass skyscraper
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/John_Hancock_Tower.jpg/1920px-John_Hancock_Tower.jpg",
-    // Federal Reserve + Boston financial district from across the Fort Point Channel
     "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Federal_Reserve_from_South_Boston.jpg/1920px-Federal_Reserve_from_South_Boston.jpg",
-    // Old State House on State Street — historic urban architecture
     "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Old_State_House_%2849280448012%29.jpg/1920px-Old_State_House_%2849280448012%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Boston_Financial_District_skyline.jpg/1920px-Boston_Financial_District_skyline.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Boston_skyline_from_Boston_Harbor.jpg/1920px-Boston_skyline_from_Boston_Harbor.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/Boston_skyline_from_Malone_Park%2C_Chelsea%2C_February_2014.jpg/1920px-Boston_skyline_from_Malone_Park%2C_Chelsea%2C_February_2014.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Boston_skyline_from_Cambridge_November_2015_panorama_1.jpg/1920px-Boston_skyline_from_Cambridge_November_2015_panorama_1.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Boston_skyline_from_East_Boston_November_2016_panorama_1.jpg/1920px-Boston_skyline_from_East_Boston_November_2016_panorama_1.jpg",
   ],
   "philadelphia": [
-    // Philadelphia skyline May 2024 (Wikipedia infobox panorama)
     "https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Philadelphia_skyline_20240528_%28cropped_2-1%29.jpg/1920px-Philadelphia_skyline_20240528_%28cropped_2-1%29.jpg",
-    // Skyline viewed from Spring Garden Street Bridge (2018)
     "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/A651%2C_Philadelphia_skyline_from_the_Spring_Garden_Street_Bridge%2C_2018.jpg/1920px-A651%2C_Philadelphia_skyline_from_the_Spring_Garden_Street_Bridge%2C_2018.jpg",
-    // Center City with Comcast Technology Center (tallest building)
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/View_of_Center_City_%28Comcast_Technology_Center%29.jpg/1920px-View_of_Center_City_%28Comcast_Technology_Center%29.jpg",
-    // Philadelphia City Hall aerial view + downtown
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Philadelphia_City_Hall%2C_aerial_view%2C_cropped.png/1920px-Philadelphia_City_Hall%2C_aerial_view%2C_cropped.png",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/Gathering_Storm_Over_Philadelphia_-_NARA_-_559357.jpg/1920px-Gathering_Storm_Over_Philadelphia_-_NARA_-_559357.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Ferdinand_Richardt_-_Independence_Hall_in_Philadelphia_-_Google_Art_Project.jpg/1920px-Ferdinand_Richardt_-_Independence_Hall_in_Philadelphia_-_Google_Art_Project.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Philadelphia_cityscape_BW_20150328.jpg/1920px-Philadelphia_cityscape_BW_20150328.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Philadelphia_from_South_Street_Bridge_July_2016_panorama_1.jpg/1920px-Philadelphia_from_South_Street_Bridge_July_2016_panorama_1.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Philadelphia_from_South_Street_Bridge_July_2016_panorama_2.jpg/1920px-Philadelphia_from_South_Street_Bridge_July_2016_panorama_2.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/Philadelphia_from_South_Street_Bridge_July_2016_panorama_3.jpg/1920px-Philadelphia_from_South_Street_Bridge_July_2016_panorama_3.jpg",
   ],
   "oakland": [
-    // Downtown Oakland Historic District — dense urban
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Downtown_Oakland_Historic_District-6_%28cropped%29.jpg/1920px-Downtown_Oakland_Historic_District-6_%28cropped%29.jpg",
-    // Fox Oakland Theatre — iconic Art Deco landmark
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Fox_Oakland_Theatre.jpg/1920px-Fox_Oakland_Theatre.jpg",
-    // Grand Avenue side of Lake Merritt — Oakland skyline reflected
     "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Grand_Avenue_side_of_Lake_Merritt%2C_Oakland.jpg/1920px-Grand_Avenue_side_of_Lake_Merritt%2C_Oakland.jpg",
-    // Lake Merritt with downtown Oakland surrounding it
     "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Lake_Merritt_2022-06-16.png/1920px-Lake_Merritt_2022-06-16.png",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Oakland_Skyline_and_Lake_Merritt.jpg/1920px-Oakland_Skyline_and_Lake_Merritt.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Oakland_skyline%2C_dusk.jpg/1920px-Oakland_skyline%2C_dusk.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/Oakland_Skyline_Telephoto.jpg/1920px-Oakland_Skyline_Telephoto.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Oakland_Skyline_-_Lake_Merritt.jpg/1920px-Oakland_Skyline_-_Lake_Merritt.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/OAKLAND%2C_CA%2C_USA_-_Skyline_and_Bridge.JPG/1920px-OAKLAND%2C_CA%2C_USA_-_Skyline_and_Bridge.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/OAKLAND%2C_CA%2C_USA_-_Night_Skyline_with_Bay_Bridge.jpg/1920px-OAKLAND%2C_CA%2C_USA_-_Night_Skyline_with_Bay_Bridge.jpg",
   ],
   "cincinnati": [
-    // Downtown Cincinnati skyline from Devou Park
     "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Downtown_Cincinnati_viewed_from_Devou_Park_%28cropped%29.jpg/1920px-Downtown_Cincinnati_viewed_from_Devou_Park_%28cropped%29.jpg",
-    // Downtown Cincinnati from Mt. Adams
     "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Downtown_Cincinnati_viewed_from_Mt._Adams_%28cropped%29.jpg/1920px-Downtown_Cincinnati_viewed_from_Mt._Adams_%28cropped%29.jpg",
-    // Carew Tower — iconic Cincinnati Art Deco skyscraper
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Carew_Tower%2C_Cincinnati%2C_Ohio.jpg/1920px-Carew_Tower%2C_Cincinnati%2C_Ohio.jpg",
-    // Cincinnati Union Terminal — Art Deco landmark
     "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Cincinnati_Union_Terminal_principal_facade.jpg/1920px-Cincinnati_Union_Terminal_principal_facade.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Cincinnati-skyline-chili-exterior.jpg/1920px-Cincinnati-skyline-chili-exterior.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/Cincinnati_Skyline_002.JPG/1920px-Cincinnati_Skyline_002.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/Cincinnati_Skyline_003.JPG/1920px-Cincinnati_Skyline_003.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/Cincinnati_Skyline_Night_Ballpark.JPG/1920px-Cincinnati_Skyline_Night_Ballpark.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/Cincinnati_skyline_%28at_night%29.jpg/1920px-Cincinnati_skyline_%28at_night%29.jpg",
   ],
   "new-orleans": [
-    // Central Business District skyline aerial (Wikipedia infobox)
     "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/New_Orleans_from_the_Air_September_2019_-_Central_Business_District_Skyline_%28cropped%29.jpg/1920px-New_Orleans_from_the_Air_September_2019_-_Central_Business_District_Skyline_%28cropped%29.jpg",
-    // Skyline from Uptown
     "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/New_Orleans_Skyline_from_Uptown.jpg/1920px-New_Orleans_Skyline_from_Uptown.jpg",
-    // St. Louis Cathedral at night — Jackson Square
     "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Stlouiscathedralnight.jpg/1920px-Stlouiscathedralnight.jpg",
-    // French Quarter street scene
     "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/French_Quarter03_New_Orleans.JPG/1920px-French_Quarter03_New_Orleans.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/New_Orleans_1977_Night_Skyline_-_Lykes_Building_World_Trade_Mart_Hilton.jpg/1920px-New_Orleans_1977_Night_Skyline_-_Lykes_Building_World_Trade_Mart_Hilton.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/New_Orleans_1977_Night_Skyline_Lykes_Building_World_Trade_Mart.jpg/1920px-New_Orleans_1977_Night_Skyline_Lykes_Building_World_Trade_Mart.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/New_Orleans_skyline_2012_from_Danziger.jpg/1920px-New_Orleans_skyline_2012_from_Danziger.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/New_Orleans_skyline-02.jpg/1920px-New_Orleans_skyline-02.jpg",
   ],
   "baton-rouge": [
-    // Downtown Baton Rouge from Tiger Stadium (Wikipedia infobox)
     "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Downtown_Baton_Rouge%2C_Louisiana_from_Tiger_Stadium_%28LSU%29.jpg/1920px-Downtown_Baton_Rouge%2C_Louisiana_from_Tiger_Stadium_%28LSU%29.jpg",
-    // Old Louisiana State Capitol — Gothic Revival landmark
     "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Baton_Rouge_-_Old_State_Capitol_from_the_riverfront%2C_April_2024.jpg/1920px-Baton_Rouge_-_Old_State_Capitol_from_the_riverfront%2C_April_2024.jpg",
-    // Mississippi River waterfront, aerial
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Baton_Rouge_Louisiana_waterfront_aerial_view.jpg/1920px-Baton_Rouge_Louisiana_waterfront_aerial_view.jpg",
-    // Riverfront from the I-10 bridge
     "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Baton_Rouge_riverfront_from_I-10_bridge_5_November_2016_-_1.jpg/1920px-Baton_Rouge_riverfront_from_I-10_bridge_5_November_2016_-_1.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Baton_Rouge_Panorama_1912.jpg/1920px-Baton_Rouge_Panorama_1912.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/BatonRouge360.jpg/1920px-BatonRouge360.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/Baton_Rouge_at_the_River_5.14.11.jpg/1920px-Baton_Rouge_at_the_River_5.14.11.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Baton_Rouge_Upriver_from_I-10_Bridge.jpg/1920px-Baton_Rouge_Upriver_from_I-10_Bridge.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/59/ExxonMobil_Baton_Rouge.jpg/1920px-ExxonMobil_Baton_Rouge.jpg",
   ],
   "cambridge": [
-    // Cambridge skyline across the Charles River
     "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Cambridge_skyline_November_2016_panorama.jpg/1920px-Cambridge_skyline_November_2016_panorama.jpg",
-    // Harvard Yard in autumn
     "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Harvard_Yard_in_autumn%2C_Boston%2C_Massachusetts%2C_2015.jpg/1920px-Harvard_Yard_in_autumn%2C_Boston%2C_Massachusetts%2C_2015.jpg",
-    // Charles River from the Cambridge side
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Charles_River_Cambridge_USA.jpg/1920px-Charles_River_Cambridge_USA.jpg",
-    // MIT Main Campus aerial — Killian Court & the Great Dome
     "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/MIT_Main_Campus_Aerial.jpg/1920px-MIT_Main_Campus_Aerial.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Harvard_river_houses_2008_aerial_view.jpg/1920px-Harvard_river_houses_2008_aerial_view.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/North_and_West_Cambridge_and_North_Allston_aerial.JPG/1920px-North_and_West_Cambridge_and_North_Allston_aerial.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Aerial_view_of_Boston_and_northeast_suburbs.jpg/1920px-Aerial_view_of_Boston_and_northeast_suburbs.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/View_of_Cambridge_from_Boston_Gary_Kirk_Brown_4.jpg/1920px-View_of_Cambridge_from_Boston_Gary_Kirk_Brown_4.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Cambridge_Highlands_aerial%2C_November_2015.jpg/1920px-Cambridge_Highlands_aerial%2C_November_2015.jpg",
   ],
   "dallas": [
-    // Downtown Dallas skyline from Reunion Tower
     "https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/View_of_Dallas_from_Reunion_Tower_August_2015_05.jpg/1920px-View_of_Dallas_from_Reunion_Tower_August_2015_05.jpg",
-    // Klyde Warren Park with downtown skyline
     "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Klyde_Warren_Park_and_Dallas%27_Skyline.jpg/1920px-Klyde_Warren_Park_and_Dallas%27_Skyline.jpg",
-    // Margaret Hunt Hill Bridge — Calatrava-designed landmark
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/The_Margaret_Hunt_Hill_Bridge.jpg/1920px-The_Margaret_Hunt_Hill_Bridge.jpg",
-    // Downtown skyline from Lake Cliff Park
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c6/Dallas_downtown_skyline_seen_from_Lake_Cliff.jpg/1920px-Dallas_downtown_skyline_seen_from_Lake_Cliff.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/Dallas%2C_Texas_Skyline_2005.jpg/1920px-Dallas%2C_Texas_Skyline_2005.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Dallas_skyline_1912.jpg/1920px-Dallas_skyline_1912.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Dallas_skyline_1912c.jpg/1920px-Dallas_skyline_1912c.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Dallas%2C_Texas_Skyline_1912.jpg/1920px-Dallas%2C_Texas_Skyline_1912.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Dallas_skyline_and_suburbs.jpg/1920px-Dallas_skyline_and_suburbs.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Dallas_Skyline-01.jpg/1920px-Dallas_Skyline-01.jpg",
   ],
   "charlotte": [
-    // Uptown Charlotte aerial
     "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Uptown_Charlotte_2018_taking_by_DJI_Phantom_4_pro.jpg/1920px-Uptown_Charlotte_2018_taking_by_DJI_Phantom_4_pro.jpg",
-    // Bank of America Corporate Center — iconic downtown landmark
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Bank_of_America_Corporate_Center.jpg/1920px-Bank_of_America_Corporate_Center.jpg",
-    // Romare Bearden Park
     "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Romare_Bearden_Park_2.JPG/1920px-Romare_Bearden_Park_2.JPG",
-    // SouthPark aerial — south Charlotte district
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Southpark_aerial_Charlotte_NC.jpg/1920px-Southpark_aerial_Charlotte_NC.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/Panorama_of_Charlotte%2C_North_Carolina%2C_seen_from_Hearn_and_Graham_facing_east_%282005%29.jpg/1920px-Panorama_of_Charlotte%2C_North_Carolina%2C_seen_from_Hearn_and_Graham_facing_east_%282005%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Charlotte%2C_NC_skyline%2C_Jan._2010.jpg/1920px-Charlotte%2C_NC_skyline%2C_Jan._2010.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Tryon_and_Stonewall%2C_Charlotte%2C_North_Carolina.jpg/1920px-Tryon_and_Stonewall%2C_Charlotte%2C_North_Carolina.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/South_End%2C_Charlotte%2C_North_Carolina.jpg/1920px-South_End%2C_Charlotte%2C_North_Carolina.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Charlotte_Skyline_during_the_morning.jpg/1920px-Charlotte_Skyline_during_the_morning.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Timelapse_of_Charlotte_Skyline.jpg/1920px-Timelapse_of_Charlotte_Skyline.jpg",
   ],
   "baltimore": [
-    // Inner Harbor
-    "https://upload.wikimedia.org/wikipedia/commons/3/35/Baltimore_Inner_Harbor.jpg",
-    // Skyline of Baltimore
     "https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Skyline_of_Baltimore.jpg/1920px-Skyline_of_Baltimore.jpg",
-    // Washington Monument, Mount Vernon
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/Washington_Monument_Baltimore.jpg/1920px-Washington_Monument_Baltimore.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/Baltimore_Skyline.jpg/1920px-Baltimore_Skyline.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Baltimore_Inner_Harbor_from_Federal_Hill.jpg/1920px-Baltimore_Inner_Harbor_from_Federal_Hill.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Baltimore_Inner_Harbor_Skyline_Night_Panorama.jpg/1920px-Baltimore_Inner_Harbor_Skyline_Night_Panorama.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Baltimore_Skyline-02.jpg/1920px-Baltimore_Skyline-02.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/Inner_Harbor_Skyline_View.JPG/1920px-Inner_Harbor_Skyline_View.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Baltimore_Skyline_-_panoramio.jpg/1920px-Baltimore_Skyline_-_panoramio.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Pratt_Street_skyline_from_Convention_Center%2C_Baltimore%2C_MD.jpg/1920px-Pratt_Street_skyline_from_Convention_Center%2C_Baltimore%2C_MD.jpg",
   ],
   "minneapolis": [
-    // Skyline looking south
     "https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Minneapolis_Skyline_looking_south.jpg/1920px-Minneapolis_Skyline_looking_south.jpg",
-    // Stone Arch Bridge over the Mississippi
     "https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/Stone_Arch_Bridge_as_viewed_from_downriver_2019-08-08_%28cropped%29.jpg/1920px-Stone_Arch_Bridge_as_viewed_from_downriver_2019-08-08_%28cropped%29.jpg",
-    // Minnehaha Falls
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Minnehaha_Falls%2C_Minneapolis.jpg/1920px-Minnehaha_Falls%2C_Minneapolis.jpg",
-    // Mill City Museum — historic mill ruins
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/Minneapolis-Mill_City_Museum-20070514_%28cropped%29.jpg/1920px-Minneapolis-Mill_City_Museum-20070514_%28cropped%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/Minneapolis-skyline-2007-05-05.jpg/1920px-Minneapolis-skyline-2007-05-05.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Minneapolis-skyline-20070508.jpg/1920px-Minneapolis-skyline-20070508.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Minneapolis_Skyline_Sunset.jpg/1920px-Minneapolis_Skyline_Sunset.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Minneapolis_skyline_from_Walker_1.jpg/1920px-Minneapolis_skyline_from_Walker_1.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/Minneapolis_skyline_151.jpg/1920px-Minneapolis_skyline_151.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/Minneapolis_skyline_51.JPG/1920px-Minneapolis_skyline_51.JPG",
   ],
   "cleveland": [
-    // Cleveland skyline from Lakewood Park
     "https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/Cleveland_skyline_from_Lakewood_Park%2C_January_2026.jpg/1920px-Cleveland_skyline_from_Lakewood_Park%2C_January_2026.jpg",
-    // Playhouse Square chandelier district
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/37/Cleveland_Playhouse_Square_%2813917560487%29.jpg/1920px-Cleveland_Playhouse_Square_%2813917560487%29.jpg",
-    // Rock and Roll Hall of Fame
     "https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Rock_and_Roll_Hall_of_Fame_-_Joy_of_Museums_1.jpg/1920px-Rock_and_Roll_Hall_of_Fame_-_Joy_of_Museums_1.jpg",
-    // Public Square Fountain
     "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/Cleveland_Public_Square_Fountain_%2829744768716%29.jpg/1920px-Cleveland_Public_Square_Fountain_%2829744768716%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Downtown_panorama.jpg/1920px-Downtown_panorama.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Illuminated_West_Side_Market.jpg/1920px-Illuminated_West_Side_Market.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Cleveland_Skyline_2015.png/1920px-Cleveland_Skyline_2015.png",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Cleveland_Rainy_Night_%2817130409821%29.jpg/1920px-Cleveland_Rainy_Night_%2817130409821%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Cleveland%2C_Ohio_%2820398032692%29.jpg/1920px-Cleveland%2C_Ohio_%2820398032692%29.jpg",
   ],
   "milwaukee": [
-    // Milwaukee Art Museum (Calatrava)
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Milwaukee_Art_Museum_-_Quadracci_Pavilion_-_aerial.jpg/1920px-Milwaukee_Art_Museum_-_Quadracci_Pavilion_-_aerial.jpg",
-    // Milwaukee skyline at dusk
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/Milwaukee_skyline_2.jpg/1920px-Milwaukee_skyline_2.jpg",
-    // Historic Third Ward
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/Historic_third_ward_at_dusk.jpg/1920px-Historic_third_ward_at_dusk.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Milwaukee_June_2022_50_%28skyline%29.jpg/1920px-Milwaukee_June_2022_50_%28skyline%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Milwaukee_June_2022_49_%28skyline%29.jpg/1920px-Milwaukee_June_2022_49_%28skyline%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Milwaukee_June_2022_48_%28skyline%29.jpg/1920px-Milwaukee_June_2022_48_%28skyline%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/be/Milwaukee_June_2022_43_%28skyline%29.jpg/1920px-Milwaukee_June_2022_43_%28skyline%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Milwaukee_June_2022_40_%28skyline%29.jpg/1920px-Milwaukee_June_2022_40_%28skyline%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Milwaukee_June_2022_30_%28skyline%29.jpg/1920px-Milwaukee_June_2022_30_%28skyline%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Milwaukee_June_2022_28_%28skyline%29.jpg/1920px-Milwaukee_June_2022_28_%28skyline%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Milwaukee_June_2022_27_%28skyline%29.jpg/1920px-Milwaukee_June_2022_27_%28skyline%29.jpg",
   ],
   "las-vegas": [
-    // Las Vegas aerial from above
     "https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/Las_Vegas_from_above_%2840064746644%29.jpg/1920px-Las_Vegas_from_above_%2840064746644%29.jpg",
-    // Las Vegas Strip
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/Las_Vegas_Strip_09_2017_4897.jpg/1920px-Las_Vegas_Strip_09_2017_4897.jpg",
-    // Las Vegas at night
     "https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Las_Vegas_at_Night.JPG/1920px-Las_Vegas_at_Night.JPG",
-    // Symphony Park downtown
     "https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/LasVegasSymphonyPark1.jpg/1920px-LasVegasSymphonyPark1.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/Las_Vegas_Strip_panorama.jpg/1920px-Las_Vegas_Strip_panorama.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/Las_Vegas_63.jpg/1920px-Las_Vegas_63.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Las_Vegas_Strip_at_night%2C_2012.jpg/1920px-Las_Vegas_Strip_at_night%2C_2012.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Las_Vegas_Strip_at_day_2013.jpg/1920px-Las_Vegas_Strip_at_day_2013.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Bellagio_Las_Vegas_December_2013_panorama.jpg/1920px-Bellagio_Las_Vegas_December_2013_panorama.jpg",
   ],
   "boise": [
-    // Boise downtown panoramic
     "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Boise_Downtown_Panoramic.jpg/1920px-Boise_Downtown_Panoramic.jpg",
-    // Idaho State Capitol
     "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/Idaho_Capitol_Building.JPG/1920px-Idaho_Capitol_Building.JPG",
-    // Boise River with downtown
     "https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/Idaho_-_Boise_through_Boise_River_-_NARA_-_23939399_%28cropped%29.jpg/1920px-Idaho_-_Boise_through_Boise_River_-_NARA_-_23939399_%28cropped%29.jpg",
-    // Hyde Park neighborhood
     "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Hyde_Park_Boise.jpg/1920px-Hyde_Park_Boise.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Downtown_Boise_in_Fall.jpg/1920px-Downtown_Boise_in_Fall.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Boise_Skyline_Night.JPG/1920px-Boise_Skyline_Night.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Boise_Sunset.jpg/1920px-Boise_Sunset.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Boise_banner.jpg/1920px-Boise_banner.jpg",
   ],
   "buffalo": [
-    // Buffalo skyline
     "https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/Buffalo%2C_NY_skyline.jpg/1920px-Buffalo%2C_NY_skyline.jpg",
-    // Buffalo City Hall
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/View_of_Buffalo_City_Hall_%28cropped%29.jpg/1920px-View_of_Buffalo_City_Hall_%28cropped%29.jpg",
-    // Allentown neighborhood
     "https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/AllentownBuffalo1.jpg/1920px-AllentownBuffalo1.jpg",
-    // Shea's Buffalo Theater on Main Street
     "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Shea%27s_Buffalo_Theater%2C_Main_Street%2C_Buffalo%2C_NY.jpg/1920px-Shea%27s_Buffalo_Theater%2C_Main_Street%2C_Buffalo%2C_NY.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Leaving_downtown_Buffalo%2C_New_York_via_I-190_North.jpg/1920px-Leaving_downtown_Buffalo%2C_New_York_via_I-190_North.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/59/Downtown_Buffalo_skyline_as_seen_from_rear_of_former_Seaway_Trail_Center%2C_Hamburg%2C_New_York_-_20190723.jpg/1920px-Downtown_Buffalo_skyline_as_seen_from_rear_of_former_Seaway_Trail_Center%2C_Hamburg%2C_New_York_-_20190723.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/Downtown_skyline_and_grain_elevators_as_seen_from_Buffalo_Harbor_State_Park%2C_Buffalo%2C_New_York_-_20190724.jpg/1920px-Downtown_skyline_and_grain_elevators_as_seen_from_Buffalo_Harbor_State_Park%2C_Buffalo%2C_New_York_-_20190724.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Downtown_Buffalo_skyline_seen_distantly_from_Chestnut_Ridge_Park%2C_Orchard_Park%2C_New_York_-_20190810.jpg/1920px-Downtown_Buffalo_skyline_seen_distantly_from_Chestnut_Ridge_Park%2C_Orchard_Park%2C_New_York_-_20190810.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/Downtown_Buffalo_skyline_as_seen_from_Chestnut_Ridge_Park_%28telephoto_view%29%2C_Orchard_Park%2C_New_York_-_20190810.jpg/1920px-Downtown_Buffalo_skyline_as_seen_from_Chestnut_Ridge_Park_%28telephoto_view%29%2C_Orchard_Park%2C_New_York_-_20190810.jpg",
   ],
   "norfolk": [
-    // Norfolk, Virginia skyline 2016 — Wikipedia infobox photo
     "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Norfolk%2C_Virginia_skyline_2016.jpg/1920px-Norfolk%2C_Virginia_skyline_2016.jpg",
-    // Downtown Norfolk skyline looking toward Portsmouth across the Elizabeth River
     "https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Skyline_of_Downtown_Norfolk_Looking_Towards_Portsmouth.jpg/1920px-Skyline_of_Downtown_Norfolk_Looking_Towards_Portsmouth.jpg",
-    // Downtown Norfolk skyline November 2021 — fresh tower additions
     "https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Downtown_Norfolk_VA_skyline_Nov_2021.jpg/1920px-Downtown_Norfolk_VA_skyline_Nov_2021.jpg",
-    // Norfolk from Portsmouth across the Elizabeth River, 2020
     "https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Norfolk_VA_from_Portsmouth_2020.jpg/1920px-Norfolk_VA_from_Portsmouth_2020.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/Norfolk_naval_base_aerial_1985.jpg/1920px-Norfolk_naval_base_aerial_1985.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/US_Navy_030820-N-9851B-012_USS_Harry_S._Truman_%28CVN_75%29_pulls_away_from_pier_14_south_of_Naval_Station_Norfolk_%28NOB%29_for_her_transit_to_the_Norfolk_Navy_Shipyard.jpg/1920px-thumbnail.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/USS_George_Washington_in_Norfolk_Naval_Station.jpg/1920px-USS_George_Washington_in_Norfolk_Naval_Station.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Norfolk_Naval_Shipyard_aerial_photo_in_1995.JPEG/1920px-Norfolk_Naval_Shipyard_aerial_photo_in_1995.JPEG",
   ],
   "kansas-city": [
-    // Downtown Kansas City
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/Kansas_City_-_Downtown_-_panoramio_%2815%29.jpg/1920px-Kansas_City_-_Downtown_-_panoramio_%2815%29.jpg",
-    // Country Club Plaza
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Country_Club_Plaza_2_Kansas_City_MO.jpg/1920px-Country_Club_Plaza_2_Kansas_City_MO.jpg",
-    // Union Station
     "https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/Kansas_City%2C_MO_Union_Station_%283557621442%29.jpg/1920px-Kansas_City%2C_MO_Union_Station_%283557621442%29.jpg",
-    // J.C. Nichols Fountain
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/JC_Nichols_Fountain_by_Henri-L%C3%A9on_Gr%C3%A9ber_Kansas_City.jpg/1920px-JC_Nichols_Fountain_by_Henri-L%C3%A9on_Gr%C3%A9ber_Kansas_City.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ed/Kansas_City_Panorama.jpg/1920px-Kansas_City_Panorama.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Kansas_City_skyline_as_night_descends.jpg/1920px-Kansas_City_skyline_as_night_descends.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/Downtown_Kansas_City%2C_Missouri_from_Liberty_Memorial.jpg/1920px-Downtown_Kansas_City%2C_Missouri_from_Liberty_Memorial.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Downtown_kansas_city_2010-03-07.png/1920px-Downtown_kansas_city_2010-03-07.png",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Kansas_City%2C_MO_skyline_at_night.jpg/1920px-Kansas_City%2C_MO_skyline_at_night.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Skyline_Kansas_City_2008.jpg/1920px-Skyline_Kansas_City_2008.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Kansas_City_Skyline.jpg/1920px-Kansas_City_Skyline.jpg",
   ],
   "saint-paul": [
-    // Saint Paul skyline from West Side
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/59/Saint_Paul_skyline%2C_West_Side_%28cropped%29.jpg/1920px-Saint_Paul_skyline%2C_West_Side_%28cropped%29.jpg",
-    // Cathedral of St Paul from Landmark Center
     "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Cathedral_of_St._Paul_from_the_Landmark_Center.jpg/1920px-Cathedral_of_St._Paul_from_the_Landmark_Center.jpg",
-    // Minnesota State Capitol
     "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Minnesota_State_Capitol_2017.jpg/1920px-Minnesota_State_Capitol_2017.jpg",
-    // Saint Paul City Hall
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Saint_Paul_City_Hall.jpg/1920px-Saint_Paul_City_Hall.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Skyline_Towers.JPG/1920px-Skyline_Towers.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Skyline_Towers_2.JPG/1920px-Skyline_Towers_2.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Saint_Paul%2C_Minnesota_9.jpg/1920px-Saint_Paul%2C_Minnesota_9.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Saint_Paul%2C_Minnesota_10.jpg/1920px-Saint_Paul%2C_Minnesota_10.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/St_Paul_Skyline_7_11_2007.jpg/1920px-St_Paul_Skyline_7_11_2007.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Saint_Paul_Riverfront_Pano.jpg/1920px-Saint_Paul_Riverfront_Pano.jpg",
   ],
   "pittsburgh": [
-    // Pittsburgh skyline at night
     "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b6/Pittsburgh_skyline_panorama_at_night.jpg/1920px-Pittsburgh_skyline_panorama_at_night.jpg",
-    // Duquesne Incline
     "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/Ascending_the_Duquesne_Incline.jpg/1920px-Ascending_the_Duquesne_Incline.jpg",
-    // Pittsburgh from North Hills
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Pittsburgh_%28view_from_the_North_Hills%29.JPG/1920px-Pittsburgh_%28view_from_the_North_Hills%29.JPG",
-    // Acrisure Stadium and downtown skyline
     "https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Pittsburgh_-_Acrisure_Stadium_and_Skyline_%2853910936115%29.jpg/1920px-Pittsburgh_-_Acrisure_Stadium_and_Skyline_%2853910936115%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Pittsburgh_dawn_city_pano.jpg/1920px-Pittsburgh_dawn_city_pano.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Pittsburgh_skyline_night.jpg/1920px-Pittsburgh_skyline_night.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Pittsburgh_Skyline_Day.jpg/1920px-Pittsburgh_Skyline_Day.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Pittsburgh_Skyline_1.jpg/1920px-Pittsburgh_Skyline_1.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Pittsburgh_Skyline_2.jpg/1920px-Pittsburgh_Skyline_2.jpg",
   ],
   "fort-worth": [
-    // Downtown Fort Worth
     "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Downtown_Fort_Worth.jpg/1920px-Downtown_Fort_Worth.jpg",
-    // Sundance Square
     "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/Sundance_Square.jpg/1920px-Sundance_Square.jpg",
-    // Fort Worth Stockyards
     "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Fort_Worth_Stockyards.jpg/1920px-Fort_Worth_Stockyards.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Fort_Worth%2C_Texas_at_Sunset.jpg/1920px-Fort_Worth%2C_Texas_at_Sunset.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Ft_worth_skyline_downtown_v.jpg/1920px-Ft_worth_skyline_downtown_v.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Fort_Worth_Skyline_at_Sunset.jpg/1920px-Fort_Worth_Skyline_at_Sunset.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Fort_Worth_June_2016_68_%28skyline%29.jpg/1920px-Fort_Worth_June_2016_68_%28skyline%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Fort_Worth_Skyline.jpg/1920px-Fort_Worth_Skyline.jpg",
   ],
-  // v99 — the 7 most-recently-added live cities had no backdrop entry, so
-  // PHOTOS[slug] ?? [] returned empty and rendered NO photo (Denver, etc.).
-  // All URLs below are Wikimedia Commons skyline/cityscape thumbs, curl-
-  // verified HTTP 200 + image/jpeg via the Commons imageinfo API.
   "denver": [
-    // Denver skyline with the Rocky Mountains behind
     "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Denver%2C_Colorado_skyline_%28cropped%29.jpg/1920px-Denver%2C_Colorado_skyline_%28cropped%29.jpg",
     "https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Denver%2C_Colorado_skyline.jpg/1920px-Denver%2C_Colorado_skyline.jpg",
     "https://upload.wikimedia.org/wikipedia/commons/thumb/3/37/Denver%2C_Colorado_skyline_%28cropped_3x5%29.jpg/1920px-Denver%2C_Colorado_skyline_%28cropped_3x5%29.jpg",
-    "https://upload.wikimedia.org/wikipedia/commons/d/d8/Denver_Colorado_Skyline.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Denver_Colorado_09570u.jpg/1920px-Denver_Colorado_09570u.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Denver_Skyscrapers_with_Daniels_and_Fischer_tower.JPG/1920px-Denver_Skyscrapers_with_Daniels_and_Fischer_tower.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/CO_Denver_1915.jpg/1920px-CO_Denver_1915.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/CO_Denver_1907.jpg/1920px-CO_Denver_1907.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/CO_Denver_1887.jpg/1920px-CO_Denver_1887.jpg",
   ],
   "sacramento": [
-    // Sacramento downtown skyline (Tower Bridge / Capitol district)
     "https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Sacramento_Skyline_%28cropped%29.jpg/1920px-Sacramento_Skyline_%28cropped%29.jpg",
     "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Sacramento%2C_California_skyline_in_2023.jpg/1920px-Sacramento%2C_California_skyline_in_2023.jpg",
     "https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Sacramento%2C_California_skyline_2026.jpg/1920px-Sacramento%2C_California_skyline_2026.jpg",
     "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Sacramento%2C_California_skyline.jpg/1920px-Sacramento%2C_California_skyline.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/City_Skyline_Raley_Field.JPG/1920px-City_Skyline_Raley_Field.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Sacramento_Skyline.jpg/1920px-Sacramento_Skyline.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Sacramento_Night_Skyline.jpg/1920px-Sacramento_Night_Skyline.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/NightSacramentoSkyline.jpg/1920px-NightSacramentoSkyline.jpg",
   ],
   "atlanta": [
-    // Midtown Atlanta skyline over Piedmont Park's Lake Clara Meer
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Piedmont_Park%E2%80%99s_Lake_Clara_Meer_with_Midtown_Atlanta_skyline_%282024%29-104A8428.jpg/1920px-Piedmont_Park%E2%80%99s_Lake_Clara_Meer_with_Midtown_Atlanta_skyline_%282024%29-104A8428.jpg",
-    "https://upload.wikimedia.org/wikipedia/commons/6/6b/Atlanta%2C_Georgia_Skyline.jpg",
-    // Downtown Atlanta skyline from the Jackson Street Bridge
     "https://upload.wikimedia.org/wikipedia/commons/thumb/3/37/Atlanta_skyline_from_Jackson_Street_Bridge_2020.jpg/1920px-Atlanta_skyline_from_Jackson_Street_Bridge_2020.jpg",
-    "https://upload.wikimedia.org/wikipedia/commons/6/68/Atlanta_Skyline_-_March_2019_%28cropped_2%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Atlanta_Skyline_from_Buckhead.jpg/1920px-Atlanta_Skyline_from_Buckhead.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Marta_atlanta_skyline.jpg/1920px-Marta_atlanta_skyline.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Downtown_Atlanta_skyline_panorama.jpg/1920px-Downtown_Atlanta_skyline_panorama.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Atlanta_skyline_from_Piedmont_Park_banner.jpg/1920px-Atlanta_skyline_from_Piedmont_Park_banner.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Jackson_Street_Bridge_and_Atlanta_Night_Skyline_%28Unsplash%29.jpg/1920px-Jackson_Street_Bridge_and_Atlanta_Night_Skyline_%28Unsplash%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Jackson_Street_Bridge%2C_Atlanta%2C_United_States_%28Unsplash_vXtX07KVcE8%29.jpg/1920px-Jackson_Street_Bridge%2C_Atlanta%2C_United_States_%28Unsplash_vXtX07KVcE8%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Atlanta_Skyline_%28142621079%29.jpeg/1920px-Atlanta_Skyline_%28142621079%29.jpeg",
   ],
   "indianapolis": [
-    // Downtown Indianapolis skyline (Chris Bowman)
     "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Indianapolis_skyline_-_2014_April_-_Chris_Bowman.jpg/1920px-Indianapolis_skyline_-_2014_April_-_Chris_Bowman.jpg",
-    "https://upload.wikimedia.org/wikipedia/commons/9/91/Indianapolis_skyline_at_night_-_Sarah_Stierch.jpg",
-    // Indianapolis skyline from White River State Park
     "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/White_River_State_Park_Indianapolis_Skyline_2020.jpg/1920px-White_River_State_Park_Indianapolis_Skyline_2020.jpg",
     "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Skyline_at_the_Indianapolis_Zoo_-_June_2022_-_Sarah_Stierch.jpg/1920px-Skyline_at_the_Indianapolis_Zoo_-_June_2022_-_Sarah_Stierch.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/IN_Indianapolis_1914.jpg/1920px-IN_Indianapolis_1914.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/IN_Indianapolis_1914a.jpg/1920px-IN_Indianapolis_1914a.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/View_of_downtown_Indianapolis_from_I-70.jpg/1920px-View_of_downtown_Indianapolis_from_I-70.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Downtown_Indianapolis_skyline%2C_looking_northeast.jpg/1920px-Downtown_Indianapolis_skyline%2C_looking_northeast.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/Panorama_of_downtown_Indianapolis_skyline%2C_looking_northeast.jpg/1920px-Panorama_of_downtown_Indianapolis_skyline%2C_looking_northeast.jpg",
   ],
   "raleigh": [
-    // Downtown Raleigh skyline
     "https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Raleigh%2C_North_Carolina_skyline_--_27_September_2014_%28panoramio.com%29.jpg/1920px-Raleigh%2C_North_Carolina_skyline_--_27_September_2014_%28panoramio.com%29.jpg",
-    "https://upload.wikimedia.org/wikipedia/commons/9/9c/Raleigh_skyline_along_S_Saunders_st.jpg",
-    "https://upload.wikimedia.org/wikipedia/commons/6/64/Partial_view_of_Raleigh%2C_North_Carolina%27s_growing_skyline_--_19_May_2012.jpg",
-    // Red Hat headquarters tower, downtown Raleigh
-    "https://upload.wikimedia.org/wikipedia/commons/f/fc/Red_Hat_headquarters_at_Raleigh%2C_North_Carolina%2C_US_--_9_November_2013.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Downtown_Raleigh_Skyline_viewed_from_Boylan_Ave.jpg/1920px-Downtown_Raleigh_Skyline_viewed_from_Boylan_Ave.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Raleigh%2C_NC_skyline.jpg/1920px-Raleigh%2C_NC_skyline.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/RaleighNC_skyline%2C_B%26W.jpg/1920px-RaleighNC_skyline%2C_B%26W.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/RaleighNC_skyline%2C_kudzu.jpg/1920px-RaleighNC_skyline%2C_kudzu.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Raleigh_skyline_in_1992.jpg/1920px-Raleigh_skyline_in_1992.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Downtown%2C_Raleigh%2C_North_Carolina%2C_USA_--_in_9_February_2014_h17m38_Cloudy_weather_--_%28panoramio.com%29.jpg/1920px-Downtown%2C_Raleigh%2C_North_Carolina%2C_USA_--_in_9_February_2014_h17m38_Cloudy_weather_--_%28panoramio.com%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Raleigh_downtown_skyline_-_panoramio.jpg/1920px-Raleigh_downtown_skyline_-_panoramio.jpg",
   ],
   "tucson": [
-    // Tucson skyline against the desert mountains
     "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Tucson_skyline.JPG/1920px-Tucson_skyline.JPG",
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/be/Downtown_Tucson%2C_AZ_%28W._Pennington%29%2C_2007-04-02.jpg/1920px-Downtown_Tucson%2C_AZ_%28W._Pennington%29%2C_2007-04-02.jpg",
-    "https://upload.wikimedia.org/wikipedia/commons/6/68/Tucson_asr.JPG",
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c6/Downtown_Tucson%2C_Arizona_5_-_panoramio.jpg/1920px-Downtown_Tucson%2C_Arizona_5_-_panoramio.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/SkyIslands_from_SantaCatalinaMtns.JPG/1920px-SkyIslands_from_SantaCatalinaMtns.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Catalina-panorama.jpg/1920px-Catalina-panorama.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Tucson_old_%28edited%29.jpg/1920px-Tucson_old_%28edited%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Mt._Lemmon_Panorama.jpg/1920px-Mt._Lemmon_Panorama.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Federal_Building%2C_Tucson%2C_AZ_%282007-04-02%29.jpg/1920px-Federal_Building%2C_Tucson%2C_AZ_%282007-04-02%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c6/Transamerica_Building%2C_Tucson%2C_AZ_%282007-04-02%29.jpg/1920px-Transamerica_Building%2C_Tucson%2C_AZ_%282007-04-02%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Tucson_Museum_of_Art%2C_Tucson_AZ_%282007-04-02%29.jpg/1920px-Tucson_Museum_of_Art%2C_Tucson_AZ_%282007-04-02%29.jpg",
   ],
   "honolulu": [
-    // Honolulu cityscape with Waikiki and Diamond Head
     "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/Panorama_of_Honolulu-Waikiki-Diamond_Head_%2816773142068%29.jpg/1920px-Panorama_of_Honolulu-Waikiki-Diamond_Head_%2816773142068%29.jpg",
     "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Honolulu_-_panoramio.jpg/1920px-Honolulu_-_panoramio.jpg",
-    "https://upload.wikimedia.org/wikipedia/commons/9/95/Waikiki_Diamond_Head_CC.jpg",
     "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/Waikiki_Beach.jpg/1920px-Waikiki_Beach.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Toledo_Skyline_Panorama%2C_Spain_-_Dec_2006.jpg/1920px-Toledo_Skyline_Panorama%2C_Spain_-_Dec_2006.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Hong_Kong_Skyline_Panorama_-_Dec_2008.jpg/1920px-Hong_Kong_Skyline_Panorama_-_Dec_2008.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Honolulu_Mayor_Peter_Carlisle_at_Rail_Groundbreaking_2011-02-22.jpg/1920px-Honolulu_Mayor_Peter_Carlisle_at_Rail_Groundbreaking_2011-02-22.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Baltimore_Inner_Harbor_Skyline_Night_Panorama.jpg/1920px-Baltimore_Inner_Harbor_Skyline_Night_Panorama.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/St_Diego_Skyline_Panorama_2013.jpg/1920px-St_Diego_Skyline_Panorama_2013.jpg",
   ],
   "long-beach": [
-    // Downtown Long Beach skyline from the Queen Mary at dusk
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Downtown%2C_Long_Beach_from_Queen_Mary_%28Dusk%29.JPG/1920px-Downtown%2C_Long_Beach_from_Queen_Mary_%28Dusk%29.JPG.jpg",
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/Queen_Mary_Long_Beach.JPG/1920px-Queen_Mary_Long_Beach.JPG.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Downtown%2C_Long_Beach_from_Queen_Mary_%28Dusk%29.JPG/1920px-Downtown%2C_Long_Beach_from_Queen_Mary_%28Dusk%29.JPG",
     "https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/Long_Beach_CA_Photo_D_Ramey_Logan.jpg/1920px-Long_Beach_CA_Photo_D_Ramey_Logan.jpg",
     "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Downtown_Long_Beach_California_Aerial.jpg/1920px-Downtown_Long_Beach_California_Aerial.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/Long_Beach_05.jpg/1920px-Long_Beach_05.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Long_Beach_07.jpg/1920px-Long_Beach_07.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/Long_Beach_09.jpg/1920px-Long_Beach_09.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/Downtown_Long_Beach.jpg/1920px-Downtown_Long_Beach.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Long_Beach_Oil_Field.jpg/1920px-Long_Beach_Oil_Field.jpg",
   ],
   "austin": [
-    // Downtown Austin skyline, December 2023 (daytime)
     "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Austin_Texas_skyline%2C_December_2023_-_Day.jpg/1920px-Austin_Texas_skyline%2C_December_2023_-_Day.jpg",
-    // Austin skyline 2018 — downtown high-rise cluster
     "https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Austin%2C_Texas_Skyline_2018.jpg/1920px-Austin%2C_Texas_Skyline_2018.jpg",
-    // Downtown skyline at dusk in 2016
     "https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/Austin_Texas_skyline_at_dusk_in_2016.jpg/1920px-Austin_Texas_skyline_at_dusk_in_2016.jpg",
-    // Skyline reflected over the Colorado River (Lady Bird Lake)
     "https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Colorado_River_and_Austin%2C_Texas_Skyline_%2846879015824%29.jpg/1920px-Colorado_River_and_Austin%2C_Texas_Skyline_%2846879015824%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Austin_Texas_Sunset_Skyline_2011.jpg/1920px-Austin_Texas_Sunset_Skyline_2011.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Austin_Skyline-02.jpg/1920px-Austin_Skyline-02.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Austin_Skyline_at_Dusk.jpg/1920px-Austin_Skyline_at_Dusk.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Austin_Texas_Downtown_Skyline_at_Night_%2810555159946%29.jpg/1920px-Austin_Texas_Downtown_Skyline_at_Night_%2810555159946%29.jpg",
   ],
   "phoenix": [
-    // Phoenix skyline with the desert mountains behind
     "https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/Phoenix_skyline_Arizona_USA.jpg/1920px-Phoenix_skyline_Arizona_USA.jpg",
-    // Downtown Phoenix skyline high-rise cluster
     "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Downtown_Phoenix_Skyline_%286974043971%29.jpg/1920px-Downtown_Phoenix_Skyline_%286974043971%29.jpg",
-    // Downtown Phoenix skyline lit at night
     "https://upload.wikimedia.org/wikipedia/commons/thumb/5/58/Downtown_Phoenix_Skyline_Lights.jpg/1920px-Downtown_Phoenix_Skyline_Lights.jpg",
-    // Phoenix skyline from South Mountain at night
     "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Phoenix_Skyline_from_South_Mountain_at_Night.2010.jpg/1920px-Phoenix_Skyline_from_South_Mountain_at_Night.2010.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Downtown_Phoenix_Aerial_Looking_Northeast.jpg/1920px-Downtown_Phoenix_Aerial_Looking_Northeast.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Phoenix%2C_AZ.jpg/1920px-Phoenix%2C_AZ.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/Downtown_Phoenix_Skyline_at_Night.jpg/1920px-Downtown_Phoenix_Skyline_at_Night.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Downtown_Phoenix_banner.jpg/1920px-Downtown_Phoenix_banner.jpg",
   ],
   "jacksonville": [
-    // Jacksonville downtown skyline panorama over the St. Johns River
     "https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Jacksonville_Skyline_Panorama_2.jpg/1920px-Jacksonville_Skyline_Panorama_2.jpg",
-    // Jacksonville skyline panorama (riverfront)
     "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Jacksonville_Skyline_Panorama_3.jpg/1920px-Jacksonville_Skyline_Panorama_3.jpg",
-    // Downtown Jacksonville, south view (2016)
     "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Skyline_of_Jacksonville_FL%2C_South_view_20160706_1.jpg/1920px-Skyline_of_Jacksonville_FL%2C_South_view_20160706_1.jpg",
-    // Jacksonville skyline at night (2025)
     "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/Jacksonville_Florida_Night_Skyline_New_Year_2025.jpg/1920px-Jacksonville_Florida_Night_Skyline_New_Year_2025.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/P-3C_Orion_over_Jacksonville_Florida.jpg/1920px-P-3C_Orion_over_Jacksonville_Florida.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Aerial_View_of_Jacksonville_International_Airport.JPG/1920px-Aerial_View_of_Jacksonville_International_Airport.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Aerial_shot_of_Jacksonville%2C_Florida_in_the_1960s_%2810926432033%29.jpg/1920px-Aerial_shot_of_Jacksonville%2C_Florida_in_the_1960s_%2810926432033%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/68/Aerial_shot_of_Jacksonville%2C_Florida_in_the_1960s_%2810926131485%29.jpg/1920px-Aerial_shot_of_Jacksonville%2C_Florida_in_the_1960s_%2810926131485%29.jpg",
   ],
   "virginia-beach": [
-    // Virginia Beach oceanfront — boardwalk and shoreline (2024)
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Virginia_Beach_Oceanfront_2024-08-31.jpg/1920px-Virginia_Beach_Oceanfront_2024-08-31.jpg",
-    // King Neptune statue — iconic Virginia Beach boardwalk landmark
     "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/King_Neptune%2C_Virginia_Beach.jpg/1920px-King_Neptune%2C_Virginia_Beach.jpg",
-    // Virginia Beach oceanfront beach and resort strip
     "https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/Beach_at_Virginia_Beach_Oceanfront_01.jpg/1920px-Beach_at_Virginia_Beach_Oceanfront_01.jpg",
-    // Oceanfront looking south down the resort strip
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/Beach_at_Virginia_Beach_Oceanfront_-_Facing_South.jpg/1920px-Beach_at_Virginia_Beach_Oceanfront_-_Facing_South.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/Virginia_Beach_from_Fishing_Pier.jpg/1920px-Virginia_Beach_from_Fishing_Pier.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/London_Bridge_Nursery_%28261301925%29.jpeg/1920px-London_Bridge_Nursery_%28261301925%29.jpeg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Virginia_Beach_City_Hall_%28243493177%29.jpeg/1920px-Virginia_Beach_City_Hall_%28243493177%29.jpeg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/USS_Oak_Hill%2C_26th_MEU_Marines_Visit_Batumi%2C_Georgia_%2840817303032%29.jpg/1920px-USS_Oak_Hill%2C_26th_MEU_Marines_Visit_Batumi%2C_Georgia_%2840817303032%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Virginia_Beach_from_Back_Bay_National_Wildlife_Refuge_2019.jpg/1920px-Virginia_Beach_from_Back_Bay_National_Wildlife_Refuge_2019.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Beautiful_home_on_the_corner_of_Harrison_and_3rd_Lynchburg_Va_%283496321421%29.jpg/1920px-Beautiful_home_on_the_corner_of_Harrison_and_3rd_Lynchburg_Va_%283496321421%29.jpg",
   ],
   "gainesville": [
-    // Downtown Gainesville, Florida
     "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Downtown_Gainesville%2C_FL.jpg/1920px-Downtown_Gainesville%2C_FL.jpg",
-    // Downtown Gainesville street view
     "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Gainesville%2C_FL_Downtown.jpg/1920px-Gainesville%2C_FL_Downtown.jpg",
-    // Century Tower — landmark carillon at the University of Florida
     "https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/Century_Tower_%28University_of_Florida%29.jpg/1920px-Century_Tower_%28University_of_Florida%29.jpg",
-    // Ben Hill Griffin Stadium ("The Swamp") — UF landmark
     "https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/Ben_Hill_Griffin_Stadium_-_Florida_Gators.jpg/1920px-Ben_Hill_Griffin_Stadium_-_Florida_Gators.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/Skyline_of_Gainsville%2C_Florida%2C_US.jpg/1920px-Skyline_of_Gainsville%2C_Florida%2C_US.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Gainesville_SFC_downtown_depot01.jpg/1920px-Gainesville_SFC_downtown_depot01.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Gainesville_SFC_downtown_depot02.jpg/1920px-Gainesville_SFC_downtown_depot02.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Gainesville_SFC_downtown_depot03.jpg/1920px-Gainesville_SFC_downtown_depot03.jpg",
   ],
   "tampa": [
-    // Tampa skyline across Hillsborough Bay from Ballast Point Park (2024)
     "https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/Tampa_Skyline_from_Ballast_Point_Park_April_2024.jpg/1920px-Tampa_Skyline_from_Ballast_Point_Park_April_2024.jpg",
-    // Downtown Tampa skyline along the Hillsborough River
     "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Downtown_Tampa%2C_Florida.jpg/1920px-Downtown_Tampa%2C_Florida.jpg",
-    // Tampa Riverwalk along the Hillsborough River downtown
     "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Tampa_Riverwalk_02.jpg/1920px-Tampa_Riverwalk_02.jpg",
-    // Historic TECO Line streetcar in Ybor City
     "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Streetcar_-_Ybor_City_-_Tampa%2C_Florida%2C_2012.jpg/1920px-Streetcar_-_Ybor_City_-_Tampa%2C_Florida%2C_2012.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Downtown_Tampa_During_Gasparilla_Pirate_Fest_2002.jpg/1920px-Downtown_Tampa_During_Gasparilla_Pirate_Fest_2002.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Skyline_of_Tampa%2C_Florida_from_Bayshore_Blvd.jpg/1920px-Skyline_of_Tampa%2C_Florida_from_Bayshore_Blvd.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Tampa_Skyline.jpg/1920px-Tampa_Skyline.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Red_Bull_Flugtag_near_downtown_Tampa%2C_Florida_on_July_19%2C_2008_%28panorama%29.jpg/1920px-Red_Bull_Flugtag_near_downtown_Tampa%2C_Florida_on_July_19%2C_2008_%28panorama%29.jpg",
   ],
 };
