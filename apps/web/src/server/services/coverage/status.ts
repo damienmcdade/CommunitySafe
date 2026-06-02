@@ -63,6 +63,9 @@ export interface CoverageResponse {
 // LKG → static-baseline fallbacks below supply the count (health stays "live"
 // off the baseline). Brings the cold aggregate from ~59s toward ~10s.
 const PER_CITY_TIMEOUT_MS = 10_000;
+// Cap for the freshness-sample calls (getAreaStats/getIncidents) on a city
+// whose area list resolved but whose incident load is slow/cold.
+const SAMPLE_TIMEOUT_MS = 8_000;
 
 /// Module-level last-known-good cache. Survives across requests on
 /// a warm Lambda; on cold start the map is empty. Used as a fallback
@@ -98,9 +101,15 @@ export async function getCoverage(): Promise<CoverageResponse> {
         // sample is enough because the adapter shares its upstream pull
         // across all areas of the city.
         if (areas.length > 0) {
-          const stats = await crimeData.getAreaStats(areas[0].slug).catch(() => null);
+          // v106 — these sample calls were untimed. For a city whose discover()
+          // returns fast off a static seed (Milwaukee) or whose incident load
+          // is huge (Indianapolis 110k rows), getAreaStats/getIncidents then
+          // triggered a slow cold load that dominated the aggregate (~35s).
+          // Cap each at SAMPLE_TIMEOUT so the freshness sample never blocks the
+          // health check; on timeout we simply skip the asOf for that city.
+          const stats = await withTimeout(crimeData.getAreaStats(areas[0].slug).catch(() => null), SAMPLE_TIMEOUT_MS, null);
           if (stats?.provenance.source) sourceLabel = stats.provenance.source;
-          const recent = await crimeData.getIncidents(areas[0].slug, { limit: 50 }).catch(() => []);
+          const recent = await withTimeout(crimeData.getIncidents(areas[0].slug, { limit: 50 }).catch(() => []), SAMPLE_TIMEOUT_MS, []);
           if (recent.length > 0) {
             const latest = recent
               .map((i) => +new Date(i.occurredAt))
