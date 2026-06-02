@@ -16,12 +16,12 @@ export default function WelcomePage() {
       <section className="relative">
         <div className="relative max-w-5xl mx-auto px-6 py-24 sm:py-32">
           <div className="max-w-2xl rounded-2xl bg-slate2-900/55 backdrop-blur-md p-6 sm:p-8 shadow-card-lift border border-white/10">
-            <p className="text-bay-200 text-sm tracking-wide uppercase animate-fade-in">Area-level safety · San Diego · Los Angeles · San Francisco</p>
+            <p className="text-bay-200 text-sm tracking-wide uppercase animate-fade-in">Area-level safety · 44 US cities, coast to coast</p>
             <h1 className="mt-2 font-display text-5xl sm:text-6xl text-white animate-rise-in">
               <span className="bg-gradient-to-r from-white to-coral-200 bg-clip-text text-transparent">Community</span>Safe
             </h1>
             <p className="mt-4 text-sand-100 text-lg animate-rise-in">
-              Calm, neighborhood-level safety context for major California cities. The application draws on official police data and moderated community reports, without surveillance, profiling, or alarmism.
+              Calm, neighborhood-level safety context for major US cities. The application draws on official police data and moderated community reports, without surveillance, profiling, or alarmism.
             </p>
             <div className="mt-8 flex flex-wrap gap-3 animate-rise-in">
               <Link href="/now" className="btn-coral text-base px-6 py-3">Explore CommunitySafe →</Link>

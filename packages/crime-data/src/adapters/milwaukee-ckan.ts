@@ -88,6 +88,13 @@ const ZIP_NEIGHBORHOOD: Record<string, string> = {
   "53233": "Avenues West",
 };
 
+// ZIPs whose footprint is overwhelmingly a SEPARATE municipality with its own
+// police department — the MPD WIBR feed carries only a stray boundary sliver,
+// so grading them as Milwaukee neighborhoods is both data-poor (N/A) and
+// misleading (they're labeled after the suburb). Excluded from aggregation.
+// 53227 West Allis · 53228 Greenfield · 53223 Brown Deer.
+const NON_MPD_ZIPS: ReadonlySet<string> = new Set(["53227", "53228", "53223"]);
+
 const PROVENANCE: DataProvenance = {
   source: "Milwaukee Police WIBR Crime Data · data.milwaukee.gov",
   datasetUrl: "https://data.milwaukee.gov/dataset/wibr",
@@ -179,10 +186,16 @@ async function fetchAndParse(): Promise<Cache> {
     if (!occurred) continue;
     const zip = (r.ZIP ?? "").trim();
     if (!/^\d{5}$/.test(zip)) continue;
-    // Aggregate by neighborhood name (matched to bundled polygon
-    // names where possible). Unmapped ZIPs fall back to legacy
-    // "Milwaukee 53xxx" labels so the row isn't dropped.
-    const nbh = ZIP_NEIGHBORHOOD[zip] ?? `Milwaukee ${zip}`;
+    if (NON_MPD_ZIPS.has(zip)) continue;
+    // v106 — aggregate ONLY by ZIPs that map to a real, recognizable
+    // Milwaukee neighborhood. Previously an unmapped ZIP fell back to a raw
+    // "Milwaukee 53xxx" label, which (a) is an unrecognizable name and
+    // (b) surfaced suburb/PO-box ZIP slivers as dataless N/A "neighborhoods"
+    // (West Allis 53227, Greenfield 53228, Oak Creek 53154, …) that dragged
+    // coverage to 67%. Drop the sliver rows instead — they're a negligible
+    // fraction and can't be placed in a recognizable area anyway.
+    const nbh = ZIP_NEIGHBORHOOD[zip];
+    if (!nbh) continue;
     const { category, description } = classifyRow(r);
     rows.push({
       id: `mke-${r.IncidentNum ?? `${rows.length}`}`,

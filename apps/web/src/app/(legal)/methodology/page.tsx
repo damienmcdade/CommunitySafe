@@ -28,7 +28,7 @@ export default function MethodologyPage() {
         <ol className="list-decimal pl-5 space-y-2">
           <li>
             <strong className="text-slate2-900">City open-data portals.</strong> Each of CommunitySafe&apos;s
-            38 supported cities publishes police-incident records through an official open-data feed
+            44 supported cities publishes police-incident records through an official open-data feed
             (SDPD NIBRS, LAPD Crime Data, SFPD Incident Reports, Chicago CPD, NYPD Complaint Data,
             Seattle SPD, Boston BPD, DC MPD, Philadelphia PPD, Colorado Springs, Detroit, Oakland, Cincinnati,
             New Orleans, Baton Rouge, Cambridge, Dallas, Charlotte, Baltimore, Minneapolis, Cleveland,
@@ -50,7 +50,7 @@ export default function MethodologyPage() {
             . The FBI publishes a new annual release each October; we update the constant on each release.
           </li>
           <li>
-            <strong className="text-slate2-900">US Census Vintage 2023 population estimates.</strong> Used
+            <strong className="text-slate2-900">US Census Vintage 2023-2024 population estimates.</strong> Used
             as the denominator for the per-100,000 rate calculation. Source:{" "}
             <a
               href="https://www.census.gov/programs-surveys/popest.html"
@@ -77,7 +77,7 @@ export default function MethodologyPage() {
           </li>
           <li>
             <strong className="text-slate2-900">Estimate per-area population.</strong> For citywide
-            scores, the denominator is the city&apos;s actual US Census Vintage 2023 population. For
+            scores, the denominator is the city&apos;s actual US Census Vintage 2023-2024 population. For
             per-neighborhood scores, the denominator is approximated two ways:
             <ul className="list-disc pl-5 mt-2 space-y-1">
               <li>

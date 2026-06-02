@@ -21,7 +21,7 @@ export default function TermsPage() {
 
       <section className="surface p-6 space-y-3 text-sm text-slate2-700 leading-relaxed">
         <h2 className="font-display text-xl text-slate2-900">What CommunitySafe is</h2>
-        <p>CommunitySafe is a neighborhood-level safety-awareness tool that surfaces publicly published police-incident data for 38 supported US cities, compared to the FBI Crime in the Nation national average. It is informational and educational.</p>
+        <p>CommunitySafe is a neighborhood-level safety-awareness tool that surfaces publicly published police-incident data for 44 supported US cities, compared to the FBI Crime in the Nation national average. It is informational and educational.</p>
         <p>
           CommunitySafe is operated by{" "}
           <a href="https://cyberwaveglobal.com" target="_blank" rel="noopener noreferrer" className="text-bay-700 hover:underline">CyberWave Technologies LLC</a>{" "}
@@ -96,7 +96,7 @@ export default function TermsPage() {
 
       <section className="surface p-6 space-y-3 text-sm text-slate2-700 leading-relaxed">
         <h2 className="font-display text-xl text-slate2-900">Limitation of liability &amp; indemnity</h2>
-        <p>To the maximum extent permitted by applicable law, CyberWave Technologies LLC and its operators, officers, and contributors will not be liable for any indirect, incidental, special, consequential, or punitive damages, or for any loss arising from your use of — or inability to use — CommunitySafe or any decision made in reliance on it. CommunitySafe is provided free of charge; to the extent any liability cannot be excluded, it is limited in the aggregate to USD $100.</p>
+        <p>To the maximum extent permitted by applicable law, CyberWave Technologies LLC and its operators, officers, and contributors will not be liable for any indirect, incidental, special, consequential, or punitive damages, or for any loss arising from your use of — or inability to use — CommunitySafe or any decision made in reliance on it. CommunitySafe is provided free of charge; to the extent any liability cannot be excluded, it is limited in the aggregate to USD 100.</p>
         <p>You agree to indemnify and hold harmless CyberWave Technologies LLC from any claim arising out of your misuse of the app, your violation of these Terms, your use of the data for a prohibited purpose (including any housing, lending, insurance, or employment decision), or any content you submit to the community feed.</p>
         <p>If any provision of these Terms is held unenforceable, the remaining provisions stay in effect. These Terms, together with the <Link href="/privacy" className="text-bay-700 hover:underline">Privacy Policy</Link>, are the entire agreement between you and CyberWave Technologies LLC regarding CommunitySafe.</p>
       </section>

@@ -1244,7 +1244,7 @@ async function computeCitywideSafetyScore(citySlug: string): Promise<SafetyScore
     disclaimer:
       "Citywide rate is the sum of incidents across every tracked neighborhood, " +
       `annualized from the cached window and scaled to per-100,000 residents using ` +
-      `${city.label}'s US Census Bureau Vintage 2024 population (${pop.toLocaleString()}). ` +
+      `${city.label}'s US Census Bureau Vintage 2023-2024 population (${pop.toLocaleString()}). ` +
       (fbiBaseline
         ? `The grade compares this rate against ${city.label}'s OWN FBI-published rate for ${fbiBaseline.year} ` +
           `(violent ${fbiBaseline.violent}/100k, property ${fbiBaseline.property}/100k via cde.ucr.cjis.gov agency ORI ${fbiBaseline.ori}). ` +
