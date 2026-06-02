@@ -53,6 +53,11 @@ const HEAVY_CITIES = [
   // the compute gate + the raised heap ceiling (heap ~120MB vs 1700MB
   // high-water) leave ample headroom for one more warm resident.
   "atlanta",      // 246 areas, slow ArcGIS cold load
+  // v106 — Indianapolis: 110k incidents (the largest single-city volume in the
+  // fleet), ~21s cold load. Under cache churn the feature-completeness sweep
+  // saw it 502 across all endpoints. Under the timeout (45s) but heavy enough
+  // to warrant continuous warming.
+  "indianapolis",
 ];
 
 // v96 — per-city deadline. Without this, a single hung adapter (one
