@@ -38,9 +38,16 @@ export function CityBackdrop() {
     return () => window.clearInterval(id);
   }, [photos.length]);
 
+  // fix(audit perf-web-1): only the current photo is visible, but rendering all
+  // ~8 as overlapping fullscreen <Image>s made the browser fetch every one (~2MB)
+  // on each city — and the backdrop is in the root layout, so it taxed landing
+  // LCP. Render only the current photo plus the NEXT one (preloaded for a smooth
+  // crossfade); that's at most 2 images in flight instead of the whole set.
+  const visible = photos.length <= 1 ? [0] : [idx, (idx + 1) % photos.length];
+
   return (
     <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden>
-      {photos.map((url, i) => (
+      {visible.map((i) => (
         <div
           key={`${city.slug}-${i}`}
           className={`absolute inset-0 transition-opacity duration-[2000ms] ${i === idx && !imgError[i] ? "opacity-100" : "opacity-0"}`}
@@ -52,7 +59,7 @@ export function CityBackdrop() {
               we deliberately allow optimization via the remotePatterns
               entry in next.config.ts. */}
           <Image
-            src={url}
+            src={photos[i]}
             alt=""
             fill
             sizes="100vw"

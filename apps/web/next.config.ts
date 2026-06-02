@@ -115,6 +115,10 @@ const config: NextConfig = {
   // proper lazy-load — meaningful LCP + bandwidth win since each city
   // ships ~4 photos at 1920px width.
   images: {
+    // fix(audit perf-web-2): the comment above promised AVIF/WebP but no
+    // `formats` was set, so next/image only emitted WebP. Explicitly enable AVIF
+    // (smaller than WebP) ahead of WebP for the backdrop photos.
+    formats: ["image/avif", "image/webp"],
     remotePatterns: [
       { protocol: "https", hostname: "upload.wikimedia.org", pathname: "/wikipedia/commons/**" },
     ],
@@ -122,6 +126,15 @@ const config: NextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: SECURITY_HEADERS },
+      // fix(audit perf-geo-2): the city polygon GeoJSON under /public/geo (some
+      // files >1MB) was served with Next's default max-age=0, so it was
+      // re-downloaded on every Crime Map view. Polygon geometry is effectively
+      // static per city, so cache it hard. (If a city's polygons are regenerated,
+      // bump the filename or purge the CDN.)
+      {
+        source: "/geo/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=2592000, immutable" }],
+      },
     ];
   },
 };
