@@ -22,9 +22,12 @@ export async function register(email: string, password: string, displayName?: st
   const passwordHash = await bcrypt.hash(password, env.BCRYPT_ROUNDS);
   const user = await prisma.user.create({
     data: { email: normEmail, passwordHash, displayName },
-    select: { id: true, email: true, displayName: true },
+    select: { id: true, email: true, displayName: true, tokenVersion: true },
   });
-  return { user, token: signSession({ uid: user.id, email: user.email }) };
+  return {
+    user: { id: user.id, email: user.email, displayName: user.displayName },
+    token: signSession({ uid: user.id, email: user.email, ver: user.tokenVersion }),
+  };
 }
 
 // v106 (security audit) — account lockout (DISA STIG / NIST 800-53 AC-7).
@@ -93,7 +96,7 @@ export async function login(email: string, password: string) {
 
   return {
     user: { id: user.id, email: user.email, displayName: user.displayName },
-    token: signSession({ uid: user.id, email: user.email }),
+    token: signSession({ uid: user.id, email: user.email, ver: user.tokenVersion }),
   };
 }
 
@@ -146,8 +149,21 @@ export async function verifyMfaAndIssueTokens(mfaPendingToken: string, code: str
 
   return {
     user: { id: user.id, email: user.email, displayName: user.displayName },
-    token: signSession({ uid: user.id, email: user.email }),
+    token: signSession({ uid: user.id, email: user.email, ver: user.tokenVersion }),
   };
+}
+
+// fix(audit auth-no-revocation-web-2): revoke every existing token for the user
+// by bumping tokenVersion (logout / sign-out-everywhere / password change). The
+// client should drop its stored token after calling this; any token still in
+// flight fails requireSession's ver check on its next request.
+export async function logout(userId: string): Promise<void> {
+  const { invalidateSessionRevocation } = await import("../lib/auth");
+  await prisma.user.update({
+    where: { id: userId },
+    data: { tokenVersion: { increment: 1 } },
+  });
+  invalidateSessionRevocation(userId);
 }
 
 export async function me(userId: string) {

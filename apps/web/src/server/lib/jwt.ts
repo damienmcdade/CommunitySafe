@@ -5,6 +5,12 @@ import { env } from "./env";
 export interface SessionPayload {
   uid: string;
   email: string;
+  // fix(audit auth-no-revocation-web-2): token-version revocation cursor. Minted
+  // into every new token from User.tokenVersion; requireSession rejects a token
+  // whose ver is behind the user's current tokenVersion (logout / sign-out-
+  // everywhere / password change bumps it). Optional so legacy tokens minted
+  // before this column existed still verify (treated as ver 0).
+  ver?: number;
 }
 
 function secret(): string {

@@ -38,6 +38,20 @@ export function isSignedIn(): boolean {
   return token() != null;
 }
 
+// fix(audit auth-no-revocation-web-2): server-side logout. Bumps the user's
+// tokenVersion so the current token (and any leaked copy) is revoked, then drops
+// the local token. Best-effort on the network call — the local token is cleared
+// regardless so the device is signed out even if the request fails.
+export async function logout(): Promise<void> {
+  try {
+    await rawApi("/auth/logout", { method: "POST" });
+  } catch {
+    /* clear locally regardless */
+  } finally {
+    setToken(null);
+  }
+}
+
 /// Silently mint (and persist) a per-device anonymous session on first visit
 /// so every feature works without a visible login flow. Subsequent calls are
 /// a no-op once a token is stored. Safe to call from a useEffect on app mount.

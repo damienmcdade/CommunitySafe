@@ -31,8 +31,8 @@ export const POST = wrap(async (req: NextRequest) => {
   const passwordHash = await bcrypt.hash(`anon-${rand}-${Math.random()}`, 4);
   const user = await prisma.user.create({
     data: { email, passwordHash, displayName: "Anonymous device" },
-    select: { id: true, email: true },
+    select: { id: true, email: true, tokenVersion: true },
   });
 
-  return NextResponse.json({ token: signSession({ uid: user.id, email: user.email }), uid: user.id, reused: false }, { status: 201 });
+  return NextResponse.json({ token: signSession({ uid: user.id, email: user.email, ver: user.tokenVersion }), uid: user.id, reused: false }, { status: 201 });
 });
