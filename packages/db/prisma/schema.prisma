@@ -182,6 +182,10 @@ model SavedPlace {
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  // fix(audit perf-savedplace-index): the proximity worker scans
+  // `where: { alertsEnabled: true }` every 5 minutes; index it so the tick is a
+  // ranged read rather than a full SavedPlace table scan as the table grows.
+  @@index([alertsEnabled])
 }
 
 // -----------------------------------------------------------------------------
