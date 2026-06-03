@@ -131,9 +131,10 @@ function titleCaseArea(raw: string | null | undefined): string | undefined {
       const upper = w.toUpperCase();
       if (ACRONYMS.has(upper)) return upper;
       if (i > 0 && SMALL_WORDS.has(w)) return w;
-      // Handle hyphenated words ("park-place" → "Park-Place") and
-      // apostrophes ("o'brien" → "O'Brien").
-      return w.replace(/(^|[-'])([a-z])/g, (_, sep: string, ch: string) => sep + ch.toUpperCase());
+      // Handle hyphenated words ("park-place" → "Park-Place"), apostrophes
+      // ("o'brien" → "O'Brien"), and fix(audit cov-norfolk-org-artifacts) slash
+      // composites ("greenwood/elmhurst/norview" → "Greenwood/Elmhurst/Norview").
+      return w.replace(/(^|[-'/])([a-z])/g, (_, sep: string, ch: string) => sep + ch.toUpperCase());
     })
     .join(" ");
 }
@@ -202,6 +203,11 @@ export async function getDiscoveredAreasNorfolk(): Promise<KnownArea[]> {
   const counts = new Map<string, number>();
   for (const r of rows) {
     if (!r.area || r.area === "Unknown") continue;
+    // fix(audit cov-norfolk-org-artifacts): "No Civic League" is Norfolk's
+    // catch-all for incidents with no assigned neighborhood, not a real area —
+    // keep it as an internal bucket but don't surface it as a selectable
+    // neighborhood (same posture as the Indianapolis/Tucson "Unmapped" filter).
+    if (r.area.toLowerCase() === "no civic league") continue;
     counts.set(r.area, (counts.get(r.area) ?? 0) + 1);
   }
   // Drop entries whose name produces an empty slug body (e.g.,
