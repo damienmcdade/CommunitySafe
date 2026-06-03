@@ -177,6 +177,7 @@ export async function me(userId: string) {
       permanentlyBanned: true,
       alertPreference: true,
       deletedAt: true,
+      mfaEnabled: true,
     },
   });
   // v106 — return a clean 401 instead of a raw findUniqueOrThrow 500 when the
@@ -191,5 +192,9 @@ export async function me(userId: string) {
     suspendedUntil: user.suspendedUntil,
     permanentlyBanned: user.permanentlyBanned,
     alertPreference: user.alertPreference,
+    // fix(audit auth-mfa-unreachable-3): surface MFA state so the settings UI can
+    // show enable vs disable. An anonymous device account is identifiable by its
+    // device-*@*.local email; the UI only offers MFA to registered accounts.
+    mfaEnabled: user.mfaEnabled,
   };
 }

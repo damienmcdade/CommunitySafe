@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { useTheme, type Theme } from "@/lib/use-theme";
+import { MfaSettings } from "@/components/MfaSettings";
 
 // Local-state inventory the page can clear on demand. Every key
 // that survives a tab/page navigation lives in this list — if a new
@@ -94,6 +95,10 @@ export default function PrivacyDashboardPage() {
           Cleared: {justCleared}.
         </p>
       )}
+
+      {/* fix(audit auth-mfa-unreachable-3): account security — enable/disable 2FA.
+          Renders only for registered (non-anonymous) accounts. */}
+      <MfaSettings />
 
       <section className="surface p-6 space-y-3">
         <h2 className="font-display text-xl text-slate2-900">What&apos;s stored on this device</h2>
