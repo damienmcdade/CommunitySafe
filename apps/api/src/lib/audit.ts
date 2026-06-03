@@ -13,6 +13,9 @@ export type SecurityEvent =
   | "auth.login.fail.mfa"
   | "auth.register"
   | "auth.token.refresh"
+  // fix(audit api-code-3): distinct event for logout (was mislabeled as
+  // auth.token.refresh) so the security log doesn't conflate the two.
+  | "auth.logout"
   // v95p10 — MFA lifecycle (DISA STIG IA-2(1) requires audit of
   // authenticator-management events alongside auth events).
   | "auth.mfa.enroll"
@@ -22,6 +25,8 @@ export type SecurityEvent =
   | "account.delete"
   | "moderation.review"
   | "moderation.suspend"
+  // fix(audit api-code-3): user-block is distinct from suspend/ban.
+  | "moderation.block"
   | "moderation.ban"
   | "moderation.unban"
   | "user.role.change";

@@ -94,7 +94,10 @@ authRouter.post("/refresh", authLimiter, async (req, res, next) => {
 authRouter.post("/logout", requireAuth, async (req, res, next) => {
   try {
     await logout(req.session!.uid);
-    writeSecurityAudit({ event: "auth.token.refresh", userId: req.session!.uid, email: req.session!.email, req, detail: { action: "logout" } });
+    // fix(audit api-code-3): this is the logout endpoint — the audit event was
+    // mislabeled "auth.token.refresh", which would misattribute logouts in the
+    // security log.
+    writeSecurityAudit({ event: "auth.logout", userId: req.session!.uid, email: req.session!.email, req, detail: { action: "logout" } });
     res.json({ ok: true });
   } catch (err) {
     next(err);

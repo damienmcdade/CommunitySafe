@@ -113,7 +113,10 @@ moderationRouter.post("/block", requireAuth, writeLimiter, async (req, res, next
       create: { blockerId, blockedId: userId },
       update: {},
     });
-    writeSecurityAudit({ event: "moderation.suspend", userId: blockerId, email: req.session!.email, req, detail: { action: "block", targetUserId: userId } });
+    // fix(audit api-code-3): this is a user-block, not a suspension — the event
+    // was mislabeled "moderation.suspend", conflating two distinct moderation
+    // actions in the security log.
+    writeSecurityAudit({ event: "moderation.block", userId: blockerId, email: req.session!.email, req, detail: { action: "block", targetUserId: userId } });
     res.json({ ok: true });
   } catch (err) {
     next(err);
