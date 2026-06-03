@@ -221,7 +221,7 @@ export async function getDiscoveredAreasNorfolk(): Promise<KnownArea[]> {
       const slugBody = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
       return {
         slug: `nor-${slugBody}`,
-        label: name,
+        label: correctNorfolkLabel(name),
         jurisdiction: "Norfolk",
         centroid: NORFOLK_CENTROID,
         _slugBody: slugBody,
@@ -232,13 +232,29 @@ export async function getDiscoveredAreasNorfolk(): Promise<KnownArea[]> {
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
+// fix(audit cov-norfolk-org-artifacts): "MILTARY CIRCLE" is a genuine typo in
+// Norfolk's OWN crime feed (data.norfolk.gov r7bn-2egr) — the area is the
+// well-known Military Circle. Corrected for DISPLAY only; the slug stays
+// nor-miltary-circle so the curated nor-* population table (keyed to the raw
+// spelling) and any saved areas keep matching. The matching geojson name is
+// fixed to the same spelling so normName() map-matching stays consistent.
+// NOTE: "DIGGS TOWN" is Norfolk's official two-word spelling (verified in the
+// same feed), so it is intentionally NOT changed.
+const NOR_LABEL_CORRECTIONS: Record<string, string> = {
+  "Miltary Circle": "Military Circle",
+};
+function correctNorfolkLabel(name: string): string {
+  return NOR_LABEL_CORRECTIONS[name] ?? name;
+}
+
 // v70 — O(1) Map lookup. Pre-v70 this scanned every row in the
 // adapter on every call (122 areas × ~40k rows = ~5M ops per warm).
 function labelForNorfolkSlug(slug: string): string | null {
   if (!cache) return null;
   const s = slug.toLowerCase();
   const want = s.startsWith("nor-") ? s.slice(4) : s;
-  return cache.slugToLabel.get(want) ?? null;
+  const label = cache.slugToLabel.get(want);
+  return label != null ? correctNorfolkLabel(label) : null;
 }
 
 export const norfolkAdapter: CrimeDataAdapter = {
