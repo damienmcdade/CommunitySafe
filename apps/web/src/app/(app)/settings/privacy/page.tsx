@@ -165,6 +165,8 @@ export default function PrivacyDashboardPage() {
         </dl>
       </section>
 
+      <AdConsentControls />
+
       <LocationControls />
 
       <AppearanceControls />
@@ -184,6 +186,80 @@ export default function PrivacyDashboardPage() {
         </p>
       </section>
     </main>
+  );
+}
+
+// fix(audit ui-consent-broken-promise): the cookie banner tells users they can
+// "change this anytime in Privacy Settings", but this dashboard had no control
+// for the cs.consent.v1 advertising-consent choice — the promise was unkeepable.
+// This section reads and rewrites that exact key so Accept/Reject is reversible
+// here, matching the banner. It only renders when AdSense is actually configured
+// (the only case where the banner ever appears / ad cookies are dropped) OR when
+// a prior choice is already stored on this device, so default deploys with no
+// ads stay clean.
+const CONSENT_KEY = "cs.consent.v1";
+type ConsentChoice = "accept" | "reject" | null;
+
+function AdConsentControls() {
+  const adsenseConfigured = Boolean(process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID);
+  const [choice, setChoice] = useState<ConsentChoice>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    try {
+      const v = window.localStorage.getItem(CONSENT_KEY);
+      setChoice(v === "accept" || v === "reject" ? v : null);
+    } catch { /* ignore */ }
+    setLoaded(true);
+  }, []);
+
+  function set(next: ConsentChoice) {
+    try {
+      if (next === null) window.localStorage.removeItem(CONSENT_KEY);
+      else window.localStorage.setItem(CONSENT_KEY, next);
+    } catch { /* ignore */ }
+    setChoice(next);
+  }
+
+  // Nothing to consent to on ad-free deploys with no prior choice — keep the
+  // dashboard uncluttered rather than show a control that does nothing.
+  if (!loaded) return null;
+  if (!adsenseConfigured && choice === null) return null;
+
+  const labels: Record<"accept" | "reject", string> = {
+    accept: "Personalized ads allowed",
+    reject: "Personalized ads rejected (measurement only)",
+  };
+  return (
+    <section className="surface p-6 space-y-3">
+      <h2 className="font-display text-xl text-slate2-900">Advertising &amp; cookies</h2>
+      <p className="text-sm text-slate2-700">
+        {adsenseConfigured
+          ? "This deploy serves third-party advertising. Your choice below controls whether those ads are personalized; CommunitySafe never sells your personal information either way."
+          : "This deploy serves no third-party advertising right now, but a consent choice is still stored on this device from a previous visit. You can clear it below."}
+      </p>
+      <p className="text-sm">
+        Current choice:{" "}
+        <strong className="text-slate2-900">
+          {choice ? labels[choice] : "Not set — ads run in non-personalized mode until you choose"}
+        </strong>
+      </p>
+      <div className="flex flex-wrap gap-2 pt-1">
+        <button type="button" onClick={() => set("accept")}
+          className={`text-sm px-3 py-1.5 rounded-xl ${choice === "accept" ? "btn-primary" : "btn-secondary"}`}>
+          Allow personalized ads
+        </button>
+        <button type="button" onClick={() => set("reject")}
+          className={`text-sm px-3 py-1.5 rounded-xl ${choice === "reject" ? "btn-primary" : "btn-secondary"}`}>
+          Reject personalized ads
+        </button>
+        {choice !== null && (
+          <button type="button" onClick={() => set(null)} className="text-sm px-3 py-1.5 text-coral-700 hover:underline">
+            Reset (show the banner again)
+          </button>
+        )}
+      </div>
+    </section>
   );
 }
 

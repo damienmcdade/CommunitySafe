@@ -28,6 +28,12 @@ export function AIAssistant() {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const panelRef = useRef<HTMLElement | null>(null);
   const launcherRef = useRef<HTMLButtonElement | null>(null);
+  // fix(audit ui-a11y-aiassistant-focus-steal / web-focus-1): tracks whether the
+  // open-state effect has run before. The effect's else-branch restores focus to
+  // the launcher pill when the panel CLOSES — but on first mount `open` is already
+  // false, so without this guard it yanked focus to the floating pill on every
+  // page load (stealing it from the page's real first focusable element).
+  const openEffectRan = useRef(false);
 
   // Persist + restore conversation between page nav.
   useEffect(() => {
@@ -55,14 +61,18 @@ export function AIAssistant() {
   // page.
   useEffect(() => {
     if (open) {
+      openEffectRan.current = true;
       setTimeout(() => inputRef.current?.focus(), 100);
-    } else {
-      // Skip on first mount (no previous open state to return from).
+    } else if (openEffectRan.current) {
+      // Only restore focus to the launcher on a real CLOSE (the panel was
+      // previously opened). Skip the initial mount, where `open` starts
+      // false and there's no prior open state to return from — focusing
+      // here would steal focus from the page on every load.
       launcherRef.current?.focus({ preventScroll: true });
     }
     // launcherRef is intentionally not in deps — restoring focus on
     // close is the only goal; we don't want to refocus on every render.
-     
+
   }, [open]);
 
   // Esc closes the panel. Listen at document level so the user can hit
