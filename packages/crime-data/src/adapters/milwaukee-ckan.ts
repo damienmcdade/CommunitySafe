@@ -50,13 +50,17 @@ interface RawRow {
 // Milwaukee ZIPs → neighborhood / area name. Public knowledge from
 // Milwaukee's planning documents and community area profiles. Unknown
 // ZIPs render as "Milwaukee 53xxx" via the fallback path.
-// Milwaukee ZIP → real polygon-aligned neighborhood name. Names
-// match entries in the bundled milwaukee-neighborhoods.ts polygon
-// dataset (190 official MKE DCD neighborhoods) wherever possible so
-// the adapter can pull a real polygon centroid for each area.
-// ZIPs that straddle the city boundary (53217 Fox Point, 53220
-// Greenfield, etc.) map to the closest in-city polygon name —
-// MPD jurisdiction only extends to city portions of those ZIPs.
+//
+// fix(audit cov-mke-geojson-vs-datafile-divergence): the prior comment claimed
+// these names "match entries in the bundled ... dataset (190 official MKE DCD
+// neighborhoods)". That overstated the grain — Milwaukee's feed only carries a
+// ZIP per incident, so the adapter buckets by ZIP into ~30-40 ZIP-level areas,
+// each LABELLED with a representative neighborhood name (chosen so a real polygon
+// centroid can be pulled where one exists). It does NOT resolve incidents to the
+// 190 DCD neighborhood polygons — that resolution isn't in the source data.
+// ZIPs that straddle the city boundary (53217 Fox Point, 53220 Greenfield, etc.)
+// map to the closest in-city name — MPD jurisdiction only extends to the city
+// portions of those ZIPs.
 const ZIP_NEIGHBORHOOD: Record<string, string> = {
   "53202": "Juneau Town",
   "53203": "Kilbourn Town",
