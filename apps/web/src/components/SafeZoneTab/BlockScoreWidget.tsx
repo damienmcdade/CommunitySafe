@@ -23,9 +23,13 @@ export interface BlockScoreWidgetProps {
 // Labels are written in plain English — readers should be able to tell
 // at a glance what the number means without learning a new vocabulary.
 const BAND_STYLE: Record<BlockScoreBand, { stroke: string; fill: string; tone: string; chip: string; label: string }> = {
-  safe:     { stroke: "#7BA86E", fill: "#EAF4E6", tone: "text-sage-700",    chip: "bg-sage-100 ring-sage-200",    label: "Fewer reports than national average" },
-  moderate: { stroke: "#F59E0B", fill: "#FAF1DD", tone: "text-amber2-700",  chip: "bg-amber2-50 ring-amber2-300", label: "About the national average" },
-  elevated: { stroke: "#DC2626", fill: "#F4E1D9", tone: "text-coral-700",   chip: "bg-coral-100 ring-coral-200",  label: "More reports than national average" },
+  // fix(audit safetyscore-blockscore-band-label-national-vs-city): per-area
+  // BlockScore is computed relative to the area's OWN CITY rate (see Methodology),
+  // not the national average — so the chips must not assert "national". Phrased
+  // neutrally as "the benchmark"; the citation link below names the actual anchor.
+  safe:     { stroke: "#7BA86E", fill: "#EAF4E6", tone: "text-sage-700",    chip: "bg-sage-100 ring-sage-200",    label: "Fewer reports than the benchmark" },
+  moderate: { stroke: "#F59E0B", fill: "#FAF1DD", tone: "text-amber2-700",  chip: "bg-amber2-50 ring-amber2-300", label: "About the benchmark" },
+  elevated: { stroke: "#DC2626", fill: "#F4E1D9", tone: "text-coral-700",   chip: "bg-coral-100 ring-coral-200",  label: "More reports than the benchmark" },
 };
 
 // SVG ring geometry — single source of truth used by both the full and

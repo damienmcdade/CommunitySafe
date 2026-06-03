@@ -208,6 +208,9 @@ export async function getDiscoveredAreasTucson(): Promise<KnownArea[]> {
     // misses, producing rows like "106" or "401" that are
     // unrecognizable to users. Mirrors the Cincinnati filter.
     if (/^\d+$/.test(r.area.trim())) continue;
+    // fix(audit coverage-unmapped-leak-3): keep "Unmapped" as the off-polygon
+    // incident bucket but don't list it as a selectable neighborhood.
+    if (r.area === "Unmapped") continue;
     if (r.lat == null || r.lng == null) continue;
     const e = agg.get(r.area) ?? { latSum: 0, lngSum: 0, count: 0 };
     e.latSum += r.lat; e.lngSum += r.lng; e.count += 1;
