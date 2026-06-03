@@ -197,17 +197,7 @@ export const crimeData = {
     }
     const areas = await city.discover().catch(() => [] as Awaited<ReturnType<typeof city.discover>>);
     const offenseFilter = opts.offense?.toLowerCase().trim();
-    // Wall-clock window. Anchored to Date.now() so the cutoff doesn't
-    // drift between refreshes — same pattern the safety-score
-    // annualization uses (commit 1f7d7d9). null means "no window",
-    // matching the legacy behavior for backwards compat.
     const windowDays = opts.windowDays && opts.windowDays > 0 ? Math.floor(opts.windowDays) : null;
-    const windowCutoffMs = windowDays != null ? Date.now() - windowDays * MS_PER_DAY : null;
-    const inWindow = (occurredAt: string): boolean => {
-      if (windowCutoffMs == null) return true;
-      const t = +new Date(occurredAt);
-      return Number.isFinite(t) && t >= windowCutoffMs;
-    };
     const perArea: Awaited<ReturnType<typeof crimeData.getCitywide>>["perArea"] = [];
     const totalByCategory = new Map<string, Incident[]>();
     const offenseCounts = new Map<string, number>();
@@ -225,6 +215,31 @@ export const crimeData = {
       // hierarchy on the Crime Map and undermining user trust in the numbers.
       areas.map((a) => this.getIncidents(a.slug, { limit: Number.MAX_SAFE_INTEGER }).catch(() => [])),
     );
+    // fix(audit loc-window-anchor-1): anchor the recency window on the freshest
+    // available incident, not wall-clock now. City feeds publish 7-30 days
+    // behind, so a `now - windowDays` cutoff can drop the entire (lagged) dataset
+    // and the citywide totals collapse toward 0. Mirror the safety-score /
+    // trend-feed data-latest anchor: only when the freshest row is >14d stale do
+    // we cut from dataLatest - windowDays; a fresh feed keeps the wall-clock
+    // anchor (no behavior change), and there's no anchoring when no window is set.
+    const nowMs = Date.now();
+    let anchorMs = nowMs;
+    if (windowDays != null) {
+      let maxT = 0;
+      for (const arr of incidentsAllPerArea) {
+        for (const inc of arr) {
+          const t = +new Date(inc.occurredAt);
+          if (Number.isFinite(t) && t <= nowMs && t > maxT) maxT = t;
+        }
+      }
+      if (maxT > 0 && nowMs - maxT > 14 * MS_PER_DAY) anchorMs = maxT;
+    }
+    const windowCutoffMs = windowDays != null ? anchorMs - windowDays * MS_PER_DAY : null;
+    const inWindow = (occurredAt: string): boolean => {
+      if (windowCutoffMs == null) return true;
+      const t = +new Date(occurredAt);
+      return Number.isFinite(t) && t >= windowCutoffMs;
+    };
     for (let i = 0; i < areas.length; i++) {
       const area = areas[i];
       // Apply the recency window BEFORE offense / category counting
