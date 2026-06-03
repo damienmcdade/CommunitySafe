@@ -16,7 +16,17 @@ export function pinSslVerifyFull(url: string): string {
   return /sslmode=/i.test(url) ? url.replace(/sslmode=[^&\s]*/i, "sslmode=verify-full") : url;
 }
 
-const adapter = new PrismaPg({ connectionString: pinSslVerifyFull(process.env.DATABASE_URL ?? "") });
+// fix(deploy logs): tune the Neon pg pool (fail fast on a stale connection,
+// recycle idle conns, TCP keepalive) — see apps/api/src/lib/prisma.ts for the
+// ETIMEDOUT root-cause writeup.
+const adapter = new PrismaPg({
+  connectionString: pinSslVerifyFull(process.env.DATABASE_URL ?? ""),
+  connectionTimeoutMillis: 10_000,
+  idleTimeoutMillis: 30_000,
+  max: 5,
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10_000,
+});
 
 declare global {
   // eslint-disable-next-line no-var

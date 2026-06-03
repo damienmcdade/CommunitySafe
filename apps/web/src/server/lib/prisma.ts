@@ -10,7 +10,18 @@ function pinSslVerifyFull(url: string): string {
   return /sslmode=/i.test(url) ? url.replace(/sslmode=[^&\s]*/i, "sslmode=verify-full") : url;
 }
 
-const adapter = new PrismaPg({ connectionString: pinSslVerifyFull(process.env.DATABASE_URL ?? "") });
+// fix(deploy logs): tune the Neon pg pool to avoid the ETIMEDOUT-on-stale-
+// connection failure seen in the workers. Smaller max than the API because each
+// Vercel (Fluid Compute) instance holds its own pool and Neon caps total
+// connections; fail fast + recycle idle conns + TCP keepalive.
+const adapter = new PrismaPg({
+  connectionString: pinSslVerifyFull(process.env.DATABASE_URL ?? ""),
+  connectionTimeoutMillis: 10_000,
+  idleTimeoutMillis: 30_000,
+  max: 5,
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10_000,
+});
 
 declare global {
 
