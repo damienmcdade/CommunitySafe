@@ -1,5 +1,36 @@
 import { findArea, nearestArea, listKnownAreas, listKnownAreasSync, type KnownArea } from "../crime-data/neighborhoods";
-import { CITIES } from "@travelsafe/crime-data/cities";
+import { CITIES, cityBySlug } from "@travelsafe/crime-data/cities";
+
+// fix(audit loc-snap-1): the web lookup snapped geocoded points with the global
+// nearestArea() — which ignores the selected city and uses a 20km cap tuned for
+// San Diego. So a NYC/LA geocode could snap to the wrong city or be rejected as
+// >20km. This mirrors the Railway API's nearestAreaForCity: snap against THAT
+// city's discovered areas with a 60km cap, falling back to global nearestArea
+// only when the city/areas are unavailable.
+async function nearestAreaForCity(
+  point: { lat: number; lng: number },
+  citySlug: string | undefined,
+): Promise<KnownArea | null> {
+  if (!citySlug) return nearestArea(point);
+  const city = cityBySlug(citySlug);
+  if (!city) return nearestArea(point);
+  try {
+    const areas = await city.discover();
+    if (areas.length === 0) return nearestArea(point);
+    const R = 6371, toRad = (d: number) => (d * Math.PI) / 180;
+    let best: { area: KnownArea; km: number } | null = null;
+    for (const area of areas) {
+      const dLat = toRad(area.centroid.lat - point.lat);
+      const dLng = toRad(area.centroid.lng - point.lng);
+      const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(point.lat)) * Math.cos(toRad(area.centroid.lat)) * Math.sin(dLng / 2) ** 2;
+      const km = 2 * R * Math.asin(Math.sqrt(s));
+      if (!best || km < best.km) best = { area, km };
+    }
+    return best && best.km < 60 ? best.area : null;
+  } catch {
+    return nearestArea(point);
+  }
+}
 
 // v95p15 — per-city Nominatim hinting. Pre-v95p15 the geocoder
 // always hardcoded "San Diego, California" into the query string and
@@ -115,7 +146,7 @@ export async function lookupLocation(q: string, citySlug?: string): Promise<Look
     if (geo) {
       let areas = listKnownAreasSync();
       if (areas.length < 50) areas = await listKnownAreas().catch(() => areas);
-      const area = nearestArea(geo);
+      const area = await nearestAreaForCity(geo, citySlug);
       if (area) return { area, matchedVia: "geocode", rawQuery: trimmed };
     }
   }
@@ -150,7 +181,7 @@ export async function lookupLocation(q: string, citySlug?: string): Promise<Look
       // Ensure discovered-area list is fully populated before snap.
       const areas = listKnownAreasSync();
       if (areas.length < 50) await listKnownAreas().catch(() => []);
-      const area = nearestArea(geo);
+      const area = await nearestAreaForCity(geo, citySlug);
       if (area) return { area, matchedVia: "zip", rawQuery: trimmed };
     }
   }
@@ -190,7 +221,7 @@ export async function lookupLocation(q: string, citySlug?: string): Promise<Look
     // listKnownAreas() refreshes the cache; nearestArea reads the
     // sync (last-known-good) snapshot the listKnownAreas pass writes.
     if (areas.length < 50) await listKnownAreas().catch(() => []);
-    const area = nearestArea(geo);
+    const area = await nearestAreaForCity(geo, citySlug);
     if (area) return { area, matchedVia: "geocode", rawQuery: trimmed };
   }
   return null;
