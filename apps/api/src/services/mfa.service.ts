@@ -13,6 +13,7 @@
 import { generateSecret, generateURI, verifySync } from "otplib";
 import { prisma } from "../lib/prisma.js";
 import { HttpError } from "../middleware/error.js";
+import { encryptSecret, decryptSecret } from "../lib/secret-crypto.js";
 
 const ISSUER = "CommunitySafe";
 
@@ -36,12 +37,14 @@ export async function verifyAndEnableMfa(userId: string, secret: string, code: s
   if (!(verifySync({ secret, token: code }).valid)) throw new HttpError(401, "mfa_invalid_code");
   await prisma.user.update({
     where: { id: userId },
-    data: { mfaSecret: secret, mfaEnabled: true },
+    // fix(audit pentest-authn-7): store the secret encrypted at rest.
+    data: { mfaSecret: encryptSecret(secret), mfaEnabled: true },
   });
 }
 
-export function verifyMfaCode(secret: string, code: string): boolean {
-  return (verifySync({ secret, token: code }).valid);
+// `storedSecret` is the persisted value (encrypted or legacy plaintext).
+export function verifyMfaCode(storedSecret: string, code: string): boolean {
+  return (verifySync({ secret: decryptSecret(storedSecret), token: code }).valid);
 }
 
 export async function disableMfa(userId: string, code: string): Promise<void> {
@@ -50,7 +53,7 @@ export async function disableMfa(userId: string, code: string): Promise<void> {
     select: { mfaEnabled: true, mfaSecret: true },
   });
   if (!u || !u.mfaEnabled || !u.mfaSecret) throw new HttpError(400, "mfa_not_enabled");
-  if (!verifySync({ secret: u.mfaSecret, token: code }).valid) throw new HttpError(401, "mfa_invalid_code");
+  if (!verifySync({ secret: decryptSecret(u.mfaSecret), token: code }).valid) throw new HttpError(401, "mfa_invalid_code");
   await prisma.user.update({
     where: { id: userId },
     data: { mfaEnabled: false, mfaSecret: null },

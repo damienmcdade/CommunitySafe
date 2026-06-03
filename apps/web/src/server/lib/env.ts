@@ -22,6 +22,10 @@ const Env = z.object({
   // users having to re-login once a day.
   JWT_EXPIRES_IN: z.string().default("24h"),
   BCRYPT_ROUNDS: z.coerce.number().default(12),
+  // fix(audit pentest-authn-7): base64-encoded 32-byte key for AES-256-GCM
+  // encryption of TOTP secrets at rest. Optional: when unset, secrets store as
+  // plaintext (dev / pre-rollout) and encryption is a no-op.
+  MFA_ENCRYPTION_KEY: z.string().optional(),
 
   // Crime-data adapters
   SANDAG_SOCRATA_BASE: z.string().url().default("https://data.sandiegocounty.gov"),

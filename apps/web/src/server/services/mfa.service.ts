@@ -2,6 +2,7 @@ import "server-only";
 import { generateSecret, generateURI, verifySync } from "otplib";
 import { prisma } from "../lib/prisma";
 import { HttpError } from "../lib/http";
+import { encryptSecret, decryptSecret } from "../lib/secret-crypto";
 
 // fix(audit pentest-authn-1 / auth-mfa-unreachable-3): MFA was fully built on
 // the Express API but unreachable from the web (Vercel) surface the client
@@ -29,12 +30,15 @@ export async function verifyAndEnableMfa(userId: string, secret: string, code: s
   if (!verifySync({ secret, token: code }).valid) throw new HttpError(401, "mfa_invalid_code");
   await prisma.user.update({
     where: { id: userId },
-    data: { mfaSecret: secret, mfaEnabled: true },
+    // fix(audit pentest-authn-7): store the secret encrypted at rest.
+    data: { mfaSecret: encryptSecret(secret), mfaEnabled: true },
   });
 }
 
-export function verifyMfaCode(secret: string, code: string): boolean {
-  return verifySync({ secret, token: code }).valid;
+// `storedSecret` is the value persisted on the user row (encrypted or legacy
+// plaintext); decryptSecret transparently handles both.
+export function verifyMfaCode(storedSecret: string, code: string): boolean {
+  return verifySync({ secret: decryptSecret(storedSecret), token: code }).valid;
 }
 
 export async function disableMfa(userId: string, code: string): Promise<void> {
@@ -43,7 +47,7 @@ export async function disableMfa(userId: string, code: string): Promise<void> {
     select: { mfaEnabled: true, mfaSecret: true },
   });
   if (!u || !u.mfaEnabled || !u.mfaSecret) throw new HttpError(400, "mfa_not_enabled");
-  if (!verifySync({ secret: u.mfaSecret, token: code }).valid) throw new HttpError(401, "mfa_invalid_code");
+  if (!verifySync({ secret: decryptSecret(u.mfaSecret), token: code }).valid) throw new HttpError(401, "mfa_invalid_code");
   await prisma.user.update({
     where: { id: userId },
     data: { mfaEnabled: false, mfaSecret: null },

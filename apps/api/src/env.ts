@@ -16,6 +16,9 @@ const Env = z.object({
   API_PORT: z.coerce.number().default(4000),
   DATABASE_URL: z.string().url(),
   JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 chars"),
+  // fix(audit pentest-authn-7): base64-encoded 32-byte key for AES-256-GCM
+  // encryption of TOTP secrets at rest. Optional — unset = plaintext (no-op).
+  MFA_ENCRYPTION_KEY: z.string().optional(),
   JWT_EXPIRES_IN: z.string().default("7d"),
   // v96 — bumped 12 → 13 per dep audit (OWASP 2025 guidance pushes
   // cost factor toward 13–14 as commodity GPU speed climbs). bcryptjs
