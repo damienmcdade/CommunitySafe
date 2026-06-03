@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { socrataDate, fetchSocrata, fetchWithRetry } from "@travelsafe/crime-data/lib/http";
 
 // v96p2 — Socrata helpers: pure-logic unit tests for date stripping
