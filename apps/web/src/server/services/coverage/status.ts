@@ -86,13 +86,20 @@ function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
 
 // fix(audit perf-compute-5): the coverage probe used to fan an unbounded
 // Promise.all across all 44 cities, each doing discover() + two sample pulls.
-// 44 simultaneous cold adapter loads spike heap and DB/upstream connections and
-// make the per-request timeout math non-deterministic. Run the probe with
-// bounded concurrency that matches the shared compute gate (COMPUTE_CONCURRENCY,
-// default 6) so at most N cities load at once — order of results is preserved.
+// We bound it so heap/connections don't spike — BUT the bound must stay high
+// enough that the cold-cache wall-clock fits maxDuration (120s). Each city's
+// worst case is ~26s (10s discover + 8s + 8s samples); the HEAVY part (discover)
+// already self-limits to COMPUTE_CONCURRENCY via withComputeLimit, so the
+// coverage-level bound mostly governs the light sample fetches.
+//
+// fix(deploy/scan — /api/coverage 000 timeout): a bound of 6 serialized 44 cities
+// into ~8 waves (≈208s worst case) and blew the 120s ceiling on a cold cache
+// (the endpoint returned no response). Default to 16 so a cold full sweep is
+// ~3 waves (≈78s) — comfortably under maxDuration — while still bounding the
+// burst well below the old unbounded 44. Override via COVERAGE_CONCURRENCY.
 const COVERAGE_CONCURRENCY = (() => {
-  const n = Number.parseInt(process.env.COMPUTE_CONCURRENCY ?? "", 10);
-  return Number.isFinite(n) && n >= 1 && n <= 16 ? n : 6;
+  const n = Number.parseInt(process.env.COVERAGE_CONCURRENCY ?? "", 10);
+  return Number.isFinite(n) && n >= 1 && n <= 44 ? n : 16;
 })();
 
 async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
