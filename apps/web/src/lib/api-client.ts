@@ -16,32 +16,56 @@ export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 // without hammering the upstream open-data feeds.
 const DEFAULT_REFRESH_MS = 15 * 60 * 1000;
 
-function token(): string | null {
+// fix(audit pentest-authn-4): the session JWT no longer lives in localStorage
+// (any XSS could read it there). It now rides in an HttpOnly `cs_session` cookie
+// the server sets, which JS cannot read. localStorage keeps only a NON-sensitive
+// presence marker so the client still knows whether to bootstrap a session.
+//
+// LEGACY_TOKEN_KEY is the pre-migration localStorage JWT. A returning user still
+// has one; on their next load we send it as a Bearer once (ensureAnonymousAuth →
+// /auth/anonymous), the server re-issues the SAME user's session into the cookie,
+// and we then delete the legacy JWT. After that the cookie is the sole credential.
+const LEGACY_TOKEN_KEY = "travelsafe.token";
+const PRESENCE_KEY = "travelsafe.session.v2";
+
+function legacyToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem("travelsafe.token");
+  return localStorage.getItem(LEGACY_TOKEN_KEY);
 }
 
-// v68 — exposed for callers that need to inject the Bearer token into
-// a streaming fetch (the api() wrapper consumes the response body so
-// can't be used for SSE / readable-stream responses like the AI
-// assistant chat). Consumers should also `await ensureAnonymousAuth()`
-// before reading to avoid a tokenless first request.
-export function getStoredToken(): string | null { return token(); }
+function hasSession(): boolean {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(PRESENCE_KEY) === "1" || legacyToken() != null;
+}
 
+// v68 — exposed for callers that inject a Bearer token into a streaming fetch
+// (the api() wrapper consumes the body so can't be reused for SSE). Post-
+// migration this returns null and the stream relies on the same-origin cookie;
+// during migration it returns the legacy JWT so the stream still authenticates.
+export function getStoredToken(): string | null { return legacyToken(); }
+
+/// Record/clear the local session state. We deliberately do NOT persist the JWT
+/// — the cookie holds it. Passing a token marks "session present" and retires any
+/// legacy localStorage JWT (its job is done once the cookie is set). Passing null
+/// is a full local sign-out.
 export function setToken(t: string | null) {
   if (typeof window === "undefined") return;
-  if (t == null) localStorage.removeItem("travelsafe.token");
-  else localStorage.setItem("travelsafe.token", t);
+  if (t == null) {
+    localStorage.removeItem(PRESENCE_KEY);
+    localStorage.removeItem(LEGACY_TOKEN_KEY);
+  } else {
+    localStorage.setItem(PRESENCE_KEY, "1");
+    localStorage.removeItem(LEGACY_TOKEN_KEY);
+  }
 }
 
 export function isSignedIn(): boolean {
-  return token() != null;
+  return hasSession();
 }
 
-// fix(audit auth-no-revocation-web-2): server-side logout. Bumps the user's
-// tokenVersion so the current token (and any leaked copy) is revoked, then drops
-// the local token. Best-effort on the network call — the local token is cleared
-// regardless so the device is signed out even if the request fails.
+// fix(audit auth-no-revocation-web-2): server-side logout bumps tokenVersion
+// (revoking the token + any leaked copy) and clears the HttpOnly cookie. We then
+// drop the local presence marker regardless of network outcome.
 export async function logout(): Promise<void> {
   try {
     await rawApi("/auth/logout", { method: "POST" });
@@ -52,27 +76,27 @@ export async function logout(): Promise<void> {
   }
 }
 
-/// Silently mint (and persist) a per-device anonymous session on first visit
-/// so every feature works without a visible login flow. Subsequent calls are
-/// a no-op once a token is stored. Safe to call from a useEffect on app mount.
+/// Silently establish a per-device session on first visit (and migrate returning
+/// localStorage sessions onto the cookie). A no-op once the presence marker is
+/// set. Safe to call from a useEffect on app mount.
 let bootstrapPromise: Promise<void> | null = null;
 export async function ensureAnonymousAuth(): Promise<void> {
   if (typeof window === "undefined") return;
-  if (token()) return;
+  // Marker present → the cookie is already established; nothing to do. (A bare
+  // legacy token with no marker still falls through so we migrate it.)
+  if (localStorage.getItem(PRESENCE_KEY) === "1") return;
   if (bootstrapPromise) return bootstrapPromise;
   bootstrapPromise = (async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/auth/anonymous`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: "{}",
-      });
-      if (!res.ok) return;
-      const body = await res.json();
+      // rawApi adds the legacy Bearer if one exists, so the server reuses the
+      // SAME user (preserving their data) and plants the cookie; a brand-new
+      // device gets a fresh anonymous session + cookie. Either way the response
+      // body carries a token we use only to flip the presence marker.
+      const body = await rawApi<{ token?: string }>("/auth/anonymous", { method: "POST", body: "{}" });
       if (body?.token) setToken(body.token);
     } catch {
-      // Silently fail — the user can still browse public data. We retry on the
-      // next mount via the same hook below.
+      // Silently fail — the user can still browse public data; we retry on the
+      // next mount via the hook below.
     } finally {
       bootstrapPromise = null;
     }
@@ -80,7 +104,7 @@ export async function ensureAnonymousAuth(): Promise<void> {
   return bootstrapPromise;
 }
 
-/// React hook: kicks off anonymous bootstrap on mount and returns a tri-state.
+/// React hook: kicks off bootstrap on mount and returns a tri-state.
 export function useAnonymousAuth(): { ready: boolean } {
   const [ready, setReady] = useState<boolean>(() => typeof window !== "undefined" && isSignedIn());
   useEffect(() => {
@@ -120,25 +144,26 @@ async function rawApi<T = unknown>(path: string, init: RequestInit = {}): Promis
     "Content-Type": "application/json",
     ...(init.headers ?? {}),
   };
-  // Anon-auth race: SessionBootstrap mints the device token in a
-  // useEffect, but auth-gated panels (AreaBriefPanel, AIAssistant,
-  // ThreatFeed's row explainer) mount in the same render tick and
-  // their first fetch fires before the token lands — they get a 401
-  // and the useApi hook locks in an error state with no token-change
-  // signal to re-trigger. Wait the bootstrap out here so the first
-  // call is never tokenless. Idempotent + cached, so this adds at
-  // most one ~150ms wait on the very first navigation.
-  let tk = token();
-  if (!tk && typeof window !== "undefined" && !path.startsWith("/auth/")) {
+  // Anon-auth race: bootstrap establishes the session (cookie) in a useEffect,
+  // but auth-gated panels (AreaBriefPanel, AIAssistant, ThreatFeed's row
+  // explainer) mount in the same render tick and their first fetch can fire
+  // before the cookie lands — they'd get a 401 and useApi locks into an error
+  // state. Wait the bootstrap out here so the first call is never session-less.
+  // Idempotent + cached, so this adds at most one ~150ms wait on first nav.
+  if (!hasSession() && typeof window !== "undefined" && !path.startsWith("/auth/")) {
     await ensureAnonymousAuth();
-    tk = token();
   }
-  if (tk) (headers as Record<string, string>).Authorization = `Bearer ${tk}`;
-  // init.signal already flows through to fetch() via the spread — callers
-  // that pass an AbortSignal will see the underlying fetch cancel when
-  // .abort() is called, freeing the network slot before the response
-  // arrives.
-  const res = await fetch(`${API_BASE}/api${path}`, { ...init, headers });
+  // fix(audit pentest-authn-4): the HttpOnly cookie is the credential and rides
+  // same-origin automatically. We only attach a Bearer header for a LEGACY
+  // localStorage token that hasn't migrated yet (and for native callers); once
+  // migrated, legacyToken() is null and auth is cookie-only.
+  const lt = legacyToken();
+  if (lt) (headers as Record<string, string>).Authorization = `Bearer ${lt}`;
+  // credentials:'include' so the session cookie is sent (same-origin already
+  // would, but this is explicit + survives a cross-origin NEXT_PUBLIC_API_BASE_URL).
+  // init.signal already flows through to fetch() via the spread — callers that
+  // pass an AbortSignal will see the underlying fetch cancel on .abort().
+  const res = await fetch(`${API_BASE}/api${path}`, { credentials: "include", ...init, headers });
   const text = await res.text();
   const body = text ? JSON.parse(text) : null;
   if (!res.ok) {

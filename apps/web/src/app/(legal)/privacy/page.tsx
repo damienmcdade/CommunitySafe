@@ -40,7 +40,7 @@ export default function PrivacyPage() {
         <h2 className="font-display text-xl text-slate2-900">What is stored on your device</h2>
         <p>CommunitySafe uses your browser&apos;s <strong>localStorage</strong> to remember preferences and speed up subsequent loads. Items in localStorage are not transmitted to our servers except where noted (the anonymous session token is sent to authorize protected API calls).</p>
         <ul className="list-disc pl-5 space-y-1">
-          <li><code className="text-xs">travelsafe.token</code> — anonymous session JWT, minted per-device on first visit. Sent to the server with protected requests so anonymous-session state (e.g., your Community moderation history) can be remembered without an account.</li>
+          <li><code className="text-xs">travelsafe.session.v2</code> — a non-sensitive sign-in marker telling the app a session exists. The session token itself is stored in a secure <strong>HttpOnly cookie</strong> that JavaScript cannot read, so a script injection can&apos;t steal it; the cookie is what authorizes protected API calls.</li>
           <li><code className="text-xs">travelsafe.city.v1</code> — currently-selected city.</li>
           <li><code className="text-xs">travelsafe.area.v1</code> — currently-picked neighborhood, per city.</li>
           <li><code className="text-xs">travelsafe.saved-areas.v1</code> — your saved neighborhoods (up to 5).</li>
