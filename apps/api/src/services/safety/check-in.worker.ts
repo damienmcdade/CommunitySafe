@@ -24,7 +24,17 @@ async function tick() {
     });
     for (const { id } of due) {
       const receipts = await triggerExpiry(id);
-      console.log(`[checkin-worker] fired ${id} -> ${receipts.length} delivery receipts`);
+      // fix(deploy logs): a check-in firing with ZERO delivery receipts means the
+      // user's safety net reached NOBODY (no confirmed contacts, or every channel
+      // failed) — a silent safety failure. The deployment logs showed this buried
+      // in an info-level line. Escalate to error so monitoring catches it; a
+      // delivered fan-out stays at info.
+      const sent = receipts.filter((r) => r.status === "sent").length;
+      if (receipts.length === 0 || sent === 0) {
+        console.error(`[checkin-worker] ALERT: check-in ${id} expired but reached NO contact (receipts=${receipts.length}, delivered=${sent}). The user's safety net notified nobody.`);
+      } else {
+        console.log(`[checkin-worker] fired ${id} -> ${receipts.length} receipts, ${sent} delivered`);
+      }
     }
   } catch (err) {
     // v105 — transient Neon-pooler connection blips (ETIMEDOUT / ECONNRESET /

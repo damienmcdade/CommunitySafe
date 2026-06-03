@@ -3,7 +3,7 @@ import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../t
 import { registerRowCache } from "../cache-registry.js";
 import { riskLevelFromAreaCounts } from "../risk-bands.js";
 import type { KnownArea } from "../neighborhoods.js";
-import { USER_AGENT } from "../lib/http.js";
+import { USER_AGENT, fetchWithRetry } from "../lib/http.js";
 
 // Tucson — TPD Incidents Public (2025).
 // ArcGIS MapServer on gis.tucsonaz.gov. Rows carry NEIGHBORHD (pre-joined),
@@ -120,7 +120,8 @@ async function fetchPage(offset: number): Promise<TucFeature[]> {
   url.searchParams.set("resultRecordCount", String(PAGE_SIZE));
   url.searchParams.set("cacheHint", "true");
   url.searchParams.set("f", "json");
-  const res = await fetch(url, { headers: { Accept: "application/json", "User-Agent": USER_AGENT } });
+  // fix(deploy logs): retry undici-level transient "fetch failed" drops.
+  const res = await fetchWithRetry(url, { headers: { Accept: "application/json", "User-Agent": USER_AGENT } });
   if (!res.ok) {
     // The layer has fewer rows than PAGES×PAGE_SIZE, so high offsets page
     // past the end — ArcGIS answers 404/400 there. On a non-first page
@@ -208,6 +209,9 @@ export async function getDiscoveredAreasTucson(): Promise<KnownArea[]> {
     // misses, producing rows like "106" or "401" that are
     // unrecognizable to users. Mirrors the Cincinnati filter.
     if (/^\d+$/.test(r.area.trim())) continue;
+    // fix(audit coverage-unmapped-leak-3): keep "Unmapped" as the off-polygon
+    // incident bucket but don't list it as a selectable neighborhood.
+    if (r.area === "Unmapped") continue;
     if (r.lat == null || r.lng == null) continue;
     const e = agg.get(r.area) ?? { latSum: 0, lngSum: 0, count: 0 };
     e.latSum += r.lat; e.lngSum += r.lng; e.count += 1;

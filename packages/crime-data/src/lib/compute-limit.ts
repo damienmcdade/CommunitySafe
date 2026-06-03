@@ -34,9 +34,45 @@ const MAX = (() => {
   return Number.isFinite(raw) && raw >= 1 ? Math.floor(raw) : 6;
 })();
 
+// fix(audit perf-compute-2): a request that times out at the route (safety-score
+// returns 503 "warming_up" at 45s) abandons its compose — but if that compose was
+// still QUEUED behind the per-city gate, it would later be promoted and run a
+// full heavy fan-out for a client that already gave up, wasting CPU/memory and a
+// slot a live request needs. We can't cancel a RUNNING compose (the memory gate
+// must keep its slot held to bound heap, and the dedupe-shared promise is owned
+// by other callers too), but we CAN evict STALE QUEUED entries: anything that has
+// waited longer than the longest route timeout has, by definition, no live caller
+// left. Evicting them frees the queue for fresh work and stops the dead-work
+// promotion. The route's Promise.race still holds a reject handler on the
+// abandoned promise, so the late rejection here is consumed harmlessly.
+const MAX_QUEUE_WAIT_MS = (() => {
+  const raw = Number(process.env.COMPUTE_MAX_QUEUE_WAIT_MS);
+  // Default 60s: comfortably above the 45s safety-score route timeout, so an
+  // entry this stale is guaranteed to have a timed-out (or gone) caller.
+  return Number.isFinite(raw) && raw >= 5_000 ? Math.floor(raw) : 60_000;
+})();
+class ComputeQueueStaleError extends Error {
+  constructor() { super("compute_queue_stale"); this.name = "ComputeQueueStaleError"; }
+}
+
 let activeCities = 0;                                   // distinct cities holding a slot
+let staleEvicted = 0;                                   // diagnostics: stale queue entries dropped
 const refs = new Map<string, number>();                // city key -> in-flight composer count
-const queue: Array<{ key: string; resolve: () => void }> = [];
+const queue: Array<{ key: string; resolve: () => void; reject: (e: Error) => void; enqueuedAt: number }> = [];
+
+// Drop queued entries whose route caller has certainly given up (waited past
+// MAX_QUEUE_WAIT_MS) so they're never promoted to do dead work.
+function evictStale(): void {
+  if (queue.length === 0) return;
+  const now = Date.now();
+  for (let i = 0; i < queue.length; ) {
+    if (now - queue[i].enqueuedAt > MAX_QUEUE_WAIT_MS) {
+      const stale = queue.splice(i, 1)[0];
+      staleEvicted += 1;
+      stale.reject(new ComputeQueueStaleError());
+    } else i += 1;
+  }
+}
 
 function acquire(key: string): Promise<void> {
   // Same-city composer → piggyback the city's existing slot (no new slot).
@@ -44,11 +80,15 @@ function acquire(key: string): Promise<void> {
   if (cur !== undefined) { refs.set(key, cur + 1); return Promise.resolve(); }
   // New city with a free slot → take one.
   if (activeCities < MAX) { activeCities += 1; refs.set(key, 1); return Promise.resolve(); }
-  // No free slot → queue until a city drains.
-  return new Promise<void>((resolve) => { queue.push({ key, resolve }); });
+  // No free slot → sweep stale waiters, then queue until a city drains.
+  evictStale();
+  return new Promise<void>((resolve, reject) => { queue.push({ key, resolve, reject, enqueuedAt: Date.now() }); });
 }
 
 function drain(): void {
+  // Evict stale waiters before promoting anyone — a freed slot should go to a
+  // live request, not a compose whose caller already timed out.
+  evictStale();
   // 1) Any queued waiter whose city is already active piggybacks immediately.
   for (let i = 0; i < queue.length; ) {
     const w = queue[i];
@@ -92,6 +132,6 @@ export function withComputeLimit<T>(key: string, fn: () => Promise<T>): Promise<
 }
 
 /// Diagnostics for the /health payload.
-export function computeLimitStats(): { max: number; activeCities: number; queued: number } {
-  return { max: MAX, activeCities, queued: queue.length };
+export function computeLimitStats(): { max: number; activeCities: number; queued: number; staleEvicted: number } {
+  return { max: MAX, activeCities, queued: queue.length, staleEvicted };
 }

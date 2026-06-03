@@ -7,7 +7,7 @@ import {
   getSafetyScore,
   getCitywideSafetyScore,
 } from "@/server/services/watch/safety-score";
-import { humanizeArea } from "@travelsafe/crime-data/cities";
+import { humanizeArea, cityBySlug } from "@travelsafe/crime-data/cities";
 
 /// Two modes share this route:
 ///   ?city=<slug>                 → citywide aggregate vs FBI national rate
@@ -48,7 +48,15 @@ export const GET = wrap(async (req: NextRequest) => {
   if (proxied) return proxied.response;
 
   const { city, area, label } = Query.parse(Object.fromEntries(req.nextUrl.searchParams));
-  if (city) return NextResponse.json(await getCitywideSafetyScore(city), { headers: CACHE_HEADERS });
+  if (city) {
+    // fix(audit safety-unsupported-city-500-5): an unknown city slug threw deep
+    // in the composer and surfaced as a 500. Validate up front and return the
+    // documented 404 city_not_supported; reserve 500 for genuine errors.
+    if (!cityBySlug(city)) {
+      return NextResponse.json({ error: "city_not_supported" }, { status: 404 });
+    }
+    return NextResponse.json(await getCitywideSafetyScore(city), { headers: CACHE_HEADERS });
+  }
   return NextResponse.json(
     await getSafetyScore(area!, label && label !== area ? label : humanizeArea(area!)),
     { headers: CACHE_HEADERS },

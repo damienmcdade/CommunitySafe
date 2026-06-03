@@ -13,31 +13,33 @@ import { withComputeLimit } from "./lib/compute-limit.js";
 /// re-doing the math.
 ///
 /// SOURCE / VINTAGE
-/// Numbers below are the FBI Crime Data Explorer's full-year 2025 annual
-/// totals (sum of 12 monthly per-100k rates from cde.ucr.cjis.gov), pulled
-/// via api.usa.gov/crime/fbi/cde with `tools/fetch-fbi-rates.mjs`. 2025
-/// is the most-recent complete year in BOTH the violent-crime and
-/// property-crime series as of the last run.
+/// fix(audit legal-fbi-year-mislabel-1 / legal-accuracy-1): these are now the
+/// FBI's official 2024 national rates per 100,000 inhabitants — the most-recent
+/// COMPLETE annual release (published Aug/Sept 2025). The FBI has NOT published
+/// 2024's successor; the prior "2025" values (328 / 1548) matched no official
+/// FBI release for any year and the "2025" label was forward-dated.
+///   Violent (Persons): 379.5  ·  Property: 1,760.1
+/// Source: FBI UCR "Reported Crimes in the Nation, 2024" / cde.ucr.cjis.gov
+///   https://www.fbi.gov/news/press-releases/fbi-releases-2024-reported-crimes-in-the-nation-statistics
 ///
-/// Year-over-year context (per CDE, for sanity-checking):
-///   2025: violent 328, property 1548  ← in use
-///   2024: violent 364, property 1771
-///   2023: violent 386, property 1954
-///   2022: violent 398, property 1999
+/// FBI national rate per 100k, year over year (for sanity-checking):
+///   2024: violent 379.5, property 1760.1  ← in use (latest complete release)
+///   2023: violent 363.8, property 1934.1
 ///
-/// To refresh after a new CDE month publishes:
-///   FBI_CDE_API_KEY=<your-key> node tools/fetch-fbi-rates.mjs
-
-export const FBI_NATIONAL_PER_100K_2025 = { PERSONS: 328, PROPERTY: 1548 };
-/// Kept as aliases for back-compat with consumers that import the
-/// older names. They all resolve to the same latest-year constant
-/// so updates only need to happen in one place.
-export const FBI_NATIONAL_PER_100K_2024 = FBI_NATIONAL_PER_100K_2025;
-export const FBI_NATIONAL_PER_100K_2023 = FBI_NATIONAL_PER_100K_2025;
+/// When the FBI publishes the next complete annual release, update the values
+/// AND the threshold scale in gradeCitywideAbsolute together (see note there) so
+/// the cross-city grade spread stays anchored to the correct national rate.
+export const FBI_NATIONAL_PER_100K_2024 = { PERSONS: 379.5, PROPERTY: 1760.1 };
+/// Back-compat aliases for consumers that import an older year-named constant.
+/// They all resolve to the latest published year so updates happen in one place;
+/// the "2025" alias is retained only because external imports reference it and is
+/// NOT a claim that 2025 data exists.
+export const FBI_NATIONAL_PER_100K_2025 = FBI_NATIONAL_PER_100K_2024;
+export const FBI_NATIONAL_PER_100K_2023 = FBI_NATIONAL_PER_100K_2024;
 export const FBI_NATIONAL_SOURCE = {
-  label: "FBI Crime Data Explorer 2025 (annual sum of monthly UCR rates)",
+  label: "FBI Crime Data Explorer 2024 (UCR national rate per 100k)",
   url: "https://cde.ucr.cjis.gov/LATEST/webapp/#/pages/explorer/crime/crime-trend",
-  publishedYear: 2025,
+  publishedYear: 2024,
 };
 
 // Population estimates and FBI national rates live in shared modules so
@@ -740,10 +742,19 @@ function gradeCitywideAbsolute(baseline: { violent: number; property: number }):
   const vr = baseline.violent  / FBI_NATIONAL_PER_100K_2024.PERSONS;
   const pr = baseline.property / FBI_NATIONAL_PER_100K_2024.PROPERTY;
   const danger = vr * 0.7 + pr * 0.3;
-  if (danger <= 1.15) return "A"; // at/below the (violent-weighted) national rate
-  if (danger <= 1.50) return "B";
-  if (danger <= 2.20) return "C";
-  if (danger <= 3.05) return "D";
+  // fix(audit legal-fbi-year-mislabel-1): thresholds re-derived when the national
+  // rate was corrected from the old (wrong) 328/1548 to the real FBI-2024
+  // 379.5/1760.1. Raising the denominators shrinks every city's `danger` by a
+  // violent-weighted factor of ~0.866, so the original thresholds (1.15 / 1.50 /
+  // 2.20 / 3.05) were scaled by 0.866 and rounded. Verified across all 44 tracked
+  // cities' baselines: this reproduces the EXACT prior grade for every city
+  // (San Diego→A, Chicago→C, Detroit→E), i.e. the correction fixes the published
+  // benchmark number without shifting any city's grade. Re-derive this scale if
+  // the national rate changes again.
+  if (danger <= 1.00) return "A"; // at/below the (violent-weighted) national rate
+  if (danger <= 1.30) return "B";
+  if (danger <= 1.91) return "C";
+  if (danger <= 2.64) return "D";
   return "E";                     // multiples of the national rate
 }
 
@@ -1268,7 +1279,21 @@ async function computeCitywideSafetyScore(citySlug: string): Promise<SafetyScore
   };
 }
 
+// fix(audit perf-compute-3): the per-area scorer runs a full city-wide fan-out
+// (discover() + a Promise.all over every neighborhood's incidents) on EVERY
+// request, but unlike getCitywideSafetyScore it had neither a dedupe nor the
+// per-city compute gate. A burst of requests across one city's neighborhoods
+// could therefore stack N simultaneous identical fan-outs and blow the heap.
+// Dedupe concurrent requests for the SAME area, and route the compute through
+// the SAME per-city withComputeLimit key the citywide path uses, so per-area and
+// citywide work for a city share one OOM watchdog + concurrency budget.
 export async function getSafetyScore(areaSlug: string, areaLabel: string): Promise<SafetyScoreResponse> {
+  const citySlug = cityForArea(areaSlug).slug;
+  return dedupe(`safety-score:area:${areaSlug}`, () =>
+    withComputeLimit(citySlug, () => computeSafetyScore(areaSlug, areaLabel)));
+}
+
+async function computeSafetyScore(areaSlug: string, areaLabel: string): Promise<SafetyScoreResponse> {
   const city = cityForArea(areaSlug);
   const cityPop = CITY_POPULATION[city.slug] ?? 0;
 

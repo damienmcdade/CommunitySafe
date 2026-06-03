@@ -21,7 +21,25 @@ const Env = z.object({
   // via useAnonymousAuth so the only user-visible effect is registered
   // users having to re-login once a day.
   JWT_EXPIRES_IN: z.string().default("24h"),
-  BCRYPT_ROUNDS: z.coerce.number().default(12),
+  // fix(audit pentest-authn-5): align bcrypt cost with the API (13) — the prior
+  // 12 was below the API's hardened value, so the same password got a weaker hash
+  // depending on which surface created it. (TTL stays 24h on the web single-token
+  // model; the tokenVersion revocation added earlier mitigates the longer window.)
+  BCRYPT_ROUNDS: z.coerce.number().default(13),
+  // fix(audit pentest-authn-7): base64-encoded 32-byte key for AES-256-GCM
+  // encryption of TOTP secrets at rest. Optional: when unset, secrets store as
+  // plaintext (dev / pre-rollout) and encryption is a no-op.
+  MFA_ENCRYPTION_KEY: z.string().optional(),
+
+  // fix(audit auth-register-deadend-5): the /register UI states account creation
+  // has been removed (anonymous-first product), but POST /api/auth/register still
+  // created accounts. New registration is now DISABLED by default to match the
+  // public claim; set ALLOW_REGISTRATION=true to re-open the endpoint. Login,
+  // MFA, and password-reset for EXISTING accounts are unaffected either way.
+  ALLOW_REGISTRATION: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
 
   // Crime-data adapters
   SANDAG_SOCRATA_BASE: z.string().url().default("https://data.sandiegocounty.gov"),

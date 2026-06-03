@@ -1,5 +1,6 @@
 import { crimeData } from ".";
 import { cityBySlug } from "./cities";
+import { humanizeArea } from "@travelsafe/crime-data/cities";
 import type { Incident } from "./types";
 
 const WEEKS = 12;
@@ -84,12 +85,15 @@ function trendsFromIncidents(incidents: Incident[]): CategoryTrend[] {
 export async function getAreaInsights(area: string): Promise<AreaInsights> {
   const incidents = await crimeData.getIncidents(area, { limit: 5000 });
   const trends = trendsFromIncidents(incidents);
+  // fix(audit ui-card-1): humanize the area slug for display so the panel header
+  // and the plain-language brief read "Jackson Park", not "mke-jackson-park".
+  const label = humanizeArea(area);
   return {
-    area,
+    area: label,
     windowWeeks: WEEKS,
     totalIncidents: incidents.length,
     trends,
-    brief: buildBrief(area, trends),
+    brief: buildBrief(label, trends),
   };
 }
 

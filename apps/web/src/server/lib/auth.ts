@@ -14,29 +14,43 @@ import { verifySession, type SessionPayload } from "./jwt";
 /// the Express side uses the equivalent token-version-cache). Worst-case
 /// staleness drops from 24h to REVOCATION_TTL_MS.
 const REVOCATION_TTL_MS = 60_000;
-const revocationCache = new Map<string, { revoked: boolean; checkedAt: number }>();
 const REVOCATION_CACHE_MAX = 10_000;
 
-async function isSessionRevoked(uid: string): Promise<boolean> {
+// fix(audit auth-no-revocation-web-2): cache the user's current tokenVersion
+// alongside the deleted/banned state so requireSession can reject a token whose
+// ver is behind (logout / password change / sign-out-everywhere bumps it).
+const revocationCache = new Map<string, { revoked: boolean; tokenVersion: number; checkedAt: number }>();
+
+async function getRevocationState(uid: string): Promise<{ revoked: boolean; tokenVersion: number }> {
   const now = Date.now();
   const hit = revocationCache.get(uid);
-  if (hit && now - hit.checkedAt < REVOCATION_TTL_MS) return hit.revoked;
+  if (hit && now - hit.checkedAt < REVOCATION_TTL_MS) return { revoked: hit.revoked, tokenVersion: hit.tokenVersion };
   let revoked = false;
+  let tokenVersion = 0;
   try {
     const user = await prisma.user.findUnique({
       where: { id: uid },
-      select: { deletedAt: true, permanentlyBanned: true },
+      select: { deletedAt: true, permanentlyBanned: true, tokenVersion: true },
     });
     revoked = !user || user.deletedAt != null || user.permanentlyBanned === true;
+    tokenVersion = user?.tokenVersion ?? 0;
   } catch {
     // DB blip — fail OPEN (don't lock everyone out on a transient error); the
     // next request re-checks. Revocation is 401-hardening, not the only gate
     // (owned-resource queries still scope by userId + filter deletedAt).
-    return false;
+    return { revoked: false, tokenVersion: 0 };
   }
   if (revocationCache.size > REVOCATION_CACHE_MAX) revocationCache.clear();
-  revocationCache.set(uid, { revoked, checkedAt: now });
-  return revoked;
+  revocationCache.set(uid, { revoked, tokenVersion, checkedAt: now });
+  return { revoked, tokenVersion };
+}
+
+/// Returns true if the token must be rejected: account deleted/banned, OR the
+/// token's version is behind the user's current tokenVersion.
+async function isTokenInvalid(session: SessionPayload): Promise<boolean> {
+  const { revoked, tokenVersion } = await getRevocationState(session.uid);
+  if (revoked) return true;
+  return (session.ver ?? 0) < tokenVersion;
 }
 
 /// Extract + verify the session from an Authorization header, then confirm the
@@ -53,7 +67,7 @@ export async function requireSession(req: NextRequest): Promise<SessionPayload> 
   } catch {
     throw new HttpError(401, "invalid_token");
   }
-  if (await isSessionRevoked(session.uid)) {
+  if (await isTokenInvalid(session)) {
     throw new HttpError(401, "session_revoked");
   }
   return session;
@@ -71,7 +85,7 @@ export async function optionalSession(req: NextRequest): Promise<SessionPayload 
   } catch {
     return null;
   }
-  if (await isSessionRevoked(session.uid)) return null;
+  if (await isTokenInvalid(session)) return null;
   return session;
 }
 

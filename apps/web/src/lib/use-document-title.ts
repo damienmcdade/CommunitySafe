@@ -11,9 +11,11 @@ import { useEffect } from "react";
 /// hook appends the brand suffix.
 export function useDocumentTitle(title: string | null | undefined) {
   useEffect(() => {
-    if (typeof document === "undefined") return;
-    const original = document.title;
-    if (title) document.title = `${title} · CommunitySafe`;
-    return () => { document.title = original; };
+    if (typeof document === "undefined" || !title) return;
+    document.title = `${title} · CommunitySafe`;
+    // fix(audit web-title-1): no restore-on-cleanup. The effect re-runs on every
+    // title change and captured `original` at setup, so navigating A->B->C and
+    // unmounting B would restore A's stale title over C's. Each route sets its own
+    // title on mount, so there's nothing to restore.
   }, [title]);
 }

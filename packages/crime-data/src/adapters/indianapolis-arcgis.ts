@@ -174,6 +174,10 @@ export async function getDiscoveredAreasIndianapolis(): Promise<KnownArea[]> {
     // mapping (e.g. juvenile, sensitive-location). It is NOT a
     // neighborhood and was surfacing as an area in the catalog.
     if (r.area === "Excluded") continue;
+    // fix(audit coverage-unmapped-leak-3): "Unmapped" is the honest catch-all
+    // bucket for off-polygon incidents — keep it on the incidents, but don't
+    // surface it as a selectable neighborhood in the catalog.
+    if (r.area === "Unmapped") continue;
     if (r.lat == null || r.lng == null) continue;
     const e = agg.get(r.area) ?? { latSum: 0, lngSum: 0, count: 0 };
     e.latSum += r.lat; e.lngSum += r.lng; e.count += 1;

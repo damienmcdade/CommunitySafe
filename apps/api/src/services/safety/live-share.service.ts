@@ -50,5 +50,7 @@ export async function resolveSharedView(token: string) {
   if (!link) throw new HttpError(404, "not_found");
   if (link.revokedAt) throw new HttpError(410, "revoked");
   if (link.expiresAt < new Date()) throw new HttpError(410, "expired");
-  return { expiresAt: link.expiresAt, userId: link.userId };
+  // fix(audit loc-share-userid-leak-2): don't leak the sharer's internal userId
+  // (cuid) from the public token-only share endpoint.
+  return { expiresAt: link.expiresAt };
 }

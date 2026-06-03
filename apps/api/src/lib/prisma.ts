@@ -1,7 +1,29 @@
 import { PrismaClient, Prisma } from "../generated/prisma/client.js";
 import { PrismaPg } from "@prisma/adapter-pg";
 
-const adapter = new PrismaPg({ connectionString: (process.env.DATABASE_URL ?? "").replace(/sslmode=(?:require|prefer|verify-ca)/i, "sslmode=verify-full") });
+// fix(audit db-ssl-1): force verify-full whenever ANY sslmode is present (the
+// old regex no-op'd on sslmode=disable / no sslmode, failing the SSL guarantee
+// open). A DSN with no sslmode is left as-is for local/no-SSL dev.
+function pinSslVerifyFull(url: string): string {
+  if (!url) return url;
+  return /sslmode=/i.test(url) ? url.replace(/sslmode=[^&\s]*/i, "sslmode=verify-full") : url;
+}
+
+// fix(deploy logs): the check-in/proximity/digest workers periodically hit
+// `prisma:error … ETIMEDOUT` on Neon. Root cause: the default pg pool uses
+// connectionTimeoutMillis: 0 (wait forever) and idleTimeoutMillis: 10s, so a
+// connection that Neon's pooler had silently dropped (idle close / compute
+// scale-down) hung on acquire until the OS TCP timeout (~2 min) surfaced as
+// ETIMEDOUT. Fail fast on a bad connection, recycle idle conns before Neon
+// kills them, and enable TCP keepalive so dead sockets are detected early.
+const adapter = new PrismaPg({
+  connectionString: pinSslVerifyFull(process.env.DATABASE_URL ?? ""),
+  connectionTimeoutMillis: 10_000,
+  idleTimeoutMillis: 30_000,
+  max: 10,
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10_000,
+});
 
 declare global {
 

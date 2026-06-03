@@ -19,6 +19,13 @@ const TICK_MS = 5 * 60 * 1000;          // check every 5 minutes
 const COOLDOWN_MS = 6 * 60 * 60 * 1000; // at most one push per place per 6h
 const MAX_PLACES_PER_TICK = 500;
 const NEAREST_AREA_BUFFER_KM = 4;       // pull incidents from areas whose centroid is within radius+buffer
+const MAX_SEEN_IDS = 1000;              // bound seenIncidentIds per place (well above a place's typical in-radius feed window)
+
+// Dedup + keep only the most-recent MAX_SEEN_IDS so the column can't grow
+// without bound. Fresh IDs are appended, so the tail is the newest.
+function boundIds(ids: string[]): string[] {
+  return Array.from(new Set(ids)).slice(-MAX_SEEN_IDS);
+}
 
 let timer: NodeJS.Timeout | null = null;
 let inFlight = false;
@@ -53,12 +60,31 @@ async function incidentsNearPoint(lat: number, lng: number, radiusM: number): Pr
   );
   const seen = new Set<string>();
   const near: Incident[] = [];
+  let anyHadCoords = false;
   for (const inc of lists.flat()) {
     if (inc.lat == null || inc.lng == null) continue;
+    anyHadCoords = true;
     if (haversineKm({ lat, lng }, { lat: inc.lat, lng: inc.lng }) * 1000 > radiusM) continue;
     if (seen.has(inc.id)) continue;
     seen.add(inc.id);
     near.push(inc);
+  }
+  // fix(audit safezone-proximity-coordless-cities): coordless-feed cities
+  // (Phoenix, Boise, Saint Paul, Virginia Beach, plus missing-coord rows in
+  // Charlotte/Dallas) carry no per-incident lat/lng, so the distance filter
+  // above drops everything and proximity alerts NEVER fire there. When the
+  // sampled feed had no coordinates at all, fall back to area-level: use the
+  // single nearest tracked area's incident list. Coarser than a radius, but the
+  // best signal a coordless feed supports (the alternative is silent dead air).
+  if (!anyHadCoords && near.length === 0) {
+    const nearestAreaList = lists[0] ?? [];
+    const out: Incident[] = [];
+    for (const inc of nearestAreaList) {
+      if (seen.has(inc.id)) continue;
+      seen.add(inc.id);
+      out.push(inc);
+    }
+    return out;
   }
   return near;
 }
@@ -69,7 +95,7 @@ async function tick(): Promise<void> {
   try {
     const places = await prisma.savedPlace.findMany({
       where: { alertsEnabled: true },
-      select: { id: true, userId: true, label: true, lat: true, lng: true, radiusM: true, lastAlertAt: true, lastSeenIncidentAt: true },
+      select: { id: true, userId: true, label: true, lat: true, lng: true, radiusM: true, lastAlertAt: true, lastSeenIncidentAt: true, seenIncidentIds: true },
       take: MAX_PLACES_PER_TICK,
     });
     const now = Date.now();
@@ -78,22 +104,44 @@ async function tick(): Promise<void> {
         const incidents = await incidentsNearPoint(p.lat, p.lng, p.radiusM);
         if (incidents.length === 0) continue;
         const newestMs = Math.max(...incidents.map((i) => +new Date(i.occurredAt)).filter(Number.isFinite));
-        if (!Number.isFinite(newestMs)) continue;
 
-        // First time we see this place → set the baseline, don't push the backlog.
-        if (p.lastSeenIncidentAt == null) {
-          await prisma.savedPlace.update({ where: { id: p.id }, data: { lastSeenIncidentAt: new Date(newestMs) } });
+        // fix(audit safezone-proximity-occurredat-lag-miss): freshness is now
+        // keyed on whether we've SEEN each incident ID, not whether its occurredAt
+        // beats a high-water mark. Lagged feeds publish out of order (a record can
+        // surface today dated weeks ago); the timestamp baseline stepped over
+        // those, the ID set catches them.
+        const seenSet = new Set(p.seenIncidentIds);
+
+        // First observation of this place → seed the seen-set with the current
+        // backlog and don't push (adding a place must not blast its history).
+        if (p.seenIncidentIds.length === 0 && p.lastSeenIncidentAt == null) {
+          await prisma.savedPlace.update({
+            where: { id: p.id },
+            data: {
+              seenIncidentIds: boundIds(incidents.map((i) => i.id)),
+              lastSeenIncidentAt: Number.isFinite(newestMs) ? new Date(newestMs) : null,
+            },
+          });
           continue;
         }
-        const baselineMs = +new Date(p.lastSeenIncidentAt);
-        const fresh = incidents.filter((i) => +new Date(i.occurredAt) > baselineMs);
+
+        const fresh = incidents.filter((i) => !seenSet.has(i.id));
         if (fresh.length === 0) continue;
 
-        // Always advance the baseline so we don't re-evaluate the same incidents.
-        await prisma.savedPlace.update({ where: { id: p.id }, data: { lastSeenIncidentAt: new Date(newestMs) } });
-
-        // Cooldown: hold the push (but keep the advanced baseline) if we alerted recently.
+        // fix(audit safezone-proximity-cooldown-suppression): hold WITHOUT marking
+        // the fresh incidents as seen while cooling down, so they're re-evaluated
+        // and alerted on the next eligible tick rather than stepped over forever.
         if (p.lastAlertAt && now - +new Date(p.lastAlertAt) < COOLDOWN_MS) continue;
+
+        // Not in cooldown → we're about to act on these, so record them as seen
+        // now (bounded) to prevent re-alerting on the same set next tick.
+        await prisma.savedPlace.update({
+          where: { id: p.id },
+          data: {
+            seenIncidentIds: boundIds([...p.seenIncidentIds, ...fresh.map((i) => i.id)]),
+            lastSeenIncidentAt: Number.isFinite(newestMs) ? new Date(newestMs) : p.lastSeenIncidentAt,
+          },
+        });
 
         const top = fresh.sort((a, b) => +new Date(b.occurredAt) - +new Date(a.occurredAt))[0];
         const km = Math.round(p.radiusM / 100) / 10;

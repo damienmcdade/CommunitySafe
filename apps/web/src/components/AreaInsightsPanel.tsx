@@ -63,7 +63,7 @@ export function AreaInsightsPanel({ areaQueryString }: { areaQueryString: string
                 {data.trends.map((t) => (
                   <li key={t.category} className="surface-muted p-3">
                     <div className="flex items-center justify-between">
-                      <span className={`text-xs font-medium ${COLOR[t.category]}`}>{t.category.toLowerCase()}</span>
+                      <span className={`text-xs font-medium ${COLOR[t.category]}`}>{t.category.charAt(0) + t.category.slice(1).toLowerCase()}</span>
                       <DeltaPill value={t.currentVsBaseline} />
                     </div>
                     <div className={COLOR[t.category]}>

@@ -131,9 +131,10 @@ function titleCaseArea(raw: string | null | undefined): string | undefined {
       const upper = w.toUpperCase();
       if (ACRONYMS.has(upper)) return upper;
       if (i > 0 && SMALL_WORDS.has(w)) return w;
-      // Handle hyphenated words ("park-place" → "Park-Place") and
-      // apostrophes ("o'brien" → "O'Brien").
-      return w.replace(/(^|[-'])([a-z])/g, (_, sep: string, ch: string) => sep + ch.toUpperCase());
+      // Handle hyphenated words ("park-place" → "Park-Place"), apostrophes
+      // ("o'brien" → "O'Brien"), and fix(audit cov-norfolk-org-artifacts) slash
+      // composites ("greenwood/elmhurst/norview" → "Greenwood/Elmhurst/Norview").
+      return w.replace(/(^|[-'/])([a-z])/g, (_, sep: string, ch: string) => sep + ch.toUpperCase());
     })
     .join(" ");
 }
@@ -155,7 +156,10 @@ async function fetchNorfolk(): Promise<Incident[]> {
     const r = rows[i];
     const occurredAt = safeIso(r.date_occu);
     if (!occurredAt) continue;
-    const area = titleCaseArea(r.neighborhd?.trim());
+    // Correct the name at the SOURCE so the slug (slugify(area)) is corrected too
+    // and binds to the regenerated nor-* population table + map geojson, which
+    // were rebuilt from the corrected name ("Military Circle").
+    const area = correctNorfolkLabel(titleCaseArea(r.neighborhd?.trim()) ?? "");
     if (!area || area.toUpperCase() === "UNKNOWN") continue;
     out.push({
       id: `nor-${r.inci_id ?? i}`,
@@ -202,6 +206,11 @@ export async function getDiscoveredAreasNorfolk(): Promise<KnownArea[]> {
   const counts = new Map<string, number>();
   for (const r of rows) {
     if (!r.area || r.area === "Unknown") continue;
+    // fix(audit cov-norfolk-org-artifacts): "No Civic League" is Norfolk's
+    // catch-all for incidents with no assigned neighborhood, not a real area —
+    // keep it as an internal bucket but don't surface it as a selectable
+    // neighborhood (same posture as the Indianapolis/Tucson "Unmapped" filter).
+    if (r.area.toLowerCase() === "no civic league") continue;
     counts.set(r.area, (counts.get(r.area) ?? 0) + 1);
   }
   // Drop entries whose name produces an empty slug body (e.g.,
@@ -215,7 +224,7 @@ export async function getDiscoveredAreasNorfolk(): Promise<KnownArea[]> {
       const slugBody = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
       return {
         slug: `nor-${slugBody}`,
-        label: name,
+        label: correctNorfolkLabel(name),
         jurisdiction: "Norfolk",
         centroid: NORFOLK_CENTROID,
         _slugBody: slugBody,
@@ -226,13 +235,29 @@ export async function getDiscoveredAreasNorfolk(): Promise<KnownArea[]> {
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
+// fix(audit cov-norfolk-org-artifacts): "MILTARY CIRCLE" is a genuine typo in
+// Norfolk's OWN crime feed (data.norfolk.gov r7bn-2egr) — the area is the
+// well-known Military Circle. Corrected for DISPLAY only; the slug stays
+// nor-miltary-circle so the curated nor-* population table (keyed to the raw
+// spelling) and any saved areas keep matching. The matching geojson name is
+// fixed to the same spelling so normName() map-matching stays consistent.
+// NOTE: "DIGGS TOWN" is Norfolk's official two-word spelling (verified in the
+// same feed), so it is intentionally NOT changed.
+const NOR_LABEL_CORRECTIONS: Record<string, string> = {
+  "Miltary Circle": "Military Circle",
+};
+function correctNorfolkLabel(name: string): string {
+  return NOR_LABEL_CORRECTIONS[name] ?? name;
+}
+
 // v70 — O(1) Map lookup. Pre-v70 this scanned every row in the
 // adapter on every call (122 areas × ~40k rows = ~5M ops per warm).
 function labelForNorfolkSlug(slug: string): string | null {
   if (!cache) return null;
   const s = slug.toLowerCase();
   const want = s.startsWith("nor-") ? s.slice(4) : s;
-  return cache.slugToLabel.get(want) ?? null;
+  const label = cache.slugToLabel.get(want);
+  return label != null ? correctNorfolkLabel(label) : null;
 }
 
 export const norfolkAdapter: CrimeDataAdapter = {

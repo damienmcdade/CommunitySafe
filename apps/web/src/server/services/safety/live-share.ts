@@ -55,11 +55,16 @@ export async function createLiveShare(
   if (contactRaw) {
     const c = classifyContact(contactRaw);
     const url = buildShareUrl(token);
+    // fix(audit safety-liveshare-no-location-3): the recipient page does NOT
+    // stream live coordinates yet (it confirms an active session), so the
+    // notification must not promise "live location". Copy matches the honest
+    // share-page wording until coordinate streaming ships.
     const msg =
-      `CommunitySafe: your contact is sharing their live location with you ` +
-      `until ${expiresAt.toLocaleString()}. ` +
-      `Open ${url} — the link stops working at expiry, or sooner if revoked.`;
-    const subject = "CommunitySafe — your contact is sharing their location";
+      `CommunitySafe: your contact has started a Live Share safety session with you, ` +
+      `active until ${expiresAt.toLocaleString()}. ` +
+      `Open ${url} to view the session — the link stops working at expiry, or sooner if revoked. ` +
+      `In an emergency, contact local authorities directly.`;
+    const subject = "CommunitySafe — your contact started a Live Share session";
     if (c.kind === "email") {
       const r = await sendEmail(c.value, subject, msg);
       delivery = { kind: "email", sent: r.ok, reason: r.reason };
@@ -99,5 +104,8 @@ export async function resolveSharedView(token: string) {
   if (!link) throw new HttpError(404, "not_found");
   if (link.revokedAt) throw new HttpError(410, "revoked");
   if (link.expiresAt < new Date()) throw new HttpError(410, "expired");
-  return { expiresAt: link.expiresAt, userId: link.userId };
+  // fix(audit loc-share-userid-leak-2): the public, token-only share endpoint
+  // must not leak the sharer's internal userId (cuid). The recipient page only
+  // renders expiresAt, so return just that.
+  return { expiresAt: link.expiresAt };
 }

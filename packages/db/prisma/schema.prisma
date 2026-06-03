@@ -118,6 +118,12 @@ model User {
   mfaEnabled        Boolean   @default(false)
   mfaSecret         String?
 
+  // fix(audit pentest-authn-6): password-reset flow. We store the SHA-256 HASH
+  // of the emailed reset token (never the raw token) plus its expiry, so a DB
+  // leak can't be used to reset accounts. Cleared on use or expiry.
+  passwordResetTokenHash String?
+  passwordResetExpiry    DateTime?
+
   // Trusted-contributor system. Derived from verified-post count + low
   // rejection rate, and promotable by a moderator. The badge surfaces
   // next to the author name in community feeds so readers can weigh
@@ -178,10 +184,19 @@ model SavedPlace {
   alertsEnabled      Boolean  @default(true)
   lastAlertAt        DateTime?                // last time we pushed an alert for this place
   lastSeenIncidentAt DateTime?                // newest incident timestamp we've already alerted on
+  // fix(audit safezone-proximity-occurredat-lag-miss): freshness keyed on a
+  // bounded set of already-seen incident IDs, not just a high-water occurredAt.
+  // Feeds publish out of order (a record can surface today dated weeks ago); the
+  // timestamp baseline would step over it, the ID set won't.
+  seenIncidentIds    String[] @default([])
   createdAt          DateTime @default(now())
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  // fix(audit perf-savedplace-index): the proximity worker scans
+  // `where: { alertsEnabled: true }` every 5 minutes; index it so the tick is a
+  // ranged read rather than a full SavedPlace table scan as the table grows.
+  @@index([alertsEnabled])
 }
 
 // -----------------------------------------------------------------------------

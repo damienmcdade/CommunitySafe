@@ -157,7 +157,7 @@ export const GET = wrap(async (req: NextRequest) => {
     metrics: { violent, property },
     fbiComparison: bandFromScore(blockScore),
     source: {
-      label: `FBI Crime Data Explorer 2025 + ${city.label} police feed`,
+      label: `FBI Crime Data Explorer 2024 + ${city.label} police feed`,
       url: "https://cde.ucr.cjis.gov/LATEST/webapp/#/pages/explorer/crime/crime-trend",
     },
   };

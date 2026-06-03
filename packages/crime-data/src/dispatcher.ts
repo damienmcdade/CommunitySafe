@@ -2,7 +2,7 @@ import { env } from "./env.js";
 import type { AreaRiskAlert, AreaStats, CrimeDataAdapter, Incident } from "./types.js";
 import { dedupe } from "./lib/inflight.js";
 import { withComputeLimit } from "./lib/compute-limit.js";
-import { touchRowCache } from "./cache-registry.js";
+import { touchRowCache, registerRowCache } from "./cache-registry.js";
 import { displayOffenseLabel } from "./lib/offense-display-label.js";
 import { MS_PER_DAY } from "./lib/time-constants.js";
 // Adapter modules moved to @travelsafe/crime-data in v34. The three
@@ -66,6 +66,27 @@ const lkgRecentReports = new Map<string, Incident[]>();
 // which already benefits from lkgIncidents. The citywide aggregator
 // naturally inherits the LKG fallback via its component calls.
 
+// fix(audit perf-compute-1): the LKG maps grew unbounded and were invisible to
+// the OOM watchdog (only adapter row-caches registered evictors), so retained
+// LKG rows couldn't be reclaimed under heap pressure. (a) Cap each map and evict
+// the oldest entry (Map preserves insertion order) when over the cap, and
+// (b) register a single evictor so evictAllRowCaches() / the heap watchdog can
+// drop the LKG snapshots too. Area count across 44 cities is in the low
+// thousands, so the cap is a backstop, not a normal-operation limit.
+const LKG_MAX_ENTRIES = 4000;
+function lkgSet<V>(map: Map<string, V>, key: string, value: V): void {
+  if (!map.has(key) && map.size >= LKG_MAX_ENTRIES) {
+    const oldest = map.keys().next().value;
+    if (oldest !== undefined) map.delete(oldest);
+  }
+  map.set(key, value);
+}
+registerRowCache(() => {
+  lkgIncidents.clear();
+  lkgAreaStats.clear();
+  lkgRecentReports.clear();
+}, "dispatcher-lkg");
+
 /// Picks adapter(s) per CRIME_DATA_ADAPTER. In "auto" mode, real adapters are
 /// tried in order and fall through to the mock if both fail — guaranteeing
 /// the UI always renders something.
@@ -83,14 +104,14 @@ export const crimeData = {
       const cityAdapter = city.adapter;
       const stats = await tryAdapter(cityAdapter, (a) => a.getAreaStats(area));
       if (stats) {
-        lkgAreaStats.set(area, stats);
+        lkgSet(lkgAreaStats, area, stats);
         return stats;
       }
       // SANDAG jurisdiction-level stats still answer for city-of-SD overview.
       if (cityAdapter === sdpdNibrsAdapter) {
         const sandag = await tryAdapter(sandagSocrataAdapter, (a) => a.getAreaStats(area));
         if (sandag) {
-          lkgAreaStats.set(area, sandag);
+          lkgSet(lkgAreaStats, area, sandag);
           return sandag;
         }
       }
@@ -110,7 +131,7 @@ export const crimeData = {
     return withComputeLimit(city.slug, async () => {
       const incidents = await tryAdapter(city.adapter, (a) => a.getIncidents(area, opts));
       if (incidents && incidents.length > 0) {
-        lkgIncidents.set(area, incidents);
+        lkgSet(lkgIncidents, area, incidents);
         return incidents;
       }
       const lkg = lkgIncidents.get(area);
@@ -127,7 +148,7 @@ export const crimeData = {
     return withComputeLimit(city.slug, async () => {
       const reports = await tryAdapter(city.adapter, (a) => a.getRecentReports(area, opts));
       if (reports && reports.length > 0) {
-        lkgRecentReports.set(area, reports);
+        lkgSet(lkgRecentReports, area, reports);
         return reports;
       }
       const lkg = lkgRecentReports.get(area);
@@ -176,17 +197,7 @@ export const crimeData = {
     }
     const areas = await city.discover().catch(() => [] as Awaited<ReturnType<typeof city.discover>>);
     const offenseFilter = opts.offense?.toLowerCase().trim();
-    // Wall-clock window. Anchored to Date.now() so the cutoff doesn't
-    // drift between refreshes — same pattern the safety-score
-    // annualization uses (commit 1f7d7d9). null means "no window",
-    // matching the legacy behavior for backwards compat.
     const windowDays = opts.windowDays && opts.windowDays > 0 ? Math.floor(opts.windowDays) : null;
-    const windowCutoffMs = windowDays != null ? Date.now() - windowDays * MS_PER_DAY : null;
-    const inWindow = (occurredAt: string): boolean => {
-      if (windowCutoffMs == null) return true;
-      const t = +new Date(occurredAt);
-      return Number.isFinite(t) && t >= windowCutoffMs;
-    };
     const perArea: Awaited<ReturnType<typeof crimeData.getCitywide>>["perArea"] = [];
     const totalByCategory = new Map<string, Incident[]>();
     const offenseCounts = new Map<string, number>();
@@ -204,6 +215,31 @@ export const crimeData = {
       // hierarchy on the Crime Map and undermining user trust in the numbers.
       areas.map((a) => this.getIncidents(a.slug, { limit: Number.MAX_SAFE_INTEGER }).catch(() => [])),
     );
+    // fix(audit loc-window-anchor-1): anchor the recency window on the freshest
+    // available incident, not wall-clock now. City feeds publish 7-30 days
+    // behind, so a `now - windowDays` cutoff can drop the entire (lagged) dataset
+    // and the citywide totals collapse toward 0. Mirror the safety-score /
+    // trend-feed data-latest anchor: only when the freshest row is >14d stale do
+    // we cut from dataLatest - windowDays; a fresh feed keeps the wall-clock
+    // anchor (no behavior change), and there's no anchoring when no window is set.
+    const nowMs = Date.now();
+    let anchorMs = nowMs;
+    if (windowDays != null) {
+      let maxT = 0;
+      for (const arr of incidentsAllPerArea) {
+        for (const inc of arr) {
+          const t = +new Date(inc.occurredAt);
+          if (Number.isFinite(t) && t <= nowMs && t > maxT) maxT = t;
+        }
+      }
+      if (maxT > 0 && nowMs - maxT > 14 * MS_PER_DAY) anchorMs = maxT;
+    }
+    const windowCutoffMs = windowDays != null ? anchorMs - windowDays * MS_PER_DAY : null;
+    const inWindow = (occurredAt: string): boolean => {
+      if (windowCutoffMs == null) return true;
+      const t = +new Date(occurredAt);
+      return Number.isFinite(t) && t >= windowCutoffMs;
+    };
     for (let i = 0; i < areas.length; i++) {
       const area = areas[i];
       // Apply the recency window BEFORE offense / category counting

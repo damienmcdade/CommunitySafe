@@ -2,8 +2,15 @@ import { PrismaClient, AreaKind, CrimeCategory, PostKind, PostStatus } from "../
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 
+// fix(audit db-ssl-1): force verify-full whenever ANY sslmode is present (the
+// old regex no-op'd on sslmode=disable / no sslmode).
+function pinSslVerifyFull(url: string): string {
+  if (!url) return url;
+  return /sslmode=/i.test(url) ? url.replace(/sslmode=[^&\s]*/i, "sslmode=verify-full") : url;
+}
+
 const prisma = new PrismaClient({
-  adapter: new PrismaPg({ connectionString: (process.env.DATABASE_URL ?? "").replace(/sslmode=(?:require|prefer|verify-ca)/i, "sslmode=verify-full") }),
+  adapter: new PrismaPg({ connectionString: pinSslVerifyFull(process.env.DATABASE_URL ?? "") }),
 });
 
 const SD_NEIGHBORHOODS = [
@@ -47,8 +54,17 @@ async function main() {
     });
   }
 
-  // Sample demo user — used to render community feed in dev. Replace before prod.
-  const demoPasswordHash = await bcrypt.hash("travelsafe-demo", 10);
+  // Sample demo user — used to render community feed in dev.
+  // fix(audit db-seed-3): never seed a KNOWN-credential account into production.
+  // In dev the fixed password keeps the demo convenient; in prod (or when
+  // SEED_DEMO_PASSWORD is unset) use a random one so the account can't be logged
+  // into with a guessable credential if the seed is ever run against prod.
+  const demoPassword =
+    process.env.SEED_DEMO_PASSWORD ??
+    (process.env.NODE_ENV === "production"
+      ? (await import("node:crypto")).randomBytes(24).toString("base64url")
+      : "travelsafe-demo");
+  const demoPasswordHash = await bcrypt.hash(demoPassword, 10);
   const demo = await prisma.user.upsert({
     where: { email: "demo@travelsafe.local" },
     update: {},

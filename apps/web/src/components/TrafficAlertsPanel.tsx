@@ -72,7 +72,7 @@ export function TrafficAlertsPanel() {
                     <p className="text-xs text-slate2-600 mt-1">{a.description}</p>
                   )}
                   <div className="text-xs text-slate2-500 mt-1">
-                    reported {new Date(a.effective).toLocaleString()}
+                    {a.effective ? `reported ${new Date(a.effective).toLocaleString()}` : "report time not available"}
                   </div>
                 </li>
               ))}
@@ -81,9 +81,11 @@ export function TrafficAlertsPanel() {
         </>
       ) : (
         <p className="mt-1 text-xs text-slate2-500">
-          {city.label}&apos;s state highway patrol doesn&apos;t publish a free public road-conditions feed yet,
-          so live traffic incidents aren&apos;t available here. Weather, earthquake, and AMBER alerts for
-          {" "}{city.label} still appear in the official-alerts surfaces above.
+          {/* fix(audit traffic-fallback-honesty-1): don't assert the state has NO
+              feed — several states (GA/VA/OH/CO) publish one; the data may simply
+              be empty/unavailable right now. Keep the copy factual. */}
+          Live traffic incidents aren&apos;t available for {city.label} right now. Weather, earthquake,
+          and AMBER alerts for {city.label} still appear in the official-alerts surfaces above.
         </p>
       )}
     </section>

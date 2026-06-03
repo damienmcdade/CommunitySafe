@@ -40,6 +40,46 @@ interface BucketEntry {
 
 const WINDOW_MS = 60_000;
 
+// fix(audit pentest-csp-unsafe-inline): per-request nonce + strict-dynamic CSP.
+// Moved off the static next.config header so script-src no longer relies on
+// 'unsafe-inline' for CSP3 browsers. The nonce is propagated to Next via the
+// request `content-security-policy` header (Next reads it and nonces its own
+// + next/script tags — the AdSense loader and AdSlot included). 'unsafe-inline'
+// is KEPT only as the CSP-Level-2 fallback: browsers that support
+// 'strict-dynamic' ignore both 'unsafe-inline' and the host allowlist, while
+// older browsers ignore 'strict-dynamic' and keep working. JSON-LD blocks are
+// application/ld+json (data, not governed by script-src), so they need no nonce.
+const ADSENSE_ORIGINS =
+  "https://pagead2.googlesyndication.com " +
+  "https://googleads.g.doubleclick.net " +
+  "https://www.googletagservices.com " +
+  "https://ep1.adtrafficquality.google " +
+  "https://www.google.com";
+
+function buildCsp(nonce: string): string {
+  return [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "object-src 'none'",
+    `img-src 'self' data: blob: https://upload.wikimedia.org https://*.basemaps.cartocdn.com https://*.googleusercontent.com ${ADSENSE_ORIGINS}`,
+    `script-src 'self' 'unsafe-inline' 'nonce-${nonce}' 'strict-dynamic' ${ADSENSE_ORIGINS}`,
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self' data:",
+    `connect-src 'self' https://communitysafe-api-production.up.railway.app https://nominatim.openstreetmap.org ${ADSENSE_ORIGINS}`,
+    `frame-src ${ADSENSE_ORIGINS}`,
+    "worker-src 'self' blob:",
+    "manifest-src 'self'",
+    "upgrade-insecure-requests",
+  ].join("; ");
+}
+
+function applyCsp(res: NextResponse, csp: string): NextResponse {
+  res.headers.set("Content-Security-Policy", csp);
+  return res;
+}
+
 // Per-path-prefix limit table. Longest-prefix match wins.
 // Audit added: /api/route (safe-route planner — DB + 2 upstream pulls
 // per call), /api/neighborhood (feed + watch), /api/official-alerts
@@ -59,6 +99,10 @@ const LIMITS: Array<{ prefix: string; cap: number }> = [
   // high-frequency /api/auth/me session check and /anonymous stay as-is.
   { prefix: "/api/auth/login",     cap: 10 },  // brute-force / credential-stuffing guard
   { prefix: "/api/auth/register",  cap: 6 },   // account-creation spam guard
+  // fix(audit pentest-authn-6): cap forgot-password (reset-email spam) and
+  // reset-password (single-use-token brute-force).
+  { prefix: "/api/auth/forgot-password", cap: 5 },
+  { prefix: "/api/auth/reset-password",  cap: 10 },
   // v47 bump 5 → 40. The original cap of 5/min was set before the
   // Redis cache landed on Railway (v16, v38). Now ~90% of /api/ai/
   // calls are cache hits with no LLM cost — the cap was throttling
@@ -139,8 +183,18 @@ function clientIp(req: NextRequest): string {
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Skip everything that isn't an API route.
-  if (!pathname.startsWith("/api/")) return NextResponse.next();
+  // Per-request nonce + CSP for ALL routes (see buildCsp above).
+  const nonce = crypto.randomUUID().replace(/-/g, "");
+  const csp = buildCsp(nonce);
+
+  // Non-API routes: propagate the nonce to Next via a request header (so it
+  // nonces its own scripts + next/script tags) and set the CSP on the response.
+  if (!pathname.startsWith("/api/")) {
+    const requestHeaders = new Headers(req.headers);
+    requestHeaders.set("x-nonce", nonce);
+    requestHeaders.set("content-security-policy", csp);
+    return applyCsp(NextResponse.next({ request: { headers: requestHeaders } }), csp);
+  }
 
   // Resolve the LIMIT first so a specific sub-path (e.g.
   // /api/auth/anonymous) can override a broader SKIP_PREFIXES entry
@@ -151,7 +205,7 @@ export function middleware(req: NextRequest) {
   // are intentionally not rate-limited (auth-gated, token-issued,
   // or cron-secret-gated).
   const cap = pickLimit(pathname);
-  if (cap == null) return NextResponse.next();
+  if (cap == null) return applyCsp(NextResponse.next(), csp);
 
   const ip = clientIp(req);
   // Bucket key includes the prefix so a user hitting many different
@@ -174,7 +228,7 @@ export function middleware(req: NextRequest) {
 
   if (bucket.count > cap) {
     const retryAfter = Math.ceil((WINDOW_MS - (now - bucket.windowStart)) / 1000);
-    return new NextResponse(
+    return applyCsp(new NextResponse(
       JSON.stringify({
         error: "rate_limited",
         message: `Too many requests to ${ruleKey}. Limit: ${cap} per minute per IP. Retry in ${retryAfter}s.`,
@@ -189,7 +243,7 @@ export function middleware(req: NextRequest) {
           "X-RateLimit-Reset": String(Math.ceil((bucket.windowStart + WINDOW_MS) / 1000)),
         },
       },
-    );
+    ), csp);
   }
 
   // Pass through with rate-limit headers so clients can self-throttle.
@@ -197,11 +251,16 @@ export function middleware(req: NextRequest) {
   res.headers.set("X-RateLimit-Limit", String(cap));
   res.headers.set("X-RateLimit-Remaining", String(Math.max(0, cap - bucket.count)));
   res.headers.set("X-RateLimit-Reset", String(Math.ceil((bucket.windowStart + WINDOW_MS) / 1000)));
-  return res;
+  return applyCsp(res, csp);
 }
 
-// Only run on API routes — exclude every page, static asset, and image
-// route from the middleware so we don't add latency to non-API traffic.
+// Run on all routes EXCEPT Next's static assets / image optimizer / favicon,
+// so the per-request CSP + nonce reaches pages (the rate-limiter still only
+// acts on /api/*). Mirrors Next's recommended nonce-middleware matcher.
 export const config = {
-  matcher: ["/api/:path*"],
+  matcher: [
+    {
+      source: "/((?!_next/static|_next/image|favicon.ico|icons/|manifest.json|sw.js|robots.txt|sitemap.xml).*)",
+    },
+  ],
 };

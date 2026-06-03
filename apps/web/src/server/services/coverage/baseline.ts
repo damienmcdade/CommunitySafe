@@ -32,10 +32,10 @@ export interface BaselineEntry {
 export const COVERAGE_BASELINE: Record<string, BaselineEntry> = {
   // California
   "san-diego":        { neighborhoodCount: 125, source: "SDPD NIBRS Crime Offenses (City of San Diego Open Data)" },
-  "los-angeles":      { neighborhoodCount:  18, source: "LAPD NIBRS Offenses 2026-to-Present + 2024-2025 (City of Los Angeles Open Data)" },
+  "los-angeles":      { neighborhoodCount: 114, source: "LAPD NIBRS Offenses 2026-to-Present + 2024-2025 (City of Los Angeles Open Data)" },
   "san-francisco":    { neighborhoodCount:  43, source: "SFPD Incident Reports (City of San Francisco Open Data)" },
   "oakland":          { neighborhoodCount: 130, source: "Oakland Police Department Crime Reports (City of Oakland Open Data)" },
-  "sacramento":       { neighborhoodCount:  10, source: "City of Sacramento Report Data (Sacramento PD via Sacramento Open Data)" },
+  "sacramento":       { neighborhoodCount: 117, source: "City of Sacramento Report Data (Sacramento PD via Sacramento Open Data)" },
   // Pacific Northwest / Mountain
   "seattle":          { neighborhoodCount:  58, source: "Seattle Police Department Crime Data (City of Seattle Open Data)" },
   "boise":            { neighborhoodCount:  37, source: "Boise Police Department Calls for Service (City of Boise Open Data)" },
