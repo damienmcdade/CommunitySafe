@@ -41,13 +41,16 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <!-- Location: used by neighborhood safety, weather, and check-in features -->
+    <!-- Location: foreground only — used by neighborhood safety, weather, and
+         check-in features while the app is open. Background-location +
+         foreground-service-location permissions were removed: the app is a
+         Capacitor WebView with NO native background-geolocation plugin
+         (packageClassList is empty), so it cannot legitimately track location in
+         the background. Declaring those triggers Play's background-location
+         review (and Apple 2.5.4 on iOS) for a capability that isn't implemented.
+         Check-on-Me / Live Share run on server-side timers + foreground location. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <!-- Background location: required for Check-on-Me + Live Location Share -->
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <!-- Push notifications (Android 13+ requires runtime permission) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Re-arm checks/digest workers after device reboot -->
