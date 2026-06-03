@@ -55,40 +55,14 @@ import type { NextConfig } from "next";
 // connect-src now includes the Railway API origin so the Vercel-side
 // fetch in tryProxy() and any client-side same-origin /api/* calls
 // don't get blocked. Adjust if a new external endpoint is added.
-// v95p37 — AdSense-compatible origins. These are required for ad
-// loading whether or not NEXT_PUBLIC_ADSENSE_CLIENT_ID is currently
-// set, because the CSP is static. With the env var off the AdSense
-// script never loads and the CSP allowances are unused; with the
-// env var on the script/iframes/images/beacons all resolve.
-//   pagead2.googlesyndication.com   — adsbygoogle.js loader
-//   googleads.g.doubleclick.net     — ad creatives + click tracking
-//   www.googletagservices.com       — tag delivery
-//   ep1.adtrafficquality.google     — ad-quality bots
-//   www.google.com                  — adsense back-channel
-const ADSENSE_ORIGINS =
-  "https://pagead2.googlesyndication.com " +
-  "https://googleads.g.doubleclick.net " +
-  "https://www.googletagservices.com " +
-  "https://ep1.adtrafficquality.google " +
-  "https://www.google.com";
+// NOTE: the AdSense-compatible CSP origins now live in src/middleware.ts
+// (ADSENSE_ORIGINS there), alongside the nonce'd Content-Security-Policy.
 
-const CSP_ENFORCING = [
-  "default-src 'self'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'none'",
-  "object-src 'none'",
-  `img-src 'self' data: blob: https://upload.wikimedia.org https://*.basemaps.cartocdn.com https://*.googleusercontent.com ${ADSENSE_ORIGINS}`,
-  `script-src 'self' 'unsafe-inline' ${ADSENSE_ORIGINS}`,
-  "style-src 'self' 'unsafe-inline'",
-  "font-src 'self' data:",
-  `connect-src 'self' https://communitysafe-api-production.up.railway.app https://nominatim.openstreetmap.org ${ADSENSE_ORIGINS}`,
-  `frame-src ${ADSENSE_ORIGINS}`,
-  "worker-src 'self' blob:",
-  "manifest-src 'self'",
-  "upgrade-insecure-requests",
-].join("; ");
-
+// fix(audit pentest-csp-unsafe-inline): the Content-Security-Policy moved to
+// src/middleware.ts so it can carry a per-request nonce + 'strict-dynamic'
+// (a static header can't). The remaining security headers stay here (they're
+// request-independent). Do NOT re-add CSP here — two CSP headers are ANDed by
+// the browser and would conflict with the nonce'd one.
 const SECURITY_HEADERS = [
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
   { key: "X-Content-Type-Options",    value: "nosniff" },
@@ -97,8 +71,6 @@ const SECURITY_HEADERS = [
   { key: "Permissions-Policy",        value: "geolocation=(self), camera=(), microphone=(), payment=(), usb=(), interest-cohort=(), browsing-topics=()" },
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
   { key: "X-DNS-Prefetch-Control",    value: "on" },
-  // v92 — enforcing CSP (was report-only since v54). 'unsafe-eval' removed.
-  { key: "Content-Security-Policy",   value: CSP_ENFORCING },
 ];
 
 const config: NextConfig = {
