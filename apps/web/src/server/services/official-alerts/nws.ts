@@ -79,7 +79,9 @@ export async function getNwsAlerts(state: string | null, cityLabel: string | nul
         severity: (f.properties.severity as OfficialAlert["severity"]) ?? "Unknown",
         headline: f.properties.headline ?? f.properties.event ?? "Weather alert",
         description: f.properties.description ?? "",
-        effective: f.properties.effective ?? f.properties.sent ?? new Date().toISOString(),
+        // fix(audit traffic-timestamp-sort-2): "" (not now()) when the feed gives
+        // no time, so an unknown-time alert sorts last instead of faking "newest".
+        effective: f.properties.effective ?? f.properties.sent ?? "",
         expires: f.properties.expires ?? null,
         url: `https://alerts.weather.gov/cap/wwacapget.php?x=${encodeURIComponent(f.id)}`,
       }));

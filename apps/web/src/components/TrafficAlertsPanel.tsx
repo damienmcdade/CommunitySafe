@@ -72,7 +72,7 @@ export function TrafficAlertsPanel() {
                     <p className="text-xs text-slate2-600 mt-1">{a.description}</p>
                   )}
                   <div className="text-xs text-slate2-500 mt-1">
-                    reported {new Date(a.effective).toLocaleString()}
+                    {a.effective ? `reported ${new Date(a.effective).toLocaleString()}` : "report time not available"}
                   </div>
                 </li>
               ))}

@@ -68,7 +68,9 @@ export async function getAmberAlerts(state: string | null): Promise<OfficialAler
       severity: (f.properties.severity as OfficialAlert["severity"]) ?? "Extreme",
       headline: f.properties.headline ?? f.properties.event ?? "AMBER Alert",
       description: f.properties.description ?? "",
-      effective: f.properties.effective ?? f.properties.sent ?? new Date().toISOString(),
+      // fix(audit traffic-timestamp-sort-2): "" (not now()) when the feed gives
+      // no issue time — the UI renders "time not reported" rather than a fake one.
+      effective: f.properties.effective ?? f.properties.sent ?? "",
       expires: f.properties.expires ?? null,
       // Surface the official DOJ AMBER Alert landing page as the
       // canonical click-through. The NWS CAP detail link is also

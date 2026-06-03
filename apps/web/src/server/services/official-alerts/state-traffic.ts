@@ -100,10 +100,17 @@ const SEVERITY_RANK: Record<OfficialAlert["severity"], number> = {
 };
 
 // Coerce a feed timestamp (epoch-ms number, ISO string, or US "MM/DD/YYYY
-// hh:mm:ss AM" string) into an ISO string, falling back to "now" so an
-// unparseable value never drops an otherwise-valid alert.
+// hh:mm:ss AM" string) into an ISO string.
+//
+// fix(audit traffic-timestamp-sort-2): a missing / unparseable timestamp used
+// to fall back to `new Date().toISOString()` (now). The official-alerts feed is
+// sorted newest-`effective`-first, so those fabricated "now" rows floated to the
+// TOP — an alert with NO known time outranked genuinely recent ones. We now
+// return "" for unknown, which the sort treats as oldest (sorts last) and the UI
+// renders as "time not reported". The alert is still kept — an unknown timestamp
+// never drops an otherwise-valid alert, it just stops it impersonating "newest".
 function toIso(raw: unknown): string {
-  if (raw == null || raw === "") return new Date().toISOString();
+  if (raw == null || raw === "") return "";
   if (typeof raw === "number" && Number.isFinite(raw)) {
     const d = new Date(raw);
     if (!Number.isNaN(d.getTime())) return d.toISOString();
@@ -112,7 +119,7 @@ function toIso(raw: unknown): string {
     const d = new Date(raw);
     if (!Number.isNaN(d.getTime())) return d.toISOString();
   }
-  return new Date().toISOString();
+  return "";
 }
 
 // ---------------------------------------------------------------------------

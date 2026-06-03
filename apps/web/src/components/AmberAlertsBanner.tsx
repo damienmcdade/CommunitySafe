@@ -74,7 +74,7 @@ export function AmberAlertsBanner() {
               {a.headline}
             </a>
             <div className="text-xs text-slate2-500 mt-1">
-              Issued {new Date(a.effective).toLocaleString()}
+              {a.effective ? `Issued ${new Date(a.effective).toLocaleString()}` : "Issue time not reported"}
               {a.expires ? ` · expires ${new Date(a.expires).toLocaleString()}` : ""}
             </div>
             {/* Description can be lengthy CAP boilerplate; trim to the

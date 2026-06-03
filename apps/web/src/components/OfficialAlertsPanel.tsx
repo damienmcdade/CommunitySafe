@@ -94,7 +94,7 @@ export function OfficialAlertsPanel() {
               <span className={`text-xs px-2 py-0.5 rounded-full ${SEVERITY_CLASS[a.severity]}`}>{a.severity}</span>
             </div>
             <div className="text-xs text-slate2-500 mt-1">
-              effective {new Date(a.effective).toLocaleString()}
+              {a.effective ? `effective ${new Date(a.effective).toLocaleString()}` : "effective time not reported"}
               {a.expires ? ` · until ${new Date(a.expires).toLocaleString()}` : ""}
             </div>
           </li>

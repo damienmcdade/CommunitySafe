@@ -38,8 +38,15 @@ export const GET = wrap(async (req: Request) => {
   // Newest first. AMBER alerts are issued with severity "Extreme" by
   // default; we boost them to the top of the list (regardless of the
   // chronological sort) so they are not buried under routine weather.
+  // fix(audit traffic-timestamp-sort-2): an empty / unparseable `effective`
+  // (unknown timestamp) sorts to the BOTTOM rather than impersonating "now" and
+  // outranking real recent alerts. +new Date("") is NaN, so coerce to -Infinity.
+  const effMs = (a: OfficialAlert): number => {
+    const t = +new Date(a.effective);
+    return Number.isNaN(t) ? -Infinity : t;
+  };
   const merged: OfficialAlert[] = [...nws, ...usgs, ...amber, ...traffic].sort(
-    (a, b) => +new Date(b.effective) - +new Date(a.effective),
+    (a, b) => effMs(b) - effMs(a),
   );
   const amberFirst: OfficialAlert[] = merged.sort((a, b) => {
     const ax = a.source === "AMBER Alert" ? 0 : 1;
