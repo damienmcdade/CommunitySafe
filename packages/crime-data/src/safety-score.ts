@@ -1268,7 +1268,21 @@ async function computeCitywideSafetyScore(citySlug: string): Promise<SafetyScore
   };
 }
 
+// fix(audit perf-compute-3): the per-area scorer runs a full city-wide fan-out
+// (discover() + a Promise.all over every neighborhood's incidents) on EVERY
+// request, but unlike getCitywideSafetyScore it had neither a dedupe nor the
+// per-city compute gate. A burst of requests across one city's neighborhoods
+// could therefore stack N simultaneous identical fan-outs and blow the heap.
+// Dedupe concurrent requests for the SAME area, and route the compute through
+// the SAME per-city withComputeLimit key the citywide path uses, so per-area and
+// citywide work for a city share one OOM watchdog + concurrency budget.
 export async function getSafetyScore(areaSlug: string, areaLabel: string): Promise<SafetyScoreResponse> {
+  const citySlug = cityForArea(areaSlug).slug;
+  return dedupe(`safety-score:area:${areaSlug}`, () =>
+    withComputeLimit(citySlug, () => computeSafetyScore(areaSlug, areaLabel)));
+}
+
+async function computeSafetyScore(areaSlug: string, areaLabel: string): Promise<SafetyScoreResponse> {
   const city = cityForArea(areaSlug);
   const cityPop = CITY_POPULATION[city.slug] ?? 0;
 
