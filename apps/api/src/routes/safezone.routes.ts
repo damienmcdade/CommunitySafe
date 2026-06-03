@@ -141,9 +141,12 @@ const TrendQuery = z.object({
 safezoneRouter.get("/trend", async (req, res, next) => {
   try {
     const { city, area, label, days, bullets } = TrendQuery.parse(req.query);
+    // fix(audit perf-compute-4): omitted bullets defaults to a cap (500), not the
+    // full ~760 KB list — parity with the Vercel /api/safezone/trend route.
+    const bulletLimit = bullets ?? 500;
     res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=900");
-    if (city) return res.json(await getCitywideTrend(city, { windowDays: days, bulletLimit: bullets }));
-    return res.json(await getTrendForArea(area!, displayLabel(area!, label), { windowDays: days, bulletLimit: bullets }));
+    if (city) return res.json(await getCitywideTrend(city, { windowDays: days, bulletLimit }));
+    return res.json(await getTrendForArea(area!, displayLabel(area!, label), { windowDays: days, bulletLimit }));
   } catch (err) {
     next(err);
   }

@@ -318,13 +318,26 @@ export default function CrimeMap() {
     for (const feat of polygons.features) {
       const polyName = (feat.properties as { name?: string } | null)?.name ?? "";
       const norm = normName(polyName);
-      // exact, then substring fallback
+      // Exact match first, then a constrained fuzzy fallback.
       let slug = byNormLabel.get(norm);
       if (!slug) {
+        // fix(audit map-balt-substring-misbind): the old "first substring match
+        // wins" fallback mis-bound stats — polygon "Carroll" matched whichever of
+        // "Carroll Park" / "Carroll-Camden" the Map iterated first, and a raw
+        // substring could even bind "Carroll" → "Carrollton". Match on WORD-SET
+        // containment (every token of the shorter name is a WHOLE word of the
+        // longer) and bind only when EXACTLY ONE area qualifies; zero or multiple
+        // distinct matches → leave unmatched (honest blank) rather than guess.
+        const polyWords = norm.split(" ").filter(Boolean);
+        const matched = new Set<string>();
         for (const [labelNorm, s] of byNormLabel) {
           if (labelNorm === norm) continue;
-          if (labelNorm.includes(norm) || norm.includes(labelNorm)) { slug = s; break; }
+          const labelWords = labelNorm.split(" ").filter(Boolean);
+          const polyInLabel = polyWords.length > 0 && polyWords.every((w) => labelWords.includes(w));
+          const labelInPoly = labelWords.length > 0 && labelWords.every((w) => polyWords.includes(w));
+          if (polyInLabel || labelInPoly) matched.add(s);
         }
+        if (matched.size === 1) slug = [...matched][0];
       }
       stats.set(polyName, slug ? (statsBySlug.get(slug) ?? null) : null);
       if (slug) slugByName.set(polyName, slug);

@@ -20,11 +20,21 @@ const Query = z.object({
   days:  z.coerce.number().int().min(1).max(180).optional(),
   // v99 — cap the dispatch-bullet list. Callers that only need the
   // freshness/summary (DataFreshnessBanner) pass bullets=0 to skip the
-  // ~760 KB list. Omitted = full list (back-compat).
+  // ~760 KB list; the time-of-day card passes bullets=1000.
+  // fix(audit perf-compute-4): an OMITTED `bullets` used to mean "the full
+  // ~5000-bullet / ~760 KB list" — a footgun for any caller that forgets it.
+  // The default is now DEFAULT_BULLETS (below); a caller that genuinely needs
+  // the whole list opts IN with bullets=5000. All in-app UI callers already pass
+  // an explicit value, so this only tightens the implicit default.
   bullets: z.coerce.number().int().min(0).max(5000).optional(),
 }).refine((q) => Boolean(q.city) !== Boolean(q.area), {
   message: "Pass exactly one of `city` or `area`.",
 });
+
+// Default dispatch-bullet cap when a caller omits `bullets`. Comfortably covers
+// the trend-display + time-of-day needs (~hundreds) while bounding the payload
+// to ~tens of KB instead of ~760 KB.
+const DEFAULT_BULLETS = 500;
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -41,6 +51,8 @@ export const GET = wrap(async (req: NextRequest) => {
   if (proxied) return proxied.response;
 
   const { city, area, label, days, bullets } = Query.parse(Object.fromEntries(req.nextUrl.searchParams));
-  if (city) return NextResponse.json(await getCitywideTrend(city, { windowDays: days, bulletLimit: bullets }), { headers: CACHE_HEADERS });
-  return NextResponse.json(await getTrendForArea(area!, label ?? area!, { windowDays: days, bulletLimit: bullets }), { headers: CACHE_HEADERS });
+  // fix(audit perf-compute-4): omitted → DEFAULT_BULLETS, not the full list.
+  const bulletLimit = bullets ?? DEFAULT_BULLETS;
+  if (city) return NextResponse.json(await getCitywideTrend(city, { windowDays: days, bulletLimit }), { headers: CACHE_HEADERS });
+  return NextResponse.json(await getTrendForArea(area!, label ?? area!, { windowDays: days, bulletLimit }), { headers: CACHE_HEADERS });
 });
