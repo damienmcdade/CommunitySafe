@@ -5,15 +5,16 @@ import { registerRowCache } from "../cache-registry.js";
 import { bucketByBands, deriveBands } from "../risk-bands.js";
 import type { KnownArea } from "../neighborhoods.js";
 import { fetchSocrata } from "../lib/http.js";
-import { kansasCityPolygons as rawKansasCityPolygons } from "../data/kansas-city-neighborhoods.js";
+import { kansasCityPolygons } from "../data/kansas-city-neighborhoods.js";
 
 // fix(audit cov-kc-name-typos): the bundled KC polygons are auto-generated from
 // a crowd-sourced source (blackmad/neighborhoods) that carries spelling errors,
 // surfaced verbatim as user-facing area labels. Each correction below was
 // verified against the City of Kansas City's OFFICIAL neighborhood registry
 // (data.kcmo.org "Population by Neighborhood", dataset 7nq4-imiw — 240
-// registered neighborhoods). Applied at import so both geocode and discovery
-// emit the corrected name and a future data-file regeneration is re-corrected.
+// registered neighborhoods). IMPORTANT: this corrects the DISPLAY LABEL only —
+// area SLUGS stay derived from the raw name so existing saved areas and the
+// curated kc-* population table (keyed to the original spellings) keep matching.
 const KC_NAME_CORRECTIONS: Record<string, string> = {
   "Indipendence Plaza": "Independence Plaza",
   "Faireway Hills": "Fairway Hills",
@@ -26,10 +27,7 @@ const KC_NAME_CORRECTIONS: Record<string, string> = {
   "South India Mound": "South Indian Mound",
   "North India Mound": "North Indian Mound",
 };
-const kansasCityPolygons = rawKansasCityPolygons.map((p) => ({
-  ...p,
-  name: KC_NAME_CORRECTIONS[p.name] ?? p.name,
-}));
+const correctKcLabel = (name: string): string => KC_NAME_CORRECTIONS[name] ?? name;
 
 // Kansas City MO — KCPD Crime Data, current + prior year.
 // KCPD publishes one Socrata dataset per calendar year (data.kcmo.org).
@@ -92,8 +90,9 @@ function buildKCIndexes(rows: Incident[]): Pick<Cache, "slugToLabel" | "labelToR
     if (!bucket) { bucket = []; labelToRows.set(label, bucket); }
     bucket.push(r);
     if (!slugToLabel.has(label)) {
+      // Slug from the RAW name (stable); store the corrected DISPLAY label.
       const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-      slugToLabel.set(slug, label);
+      slugToLabel.set(slug, correctKcLabel(label));
     }
   }
   return { slugToLabel, labelToRows };
@@ -373,7 +372,7 @@ export async function getDiscoveredAreasKansasCity(): Promise<KnownArea[]> {
     .filter(([, e]) => e.count >= 1)  // v89 — was 3; KCMO has ~240 registered neighborhoods
     .map(([name, e]) => ({
       slug: `kc-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`,
-      label: name,
+      label: correctKcLabel(name),
       jurisdiction: "Kansas City",
       centroid: { lat: e.latSum / e.count, lng: e.lngSum / e.count },
     }))
