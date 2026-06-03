@@ -3,6 +3,19 @@ import { NextResponse, type NextRequest } from "next/server";
 import { HttpError } from "./http";
 import { prisma } from "./prisma";
 import { verifySession, type SessionPayload } from "./jwt";
+import { readSessionCookie } from "./session-cookie";
+
+/// fix(audit pentest-authn-4): the session token can arrive two ways now — the
+/// HttpOnly `cs_session` cookie (preferred; not readable by JS, so XSS-safe) or
+/// the legacy `Authorization: Bearer` header (mobile native + localStorage
+/// sessions still migrating). Prefer the cookie, fall back to the header.
+function extractRawToken(req: NextRequest): string | null {
+  const cookie = readSessionCookie(req);
+  if (cookie) return cookie;
+  const header = req.headers.get("authorization");
+  if (header?.startsWith("Bearer ")) return header.slice("Bearer ".length);
+  return null;
+}
 
 /// v106 (security audit) — token revocation on the web surface. The JWT only
 /// carries {uid,email} (no tokenVersion), and verifySession previously checked
@@ -57,13 +70,13 @@ async function isTokenInvalid(session: SessionPayload): Promise<boolean> {
 /// account isn't deleted/banned. Throws HttpError(401) on missing/invalid/
 /// revoked token; route handlers catch via wrap().
 export async function requireSession(req: NextRequest): Promise<SessionPayload> {
-  const header = req.headers.get("authorization");
-  if (!header?.startsWith("Bearer ")) {
+  const raw = extractRawToken(req);
+  if (!raw) {
     throw new HttpError(401, "missing_bearer_token");
   }
   let session: SessionPayload;
   try {
-    session = verifySession(header.slice("Bearer ".length));
+    session = verifySession(raw);
   } catch {
     throw new HttpError(401, "invalid_token");
   }
@@ -77,11 +90,11 @@ export async function requireSession(req: NextRequest): Promise<SessionPayload> 
 /// anonymously but personalize when signed in. A revoked account resolves to
 /// null (treated as anonymous).
 export async function optionalSession(req: NextRequest): Promise<SessionPayload | null> {
-  const header = req.headers.get("authorization");
-  if (!header?.startsWith("Bearer ")) return null;
+  const raw = extractRawToken(req);
+  if (!raw) return null;
   let session: SessionPayload;
   try {
-    session = verifySession(header.slice("Bearer ".length));
+    session = verifySession(raw);
   } catch {
     return null;
   }

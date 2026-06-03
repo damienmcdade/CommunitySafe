@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { useTheme, type Theme } from "@/lib/use-theme";
 import { MfaSettings } from "@/components/MfaSettings";
+import { logout } from "@/lib/api-client";
 
 // Local-state inventory the page can clear on demand. Every key
 // that survives a tab/page navigation lives in this list — if a new
@@ -12,7 +13,11 @@ import { MfaSettings } from "@/components/MfaSettings";
 const LOCAL_KEYS = [
   { key: "travelsafe.city.v1",            label: "City selection" },
   { key: "travelsafe.area.v1",            label: "Area / neighborhood selection (per city)" },
-  { key: "travelsafe.token",              label: "Anonymous session token" },
+  // fix(audit pentest-authn-4): the session JWT is now a secure HttpOnly cookie
+  // (not readable or clearable by this page). localStorage keeps only this
+  // non-sensitive presence marker; a real sign-out (clearing the cookie) goes
+  // through logout(), which "Clear all preferences" below now calls.
+  { key: "travelsafe.session.v2",         label: "Session sign-in marker (the token itself is a secure HttpOnly cookie)" },
   { key: "travelsafe.assistant.v1",       label: "AI Assistant conversation state" },
   { key: "travelsafe.news.sources.v1",    label: "News-source visibility preferences" },
   { key: "travelsafe.news.window.v1",     label: "News time-window choice" },
@@ -56,6 +61,11 @@ export default function PrivacyDashboardPage() {
   }
 
   function clearAllPrefs() {
+    // fix(audit pentest-authn-4): the session is now an HttpOnly cookie that JS
+    // can't delete, so removing localStorage keys alone wouldn't sign the user
+    // out (the banner promises it does). Route through logout() so the server
+    // clears the cookie + bumps tokenVersion; it also drops the local marker.
+    void logout();
     for (const e of LOCAL_KEYS) {
       try { window.localStorage.removeItem(e.key); } catch { /* ignore */ }
     }

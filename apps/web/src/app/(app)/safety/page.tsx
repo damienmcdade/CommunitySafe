@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api, useAnonymousAuth, useApi } from "@/lib/api-client";
+import { api, useAnonymousAuth, useApi, getStoredToken } from "@/lib/api-client";
 import { requestLocation } from "@/lib/geolocation";
 import { SafetyTipsPanel } from "@/components/SafetyTipsPanel";
 import { TrustedContactsManager } from "@/components/TrustedContactsManager";
@@ -185,8 +185,14 @@ function AccountPanel() {
     setExporting(true);
     setExportError(null);
     try {
+      // fix(audit pentest-authn-4): authenticate via the HttpOnly session cookie
+      // (sent automatically with credentials:include); fall back to a legacy
+      // localStorage Bearer only while migrating. This is a blob download so it
+      // can't use the api() wrapper.
+      const legacy = getStoredToken();
       const res = await fetch("/api/account/export", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("travelsafe.token") ?? ""}` },
+        credentials: "include",
+        headers: legacy ? { Authorization: `Bearer ${legacy}` } : undefined,
       });
       if (!res.ok) throw new Error(`http_${res.status}`);
       const blob = await res.blob();

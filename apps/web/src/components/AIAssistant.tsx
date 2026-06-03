@@ -148,6 +148,10 @@ export function AIAssistant() {
       const res = await fetch("/api/assistant", {
         method: "POST",
         headers,
+        // fix(audit pentest-authn-4): send the HttpOnly session cookie so the
+        // stream authenticates without the JWT being in JS (the Bearer above is
+        // only the legacy/native fallback).
+        credentials: "include",
         // Don't replay the intro to the model — it adds noise to the system context.
         body: JSON.stringify({ messages: next.filter((m, i) => !(i === 0 && m === INTRO)) }),
       });

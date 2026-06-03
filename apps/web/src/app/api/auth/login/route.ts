@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { wrap } from "@/server/lib/http";
 import { login } from "@/server/services/auth";
+import { setSessionCookie } from "@/server/lib/session-cookie";
 
 const Body = z.object({
   email: z.string().email().toLowerCase(),
@@ -16,5 +17,11 @@ const Body = z.object({
 
 export const POST = wrap(async (req: NextRequest) => {
   const { email, password } = Body.parse(await req.json());
-  return NextResponse.json(await login(email, password));
+  const result = await login(email, password);
+  const res = NextResponse.json(result);
+  // fix(audit pentest-authn-4): plant the session in the HttpOnly cookie on a
+  // full login. When MFA is required, login() returns only an mfa_pending ticket
+  // (no session token) — we must NOT set the cookie until /mfa/verify succeeds.
+  if ("token" in result && result.token) setSessionCookie(res, result.token);
+  return res;
 });
