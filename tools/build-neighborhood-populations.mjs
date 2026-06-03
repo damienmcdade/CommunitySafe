@@ -229,6 +229,62 @@ function featureCentroid(feature) {
   return { lat: lat / n, lng: lng / n };
 }
 
+/// Approximate polygon area in km² (outer rings minus holes) using the planar
+/// shoelace formula on a local equirectangular projection: degrees → km with a
+/// cos(latitude) correction on longitude. Exact enough for a population estimate
+/// at neighborhood scale (sub-1% distortion over a few km).
+function featureAreaKm2(feature) {
+  const g = feature.geometry;
+  if (!g) return 0;
+  const polys = g.type === "Polygon" ? [g.coordinates] : g.type === "MultiPolygon" ? g.coordinates : [];
+  const KM_PER_DEG_LAT = 110.574;
+  function ringAreaKm2(ring, latRef) {
+    const kmPerDegLng = 111.320 * Math.cos((latRef * Math.PI) / 180);
+    let a = 0;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const xi = ring[i][0] * kmPerDegLng, yi = ring[i][1] * KM_PER_DEG_LAT;
+      const xj = ring[j][0] * kmPerDegLng, yj = ring[j][1] * KM_PER_DEG_LAT;
+      a += xj * yi - xi * yj;
+    }
+    return Math.abs(a) / 2;
+  }
+  let total = 0;
+  for (const poly of polys) {
+    if (!poly.length) continue;
+    const latRef = poly[0][0]?.[1] ?? 0;
+    total += ringAreaKm2(poly[0], latRef);                 // outer ring
+    for (let h = 1; h < poly.length; h++) total -= ringAreaKm2(poly[h], latRef); // holes
+  }
+  return total;
+}
+
+/// Nearest tract centroid to a point (used only for the <10km sanity gate so
+/// polygons far from any tract — bad geometry / wrong county — get no estimate).
+function nearestTract(point, tracts) {
+  let best = null;
+  for (const t of tracts) {
+    const km = haversineKm(point, t);
+    if (!best || km < best.km) best = { t, km };
+  }
+  return best ? best.t : { lat: point.lat, lng: point.lng };
+}
+
+/// Local population density (people/km²) around a point, estimated from the K
+/// nearest tract centroids: total of their populations over the area of the
+/// circle that just encloses them. Used to size zero-containment polygons by
+/// their own AREA rather than copying a whole tract's population onto each.
+function localDensityPerKm2(point, tracts, k = 5) {
+  if (tracts.length === 0) return 0;
+  const byDist = tracts
+    .map((t) => ({ t, km: haversineKm(point, t) }))
+    .sort((a, b) => a.km - b.km)
+    .slice(0, Math.min(k, tracts.length));
+  const pop = byDist.reduce((s, x) => s + x.t.pop, 0);
+  const rKm = Math.max(byDist[byDist.length - 1].km, 0.25); // floor avoids div-by-0 for coincident points
+  const areaKm2 = Math.PI * rKm * rKm;
+  return pop / areaKm2;
+}
+
 async function processCity(citySlug, cfg) {
   const geoPath = path.join(GEO_DIR, `${citySlug}.geojson`);
   let geo;
@@ -257,39 +313,58 @@ async function processCity(citySlug, cfg) {
     }
   }
 
-  // For each polygon, sum populations of every tract whose centroid
-  // falls inside. Polygons with zero matches fall back to nearest-
-  // tract by haversine + a polygon-area-proportional scale.
-  const populations = {}; // slug → pop
+  // fix(audit coverage-clt-pop-inflated): distribute each tract's population
+  // EQUALLY among every polygon whose ring contains the tract centroid, instead
+  // of adding the tract's FULL population to each containing polygon. Several
+  // cities' polygon sets OVERLAP — Sacramento ~55%, Fort Worth ~38%, Charlotte's
+  // 14 CMPD patrol divisions ~28% by area — so the old "sum every tract inside
+  // me" per-polygon loop counted overlap-zone tracts 2-4× and inflated city
+  // totals well past the county population (Charlotte read 1.49M vs Mecklenburg's
+  // 1.12M, with University City alone at an impossible 404k). Equal-split keeps
+  // the grand total bounded by the real tract population (each tract's pop is
+  // fully distributed, never multiplied) and gives overlapping divisions a fair
+  // share of the shared area. Disjoint-polygon cities are unaffected (each tract
+  // is inside exactly one polygon → share = full pop, same as before).
+  const named = geo.features
+    .map((feat, idx) => ({ idx, feat, name: feat.properties?.name }))
+    .filter((x) => x.name);
+  const featPop = new Array(geo.features.length).fill(0);
+  for (const t of tracts) {
+    const containing = [];
+    for (const { idx, feat } of named) {
+      if (pointInFeature([t.lng, t.lat], feat)) containing.push(idx);
+    }
+    if (containing.length > 0) {
+      const share = t.pop / containing.length;
+      for (const idx of containing) featPop[idx] += share;
+    }
+  }
+
+  // Area×density fallback for named polygons that captured no tract centroid
+  // (polygons smaller than a tract, or whose centroid fell just outside one).
+  // fix(audit coverage-clt-pop-inflated): the prior fallback copied the FULL
+  // nearest-tract population (~4,000) onto EVERY such polygon. For cities with
+  // many sub-tract polygons that massively over-counted — Fort Worth (285 of 388
+  // polygons hit the fallback) summed to 2.7M (> Tarrant County's 2.1M) and
+  // Norfolk's civic leagues to 376k (> the city's 235k). Estimate each polygon's
+  // population from its OWN area × the local tract density instead, so a small
+  // polygon gets a small, area-appropriate number and the city total stays
+  // bounded by the real population.
   let withMatches = 0, withFallback = 0;
-  for (const feat of geo.features) {
-    const name = feat.properties?.name;
-    if (!name) continue;
-    let pop = 0;
-    for (const t of tracts) {
-      if (pointInFeature([t.lng, t.lat], feat)) pop += t.pop;
+  for (const { idx, feat } of named) {
+    if (featPop[idx] > 0) { withMatches++; continue; }
+    const c = featureCentroid(feat);
+    if (c && tracts.length > 0 && haversineKm(c, nearestTract(c, tracts)) < 10) {
+      const density = localDensityPerKm2(c, tracts);
+      const areaKm2 = featureAreaKm2(feat);
+      const est = Math.round(density * areaKm2);
+      if (est > 0) { featPop[idx] = est; withFallback++; }
     }
-    if (pop > 0) {
-      withMatches++;
-    } else {
-      // Fallback: nearest tract centroid by haversine, scaled by the
-      // ratio of polygon area to a typical tract footprint. For now
-      // use just the nearest tract's pop as the floor — small dense
-      // polygons (downtowns) usually have at least one tract overlap
-      // even when the centroid falls just outside.
-      const c = featureCentroid(feat);
-      if (c && tracts.length > 0) {
-        let best = null;
-        for (const t of tracts) {
-          const km = haversineKm(c, t);
-          if (!best || km < best.km) best = { t, km };
-        }
-        if (best && best.km < 10) {
-          pop = best.t.pop;
-          withFallback++;
-        }
-      }
-    }
+  }
+
+  const populations = {}; // slug → pop
+  for (const { idx, name } of named) {
+    const pop = Math.round(featPop[idx]);
     if (pop > 0) {
       const slug = cfg.slugPrefix + slugify(name);
       // Several precincts can map to the same display label (NYC's
@@ -310,14 +385,53 @@ async function processCity(citySlug, cfg) {
   };
 }
 
+// Parse `--only=slugA,slugB`. When set, only those cities are reprocessed and
+// their results are MERGED into the existing generated file — every other city's
+// committed data is preserved verbatim. This makes a targeted re-run (e.g. the
+// overlap-inflated cities) safe even if a transient TigerWeb / Census Reporter
+// failure would otherwise drop a city from a full regen's wholesale overwrite.
+function parseOnly() {
+  const arg = process.argv.find((a) => a.startsWith("--only="));
+  if (!arg) return null;
+  return new Set(arg.slice("--only=".length).split(",").map((s) => s.trim()).filter(Boolean));
+}
+
+// Extract the existing GENERATED_NEIGHBORHOOD_POPS object from the committed TS
+// file so --only runs can merge into it. The file is our own deterministic
+// output (a plain Record<string,Record<string,number>> literal), so evaluating
+// the object literal is safe.
+async function readExistingPops() {
+  try {
+    const src = await fs.readFile(OUTPUT_PATH, "utf-8");
+    const start = src.indexOf("{", src.indexOf("GENERATED_NEIGHBORHOOD_POPS"));
+    if (start < 0) return {};
+    // Find the matching closing brace of the object literal.
+    let depth = 0, end = -1;
+    for (let i = start; i < src.length; i++) {
+      if (src[i] === "{") depth++;
+      else if (src[i] === "}") { depth--; if (depth === 0) { end = i; break; } }
+    }
+    if (end < 0) return {};
+    // eslint-disable-next-line no-new-func
+    return Function(`"use strict";return (${src.slice(start, end + 1)});`)();
+  } catch {
+    return {};
+  }
+}
+
 async function main() {
   const summary = [];
-  const allPops = {};
+  const only = parseOnly();
+  // Seed from existing data when doing a targeted (--only) run so untouched
+  // cities are preserved; a full run starts empty and rewrites everything.
+  const allPops = only ? await readExistingPops() : {};
+  if (only) console.log(`--only mode: reprocessing ${[...only].join(", ")} (merging into existing)\n`);
 
+  const entries = Object.entries(CITY_CONFIG).filter(([slug]) => !only || only.has(slug));
   // Process cities one at a time. Census API is forgiving but we
   // don't want to thrash TigerWeb when there's no payoff to running
   // 30 in parallel.
-  for (const [citySlug, cfg] of Object.entries(CITY_CONFIG)) {
+  for (const [citySlug, cfg] of entries) {
     process.stdout.write(`${citySlug.padEnd(18)} ... `);
     try {
       const r = await processCity(citySlug, cfg);
