@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { api, useApi } from "@/lib/api-client";
 
 interface ReportedPost {
@@ -19,14 +20,23 @@ interface ReportedPost {
 // moderators with MODERATOR_EMAILS access can spot abuse patterns.
 export default function ModerationActivityPage() {
   const { data, error, reload } = useApi<ReportedPost[]>("/moderation/queue");
+  // fix(audit ui-moderation-takedown-no-error): the take-down call had no error
+  // handling, so a rejected request (403 non-moderator, 404, network) failed
+  // silently — the moderator believed the post was removed when it wasn't.
+  const [actionError, setActionError] = useState<string | null>(null);
 
   async function takeDown(id: string) {
     if (!confirm("Take this post down? It will no longer appear in any feed.")) return;
-    await api(`/moderation/posts/${id}/review`, {
-      method: "POST",
-      body: JSON.stringify({ action: "REJECT", reason: "Moderator take-down from activity log", confirmedAreaLevelAndAnonymized: false }),
-    });
-    await reload();
+    setActionError(null);
+    try {
+      await api(`/moderation/posts/${id}/review`, {
+        method: "POST",
+        body: JSON.stringify({ action: "REJECT", reason: "Moderator take-down from activity log", confirmedAreaLevelAndAnonymized: false }),
+      });
+      await reload();
+    } catch (err) {
+      setActionError(`Take-down failed: ${(err as Error).message}. The post was NOT removed.`);
+    }
   }
 
   return (
@@ -37,6 +47,9 @@ export default function ModerationActivityPage() {
           CommunitySafe posts publish automatically after the profanity and threat checks pass. This page lists recently reported posts so a moderator can take them down if needed. Set <code>MODERATOR_EMAILS</code> in the API environment to grant access.
         </p>
       </header>
+      {actionError && (
+        <p className="surface-muted p-4 text-sm text-dusk-700" role="alert">{actionError}</p>
+      )}
       {error ? (
         <p className="surface-muted p-4 text-sm text-amber-700" role="alert">
           {/^http_4/.test(error.message)

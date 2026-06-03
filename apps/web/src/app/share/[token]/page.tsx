@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { api } from "@/lib/api-client";
 
-interface ShareView { expiresAt: string; userId: string }
+interface ShareView { expiresAt: string }
 
 export default function SharePage() {
   const params = useParams<{ token: string }>();

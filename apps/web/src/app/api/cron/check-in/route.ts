@@ -5,9 +5,13 @@ import { triggerExpiry } from "@/server/services/safety/check-in";
 import { requireCronSecret } from "@/server/lib/bearer-auth";
 
 export const dynamic = "force-dynamic";
-// Vercel Cron hits this every minute (configured in vercel.json). Replaces
-// the long-running worker the Express service used to run. Gated behind
-// CRON_SECRET so the endpoint isn't a public trigger.
+// fix(audit infra-cron-checkin-schedule-mismatch): vercel.json schedules this
+// DAILY ("0 0 * * *"), not "every minute" as a prior comment claimed (sub-daily
+// cron needs a paid Vercel plan). So this endpoint is a once-a-day BACKSTOP —
+// the real-time check-in firing is the Railway check-in.worker (30s tick), which
+// stays authoritative. If Railway is ever the only path and this stays daily, a
+// missed check-in could go un-fired for up to 24h. Gated behind CRON_SECRET so
+// it isn't a public trigger.
 export async function GET(req: NextRequest) {
   const denied = requireCronSecret(req);
   if (denied) return denied;
