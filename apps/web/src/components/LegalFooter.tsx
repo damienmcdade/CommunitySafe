@@ -24,6 +24,9 @@ export function LegalFooter() {
         {" · "}
         <a href="mailto:info@cyberwaveglobal.com" className="text-bay-700 hover:underline">info@cyberwaveglobal.com</a>
       </p>
+      {/* fix(audit legal-trademark-no-mark-1): explicit brand-ownership / mark
+          assertion so the entity -> mark -> product chain is stated. */}
+      <p>CommunitySafe™ is a trademark of CyberWave Technologies LLC.</p>
     </footer>
   );
 }
