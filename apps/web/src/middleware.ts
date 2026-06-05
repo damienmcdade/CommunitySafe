@@ -40,15 +40,25 @@ interface BucketEntry {
 
 const WINDOW_MS = 60_000;
 
-// fix(audit pentest-csp-unsafe-inline): per-request nonce + strict-dynamic CSP.
-// Moved off the static next.config header so script-src no longer relies on
-// 'unsafe-inline' for CSP3 browsers. The nonce is propagated to Next via the
-// request `content-security-policy` header (Next reads it and nonces its own
-// + next/script tags — the AdSense loader and AdSlot included). 'unsafe-inline'
-// is KEPT only as the CSP-Level-2 fallback: browsers that support
-// 'strict-dynamic' ignore both 'unsafe-inline' and the host allowlist, while
-// older browsers ignore 'strict-dynamic' and keep working. JSON-LD blocks are
-// application/ld+json (data, not governed by script-src), so they need no nonce.
+// CSP — static, cache-compatible policy.
+//
+// HISTORY / WHY NOT A NONCE (do not re-introduce one): a prior audit fix
+// (pentest-csp-unsafe-inline) made this a PER-REQUEST nonce + 'strict-dynamic'
+// policy to drop 'unsafe-inline' from script-src. That silently broke the
+// ENTIRE site in production: our pages are ISR / CDN-cached (x-vercel-cache
+// HIT), so the cached HTML's <script> tags carry no per-request nonce, while
+// middleware stamped a FRESH random nonce into the CSP header on every request.
+// Because 'strict-dynamic' makes browsers ignore both 'self' AND 'unsafe-inline',
+// every same-origin _next/static/chunks/*.js was blocked → zero JS executed →
+// no hydration → collapsibles dead, no data fetch, no refresh. A nonce CSP is
+// fundamentally incompatible with cached/static HTML (the nonce would have to
+// match across every cached serve, which it can't). Forcing all pages dynamic
+// to fix the match would kill the CDN cache the app depends on.
+//
+// So script-src keeps 'self' (same-origin bundles) + 'unsafe-inline' (Next's
+// inline hydration bootstrap, which can't be nonced without a fork) + the
+// AdSense origins. This is request-independent, so it caches correctly and the
+// app hydrates. All the other hardening directives below are retained.
 const ADSENSE_ORIGINS =
   "https://pagead2.googlesyndication.com " +
   "https://googleads.g.doubleclick.net " +
@@ -56,7 +66,7 @@ const ADSENSE_ORIGINS =
   "https://ep1.adtrafficquality.google " +
   "https://www.google.com";
 
-function buildCsp(nonce: string): string {
+function buildCsp(): string {
   return [
     "default-src 'self'",
     "base-uri 'self'",
@@ -64,7 +74,7 @@ function buildCsp(nonce: string): string {
     "frame-ancestors 'none'",
     "object-src 'none'",
     `img-src 'self' data: blob: https://upload.wikimedia.org https://*.basemaps.cartocdn.com https://*.googleusercontent.com ${ADSENSE_ORIGINS}`,
-    `script-src 'self' 'unsafe-inline' 'nonce-${nonce}' 'strict-dynamic' ${ADSENSE_ORIGINS}`,
+    `script-src 'self' 'unsafe-inline' ${ADSENSE_ORIGINS}`,
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self' data:",
     `connect-src 'self' https://communitysafe-api-production.up.railway.app https://nominatim.openstreetmap.org ${ADSENSE_ORIGINS}`,
@@ -74,6 +84,9 @@ function buildCsp(nonce: string): string {
     "upgrade-insecure-requests",
   ].join("; ");
 }
+
+// Request-independent, so it's computed once at module load.
+const CSP = buildCsp();
 
 function applyCsp(res: NextResponse, csp: string): NextResponse {
   res.headers.set("Content-Security-Policy", csp);
@@ -192,17 +205,14 @@ function clientIp(req: NextRequest): string {
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Per-request nonce + CSP for ALL routes (see buildCsp above).
-  const nonce = crypto.randomUUID().replace(/-/g, "");
-  const csp = buildCsp(nonce);
+  // Static CSP for ALL routes (see CSP/buildCsp above — request-independent so
+  // it caches correctly; no per-request nonce).
+  const csp = CSP;
 
-  // Non-API routes: propagate the nonce to Next via a request header (so it
-  // nonces its own scripts + next/script tags) and set the CSP on the response.
+  // Non-API routes: just set the CSP on the response. (No nonce to propagate —
+  // a nonce can't survive ISR/CDN caching; see the buildCsp comment.)
   if (!pathname.startsWith("/api/")) {
-    const requestHeaders = new Headers(req.headers);
-    requestHeaders.set("x-nonce", nonce);
-    requestHeaders.set("content-security-policy", csp);
-    return applyCsp(NextResponse.next({ request: { headers: requestHeaders } }), csp);
+    return applyCsp(NextResponse.next(), csp);
   }
 
   // Resolve the LIMIT first so a specific sub-path (e.g.
@@ -264,8 +274,7 @@ export function middleware(req: NextRequest) {
 }
 
 // Run on all routes EXCEPT Next's static assets / image optimizer / favicon,
-// so the per-request CSP + nonce reaches pages (the rate-limiter still only
-// acts on /api/*). Mirrors Next's recommended nonce-middleware matcher.
+// so the CSP header reaches pages (the rate-limiter still only acts on /api/*).
 export const config = {
   matcher: [
     {
