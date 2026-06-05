@@ -1,0 +1,19 @@
+{
+  "$schema": "https://schema.railpack.com",
+  "provider": "node",
+  "steps": {
+    "install": {
+      "commands": ["npm ci --include=dev --include-workspace-root"]
+    },
+    "build": {
+      "inputs": [{ "step": "install" }],
+      "commands": [
+        "npm run build --workspace packages/crime-data",
+        "npm run build:api"
+      ]
+    }
+  },
+  "deploy": {
+    "startCommand": "npm run start:api"
+  }
+}

@@ -1,7 +1,8 @@
 {
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
-    "builder": "NIXPACKS"
+    "//note": "fix(deploy logs — SecretsUsedInArgOrEnv): switched NIXPACKS → RAILPACK. Nixpacks baked Railway's runtime-only secrets (JWT_SECRET / GROQ_API_KEY / SOCRATA_APP_TOKEN / VAPID_PRIVATE_KEY) into a Docker ENV layer so they persisted in the image (Docker BuildKit flagged it; exposure is bounded — the image is private — but it's the wrong place for them). Railpack supplies secrets via BuildKit secret MOUNTS that never persist in the final image. Build steps declare NO secrets (npm ci + tsc + prisma generate need none). railpack.json replicates the Nixpacks build; openssl for the migrate-deploy schema engine comes from RAILPACK_DEPLOY_APT_PACKAGES=openssl (Railway var). Revert: set builder back to NIXPACKS (nixpacks.toml is retained).",
+    "builder": "RAILPACK"
   },
   "deploy": {
     "//note": "v96 — baseline 0_init was marked applied against Neon on 2026-05-28; production DB has the v96 schema (User.deletedAt + 4 new indexes). All future schema changes go through prisma migrate dev locally + are applied here via migrate deploy.",
