@@ -56,13 +56,13 @@ import type { NextConfig } from "next";
 // fetch in tryProxy() and any client-side same-origin /api/* calls
 // don't get blocked. Adjust if a new external endpoint is added.
 // NOTE: the AdSense-compatible CSP origins now live in src/middleware.ts
-// (ADSENSE_ORIGINS there), alongside the nonce'd Content-Security-Policy.
+// (ADSENSE_ORIGINS there), alongside the Content-Security-Policy itself.
 
-// fix(audit pentest-csp-unsafe-inline): the Content-Security-Policy moved to
-// src/middleware.ts so it can carry a per-request nonce + 'strict-dynamic'
-// (a static header can't). The remaining security headers stay here (they're
-// request-independent). Do NOT re-add CSP here — two CSP headers are ANDed by
-// the browser and would conflict with the nonce'd one.
+// The Content-Security-Policy lives in src/middleware.ts (a static, cache-safe
+// policy — see the long comment there for why a per-request nonce was REMOVED:
+// it broke hydration on every ISR/CDN-cached page). The remaining security
+// headers stay here. Do NOT re-add CSP here — two CSP headers are ANDed by the
+// browser and would conflict with the one set in middleware.
 const SECURITY_HEADERS = [
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
   { key: "X-Content-Type-Options",    value: "nosniff" },
