@@ -38,6 +38,16 @@ const svg = `<?xml version="1.0" encoding="UTF-8"?>
       <stop offset="0.5" stop-color="#E1A952" stop-opacity="0.34"/>
       <stop offset="1" stop-color="#0A1628" stop-opacity="0"/>
     </linearGradient>
+    <linearGradient id="harbor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#112A4A"/>
+      <stop offset="0.52" stop-color="#0A1A38"/>
+      <stop offset="1" stop-color="#020610"/>
+    </linearGradient>
+    <linearGradient id="harborGlow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFF2BE" stop-opacity="0.7"/>
+      <stop offset="0.48" stop-color="#D6A84F" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#88D7E8" stop-opacity="0"/>
+    </linearGradient>
     <linearGradient id="wtc" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#314B73"/>
       <stop offset="0.56" stop-color="#13213D"/>
@@ -53,9 +63,9 @@ const svg = `<?xml version="1.0" encoding="UTF-8"?>
     <circle cx="400" cy="36" r="1.2"/><circle cx="440" cy="80" r="1"/><circle cx="76" cy="138" r="1"/>
     <circle cx="148" cy="156" r="1.2"/><circle cx="380" cy="144" r="1"/><circle cx="452" cy="116" r="1.4"/>
   </g>
-  <path d="M162 190 C220 150 314 150 380 190" stroke="#FFE9B0" stroke-width="2" opacity="0.24" fill="none"/>
-  <path d="M128 224 C214 168 318 172 434 218" stroke="#88D7E8" stroke-width="2" opacity="0.16" fill="none"/>
-  <polygon points="214,196 298,192 388,468 128,468" fill="url(#beam)" opacity="0.72"/>
+  <path d="M142 188 C214 142 318 142 398 190" stroke="#FFE9B0" stroke-width="2" opacity="0.24" fill="none"/>
+  <path d="M104 226 C206 166 330 168 456 222" stroke="#88D7E8" stroke-width="2" opacity="0.16" fill="none"/>
+  <polygon points="198,190 314,190 420,462 92,462" fill="url(#beam)" opacity="0.72"/>
   <circle cx="258" cy="198" r="126" fill="url(#aura)"/>
   <g fill="#1E2A48" opacity="0.94">
     <rect x="16" y="348" width="28" height="90"/><rect x="44" y="360" width="22" height="78"/><rect x="66" y="330" width="36" height="108"/>
@@ -88,19 +98,24 @@ const svg = `<?xml version="1.0" encoding="UTF-8"?>
     <rect x="226" y="374" width="4" height="4"/><rect x="282" y="374" width="4" height="4"/><rect x="336" y="386" width="4" height="4"/><rect x="392" y="404" width="4" height="4"/>
     <rect x="438" y="372" width="4" height="4"/><rect x="472" y="390" width="4" height="4"/>
   </g>
-  <path d="M188 468 C214 386 238 318 256 250 C276 318 312 386 352 468Z" fill="url(#avenue)" opacity="0.86"/>
-  <path d="M250 262 C224 328 204 388 188 468M264 262 C292 330 322 390 352 468" stroke="#0A1628" stroke-width="3" opacity="0.55"/>
-  <path d="M256 296 L260 468" stroke="#FFD27F" stroke-width="4" stroke-dasharray="10 14" opacity="0.74"/>
-  <rect x="0" y="468" width="512" height="44" fill="#020610" opacity="0.9"/>
-  <g transform="rotate(-8 256 210)">
-  <path d="M250 190 Q158 134 72 194 Q126 198 192 218 Q150 222 112 254 Q180 244 226 250 Q190 258 166 282 Q222 264 260 260Z" fill="url(#wingL)"/>
-  <path d="M260 190 Q350 136 438 190 Q386 198 320 218 Q366 222 404 254 Q336 244 290 250 Q326 258 350 282 Q294 264 252 260Z" fill="url(#wingR)"/>
-  <path d="M254 198 Q198 186 142 198 Q196 202 226 214 Q196 218 170 232 Q226 224 254 228Z" fill="#FBF7E6" opacity="0.62"/>
-  <path d="M258 198 Q314 186 370 198 Q314 202 286 214 Q318 218 344 232 Q286 224 258 228Z" fill="#FBF7E6" opacity="0.62"/>
-  <path d="M180 218 C132 228 100 244 78 270M334 216 C386 226 420 242 448 268" stroke="#FBF7E6" stroke-width="4" opacity="0.3" fill="none"/>
-  <circle cx="86" cy="202" r="6" fill="#88D7E8" opacity="0.9"/><circle cx="426" cy="202" r="6" fill="#88D7E8" opacity="0.9"/>
-  <path d="M232 196 L282 196 L302 286 L310 312 L208 312 L214 286Z" fill="#FBF7E6"/>
-  <path d="M232 196 L240 310M256 196 L258 312M282 196 L274 310" stroke="#8CB6CC" stroke-width="1.5" opacity="0.44" fill="none"/>
+  <rect x="0" y="388" width="512" height="124" fill="url(#harbor)" opacity="0.98"/>
+  <path d="M0 390 C52 376 118 378 174 392 C224 405 282 404 340 390 C396 377 456 378 512 392 L512 512 L0 512Z" fill="#061426" opacity="0.72"/>
+  <path d="M210 392 C230 428 246 462 254 512 L342 512 C324 466 300 430 270 394Z" fill="url(#harborGlow)" opacity="0.88"/>
+  <path d="M62 418 C122 404 180 404 238 416M300 418 C364 404 430 406 492 420M28 452 C106 436 172 440 248 452M292 458 C366 442 432 444 504 456" stroke="#88D7E8" stroke-width="3" opacity="0.2" fill="none"/>
+  <path d="M236 430 h82M218 456 h112M204 484 h134" stroke="#FFF2BE" stroke-width="4" opacity="0.36" stroke-linecap="round"/>
+  <path d="M62 390 l15-44 l15 44Z" fill="#0A1628"/>
+  <path d="M77 346 l10-24 l10 24M77 330 v-26M64 346 h38" stroke="#88D7E8" stroke-width="4" opacity="0.5" fill="none" stroke-linecap="round"/>
+  <circle cx="86" cy="304" r="6" fill="#FFD27F" opacity="0.86"/>
+  <rect x="0" y="492" width="512" height="20" fill="#020610" opacity="0.78"/>
+  <g transform="rotate(-12 256 216) translate(-8 8)">
+  <path d="M250 190 Q150 124 56 194 Q118 198 190 220 Q144 224 100 258 Q176 248 226 254 Q186 264 158 292 Q218 272 260 264Z" fill="url(#wingL)"/>
+  <path d="M260 190 Q360 124 456 190 Q398 198 324 220 Q372 224 414 258 Q338 248 290 254 Q330 264 358 292 Q298 272 252 264Z" fill="url(#wingR)"/>
+  <path d="M254 198 Q194 184 132 198 Q194 204 226 216 Q192 220 162 238 Q226 228 254 232Z" fill="#FBF7E6" opacity="0.62"/>
+  <path d="M258 198 Q318 184 380 198 Q318 204 286 216 Q322 220 352 238 Q286 228 258 232Z" fill="#FBF7E6" opacity="0.62"/>
+  <path d="M170 222 C120 234 86 252 54 284M344 220 C398 232 436 250 468 280" stroke="#FBF7E6" stroke-width="4" opacity="0.3" fill="none"/>
+  <circle cx="70" cy="202" r="6" fill="#88D7E8" opacity="0.9"/><circle cx="442" cy="202" r="6" fill="#88D7E8" opacity="0.9"/>
+  <path d="M232 196 L282 196 L304 290 L314 318 L206 318 L214 286Z" fill="#FBF7E6"/>
+  <path d="M232 196 L240 316M256 196 L258 318M282 196 L274 316" stroke="#8CB6CC" stroke-width="1.5" opacity="0.44" fill="none"/>
   <circle cx="256" cy="172" r="20" fill="#FBF7E6"/>
   <path d="M240 168 Q256 158 272 168 Q272 162 256 156 Q240 162 240 168Z" fill="#8CB6CC" opacity="0.18"/>
   <ellipse cx="256" cy="142" rx="40" ry="11" fill="none" stroke="#FFD27F" stroke-width="4" opacity="0.96"/>
