@@ -14,7 +14,12 @@ import { cityLocalToUtcIso } from "../lib/city-time.js";
 // SOCIETY) so we don't have to infer it from offense names.
 
 const BASE = "https://data.brla.gov/resource/pbin-pcm7.json";
-const ROW_LIMIT = 5_000;
+// v111 — 5,000 → 14,000. BRPD's feed is charge-level (multiple charges per
+// incident), so 5,000 rows only spanned ~56 days — short of the 90+ needed for
+// high-confidence scoring, leaving Baton Rouge stuck at "medium". 14,000 rows
+// (report_date DESC) reaches a ~150-day window for a more stable annual rate and
+// genuine high confidence, with negligible memory cost for a 217k-pop city.
+const ROW_LIMIT = 14_000;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; rows: Incident[] } | null = null;
 registerRowCache(() => { cache = null; }, "baton-rouge-socrata");
