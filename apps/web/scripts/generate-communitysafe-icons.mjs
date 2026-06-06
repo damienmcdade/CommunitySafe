@@ -4,126 +4,115 @@ import sharp from "sharp";
 
 const root = path.resolve(import.meta.dirname, "..");
 
+// ===== CommunitySafe icon — "Sheltering Wing" (concept 2) =====
+// A single luminous guardian-angel wing arcing protectively over a minimal
+// downtown-Manhattan skyline at dusk (Empire State + a terraced crown), warm
+// gilded street glow below. The wing is the focal element that survives at 48px;
+// the skyline is a supporting silhouette baseline. Secular (no halo/face), in the
+// category's unclaimed "wing" white space (competitors are flat blue shields/pins/
+// houses). Palette extends the brand: midnight-dusk navy field, white→cyan wing,
+// gold windows, gilded base. Built parametrically so the feathering is tunable.
+
+const D = (n) => n.toFixed(1);
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = (t) => t * t * (3 - 2 * t);
+const bez = (t, p0, p1, p2) => { const u = 1 - t; return [u * u * p0[0] + 2 * u * t * p1[0] + t * t * p2[0], u * u * p0[1] + 2 * u * t * p1[1] + t * t * p2[1]]; };
+
+// One feather: root -> curved blade -> curled tip -> back (angDeg: 90 = down).
+function feather(rx, ry, angDeg, len, wid, curlDeg) {
+  const a = (angDeg * Math.PI) / 180, a2 = ((angDeg + curlDeg) * Math.PI) / 180;
+  const tx = rx + len * Math.cos(a2), ty = ry + len * Math.sin(a2);
+  const px = -Math.sin(a), py = Math.cos(a);
+  const mx = rx + len * 0.5 * Math.cos(a), my = ry + len * 0.5 * Math.sin(a);
+  return `M${D(rx)} ${D(ry)} Q${D(mx + px * wid)} ${D(my + py * wid)} ${D(tx)} ${D(ty)} Q${D(mx - px * wid)} ${D(my - py * wid)} ${D(rx)} ${D(ry)} Z`;
+}
+
+// Leading-edge arc (wing "arm"): shoulder right -> arches up over the city -> wingtip left.
+const S = [398, 214], C = [246, 110], T = [92, 168];
+function buildWing(rows) {
+  let out = "";
+  for (const r of rows) {
+    const { n, l0, l1, w, a0, a1, curl, fill, op, t0 = 0, t1 = 1 } = r;
+    for (let i = 0; i < n; i++) {
+      const u = n === 1 ? 0 : i / (n - 1);
+      const [rx, ry] = bez(lerp(t0, t1, u), S, C, T);
+      const len = lerp(l0, l1, smooth(u));
+      out += `<path d="${feather(rx, ry, lerp(a0, a1, u), len, len * w, curl)}" fill="${fill}" fill-opacity="${op}" stroke="#4E93AD" stroke-width="1.1" stroke-opacity="0.4"/>`;
+    }
+  }
+  return out;
+}
+const wing =
+  buildWing([{ n: 12, l0: 96, l1: 250, w: 0.13, a0: 104, a1: 158, curl: -20, fill: "url(#wing)", op: 1 }]) +
+  buildWing([{ n: 9, l0: 66, l1: 150, w: 0.16, a0: 110, a1: 150, curl: -16, fill: "url(#wing2)", op: 1, t0: 0.05, t1: 0.92 }]) +
+  buildWing([{ n: 6, l0: 48, l1: 92, w: 0.2, a0: 116, a1: 142, curl: -12, fill: "#FFFEF8", op: 0.97, t0: 0.1, t1: 0.8 }]);
+const rim = `<path d="M${D(S[0])} ${D(S[1])} Q${D(C[0])} ${D(C[1])} ${D(T[0])} ${D(T[1])}" fill="none" stroke="#FFFEF8" stroke-width="5" stroke-opacity="0.9" stroke-linecap="round"/>`;
+const knuckle = `<circle cx="${D(S[0])}" cy="${D(S[1])}" r="9" fill="url(#wing2)"/>`;
+
 const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#050B1C"/>
-      <stop offset="0.55" stop-color="#0A1A38"/>
-      <stop offset="0.85" stop-color="#1A2D55"/>
-      <stop offset="1" stop-color="#020610"/>
+      <stop offset="0" stop-color="#050B1C"/><stop offset="0.5" stop-color="#0B1C3C"/>
+      <stop offset="0.86" stop-color="#1B2F58"/><stop offset="1" stop-color="#04091A"/>
     </linearGradient>
-    <radialGradient id="aura" cx="0.5" cy="0.38" r="0.55">
-      <stop offset="0" stop-color="#FFE7A8" stop-opacity="0.65"/>
-      <stop offset="0.45" stop-color="#FFE7A8" stop-opacity="0.18"/>
+    <radialGradient id="aura" cx="0.42" cy="0.34" r="0.6">
+      <stop offset="0" stop-color="#FFE7A8" stop-opacity="0.4"/>
+      <stop offset="0.5" stop-color="#9FD8E8" stop-opacity="0.1"/>
       <stop offset="1" stop-color="#FFE7A8" stop-opacity="0"/>
     </radialGradient>
-    <linearGradient id="beam" x1="0.5" y1="0" x2="0.5" y2="1">
-      <stop offset="0" stop-color="#FFE9B0" stop-opacity="0.62"/>
-      <stop offset="0.75" stop-color="#FFE9B0" stop-opacity="0.16"/>
-      <stop offset="1" stop-color="#FFE9B0" stop-opacity="0"/>
+    <linearGradient id="wing" x1="0.95" y1="0.05" x2="0.1" y2="0.9">
+      <stop offset="0" stop-color="#FFFDF4"/><stop offset="0.45" stop-color="#E8F2F7"/>
+      <stop offset="0.78" stop-color="#A2DBEB"/><stop offset="1" stop-color="#5FBFD8"/>
     </linearGradient>
-    <linearGradient id="wingL" x1="1" y1="0" x2="0" y2="0.5">
-      <stop offset="0" stop-color="#FBF7E6"/>
-      <stop offset="0.65" stop-color="#E8F1F5"/>
-      <stop offset="1" stop-color="#88D7E8"/>
+    <linearGradient id="wing2" x1="0.9" y1="0.05" x2="0.2" y2="0.95">
+      <stop offset="0" stop-color="#FFFEF8"/><stop offset="0.6" stop-color="#DBEDF4"/><stop offset="1" stop-color="#88D2E5"/>
     </linearGradient>
-    <linearGradient id="wingR" x1="0" y1="0" x2="1" y2="0.5">
-      <stop offset="0" stop-color="#FBF7E6"/>
-      <stop offset="0.65" stop-color="#E8F1F5"/>
-      <stop offset="1" stop-color="#88D7E8"/>
+    <linearGradient id="bld" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#17263F"/><stop offset="1" stop-color="#060E1E"/>
     </linearGradient>
-    <linearGradient id="avenue" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#FFF2BE" stop-opacity="0.76"/>
-      <stop offset="0.5" stop-color="#E1A952" stop-opacity="0.34"/>
+    <linearGradient id="gild" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFE9B0" stop-opacity="0.8"/>
+      <stop offset="0.5" stop-color="#D6A84F" stop-opacity="0.26"/>
       <stop offset="1" stop-color="#0A1628" stop-opacity="0"/>
     </linearGradient>
-    <linearGradient id="harbor" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#112A4A"/>
-      <stop offset="0.52" stop-color="#0A1A38"/>
-      <stop offset="1" stop-color="#020610"/>
-    </linearGradient>
-    <linearGradient id="harborGlow" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#FFF2BE" stop-opacity="0.7"/>
-      <stop offset="0.48" stop-color="#D6A84F" stop-opacity="0.28"/>
-      <stop offset="1" stop-color="#88D7E8" stop-opacity="0"/>
-    </linearGradient>
-    <linearGradient id="wtc" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#314B73"/>
-      <stop offset="0.56" stop-color="#13213D"/>
-      <stop offset="1" stop-color="#07101F"/>
-    </linearGradient>
   </defs>
+
   <rect width="512" height="512" rx="96" fill="url(#sky)"/>
-  <circle cx="406" cy="118" r="20" fill="#FFE9B0" opacity="0.9"/>
-  <circle cx="406" cy="118" r="58" fill="#FFE9B0" opacity="0.12"/>
-  <g fill="#F6F2D8" opacity="0.9">
-    <circle cx="56" cy="56" r="1.4"/><circle cx="120" cy="92" r="1"/><circle cx="168" cy="40" r="1.6"/>
-    <circle cx="216" cy="76" r="1"/><circle cx="296" cy="48" r="1.4"/><circle cx="336" cy="88" r="1"/>
-    <circle cx="400" cy="36" r="1.2"/><circle cx="440" cy="80" r="1"/><circle cx="76" cy="138" r="1"/>
-    <circle cx="148" cy="156" r="1.2"/><circle cx="380" cy="144" r="1"/><circle cx="452" cy="116" r="1.4"/>
+  <g fill="#EAF2F6" opacity="0.85">
+    <circle cx="64" cy="58" r="1.4"/><circle cx="150" cy="40" r="1"/><circle cx="318" cy="38" r="1.3"/>
+    <circle cx="430" cy="64" r="1.2"/><circle cx="466" cy="118" r="1"/><circle cx="40" cy="140" r="1"/>
+    <circle cx="232" cy="50" r="0.9"/><circle cx="372" cy="46" r="1"/>
   </g>
-  <path d="M142 188 C214 142 318 142 398 190" stroke="#FFE9B0" stroke-width="2" opacity="0.24" fill="none"/>
-  <path d="M104 226 C206 166 330 168 456 222" stroke="#88D7E8" stroke-width="2" opacity="0.16" fill="none"/>
-  <polygon points="198,190 314,190 420,462 92,462" fill="url(#beam)" opacity="0.72"/>
-  <circle cx="258" cy="198" r="126" fill="url(#aura)"/>
-  <g fill="#1E2A48" opacity="0.94">
-    <rect x="16" y="348" width="28" height="90"/><rect x="44" y="360" width="22" height="78"/><rect x="66" y="330" width="36" height="108"/>
-    <rect x="102" y="350" width="26" height="88"/><rect x="128" y="320" width="32" height="118"/><rect x="160" y="340" width="24" height="98"/>
-    <rect x="184" y="326" width="30" height="112"/><rect x="218" y="344" width="28" height="94"/><rect x="246" y="318" width="32" height="120"/>
-    <rect x="278" y="332" width="26" height="106"/><rect x="304" y="346" width="28" height="92"/><rect x="332" y="318" width="32" height="120"/>
-    <rect x="364" y="336" width="24" height="102"/><rect x="388" y="322" width="30" height="116"/><rect x="418" y="348" width="26" height="90"/>
-    <rect x="444" y="332" width="32" height="106"/><rect x="476" y="350" width="24" height="88"/>
+  <ellipse cx="226" cy="196" rx="216" ry="166" fill="url(#aura)"/>
+
+  <g fill="url(#bld)">
+    <rect x="18" y="392" width="42" height="88"/><rect x="60" y="372" width="32" height="108"/>
+    <rect x="92" y="386" width="26" height="94"/><rect x="332" y="386" width="26" height="94"/>
+    <rect x="358" y="372" width="36" height="108"/><rect x="394" y="392" width="34" height="88"/>
+    <rect x="428" y="404" width="46" height="76"/>
   </g>
-  <g fill="#0F1A33">
-    <rect x="22" y="312" width="44" height="168"/><rect x="66" y="296" width="38" height="184"/><rect x="104" y="268" width="50" height="212"/>
-    <rect x="154" y="256" width="44" height="224"/><rect x="198" y="240" width="52" height="240"/><rect x="250" y="224" width="56" height="256"/>
-    <rect x="306" y="240" width="52" height="240"/><rect x="358" y="256" width="44" height="224"/><rect x="402" y="268" width="50" height="212"/>
-    <rect x="452" y="296" width="38" height="184"/><rect x="276" y="208" width="4" height="20"/><rect x="222" y="226" width="3" height="16"/>
-    <rect x="328" y="226" width="3" height="16"/>
+  <g>
+    <rect x="150" y="322" width="42" height="158" fill="url(#bld)"/>
+    <path d="M171 280 L150 322 L192 322 Z" fill="url(#bld)"/>
+    <path d="M171 290 L162 322 M171 290 L180 322 M171 300 L156 322 M171 300 L186 322" stroke="#3A567C" stroke-width="1.2" opacity="0.5"/>
+    <rect x="169" y="258" width="4" height="24" fill="#9FD8E8"/>
   </g>
-  <g opacity="0.98">
-    <path d="M246 136 L288 160 L304 468 L224 468 L238 160Z" fill="url(#wtc)"/>
-    <path d="M266 74 L272 138 L258 138Z" fill="#D7E8F0"/>
-    <path d="M252 152 L286 170 L298 468 L232 468 L242 170Z" fill="#0B1730" opacity="0.38"/>
-    <path d="M256 174h8M256 196h9M255 218h10M254 240h11M254 262h11M253 284h12M252 306h13M252 328h14M251 350h15M250 372h16M250 394h17M249 416h18" stroke="#FFD27F" stroke-width="3" opacity="0.58"/>
-    <path d="M236 170 L220 468M292 170 L314 468" stroke="#88D7E8" stroke-width="1.2" opacity="0.2"/>
+  <g>
+    <rect x="228" y="288" width="56" height="192" fill="url(#bld)"/>
+    <rect x="238" y="266" width="36" height="24" fill="url(#bld)"/><rect x="249" y="250" width="14" height="18" fill="url(#bld)"/>
+    <rect x="254" y="208" width="5" height="44" fill="#CFE3EC"/><circle cx="256" cy="208" r="3" fill="#FFE9B0"/>
   </g>
   <g fill="#FFD27F">
-    <rect x="30" y="330" width="4" height="4"/><rect x="48" y="356" width="4" height="4"/><rect x="78" y="315" width="4" height="4"/><rect x="118" y="288" width="4" height="4"/>
-    <rect x="142" y="336" width="4" height="4"/><rect x="166" y="280" width="4" height="4"/><rect x="188" y="330" width="4" height="4"/><rect x="214" y="262" width="4" height="4"/>
-    <rect x="238" y="314" width="4" height="4"/><rect x="270" y="244" width="4" height="4"/><rect x="294" y="326" width="4" height="4"/><rect x="318" y="260" width="4" height="4"/>
-    <rect x="348" y="318" width="4" height="4"/><rect x="374" y="280" width="4" height="4"/><rect x="416" y="292" width="4" height="4"/><rect x="462" y="320" width="4" height="4"/>
-    <rect x="58" y="390" width="4" height="4"/><rect x="92" y="372" width="4" height="4"/><rect x="130" y="404" width="4" height="4"/><rect x="176" y="386" width="4" height="4"/>
-    <rect x="226" y="374" width="4" height="4"/><rect x="282" y="374" width="4" height="4"/><rect x="336" y="386" width="4" height="4"/><rect x="392" y="404" width="4" height="4"/>
-    <rect x="438" y="372" width="4" height="4"/><rect x="472" y="390" width="4" height="4"/>
+    <rect x="28" y="404" width="4" height="4"/><rect x="46" y="428" width="4" height="4"/><rect x="70" y="388" width="4" height="4"/>
+    <rect x="100" y="400" width="4" height="4"/><rect x="244" y="312" width="4" height="4"/><rect x="266" y="340" width="4" height="4"/>
+    <rect x="250" y="372" width="4" height="4"/><rect x="340" y="404" width="4" height="4"/><rect x="368" y="388" width="4" height="4"/>
+    <rect x="404" y="408" width="4" height="4"/><rect x="440" y="420" width="4" height="4"/><rect x="162" y="350" width="4" height="4"/>
   </g>
-  <rect x="0" y="388" width="512" height="124" fill="url(#harbor)" opacity="0.98"/>
-  <path d="M0 390 C52 376 118 378 174 392 C224 405 282 404 340 390 C396 377 456 378 512 392 L512 512 L0 512Z" fill="#061426" opacity="0.72"/>
-  <path d="M210 392 C230 428 246 462 254 512 L342 512 C324 466 300 430 270 394Z" fill="url(#harborGlow)" opacity="0.88"/>
-  <path d="M62 418 C122 404 180 404 238 416M300 418 C364 404 430 406 492 420M28 452 C106 436 172 440 248 452M292 458 C366 442 432 444 504 456" stroke="#88D7E8" stroke-width="3" opacity="0.2" fill="none"/>
-  <path d="M236 430 h82M218 456 h112M204 484 h134" stroke="#FFF2BE" stroke-width="4" opacity="0.36" stroke-linecap="round"/>
-  <path d="M62 390 l15-44 l15 44Z" fill="#0A1628"/>
-  <path d="M77 346 l10-24 l10 24M77 330 v-26M64 346 h38" stroke="#88D7E8" stroke-width="4" opacity="0.5" fill="none" stroke-linecap="round"/>
-  <circle cx="86" cy="304" r="6" fill="#FFD27F" opacity="0.86"/>
-  <rect x="0" y="492" width="512" height="20" fill="#020610" opacity="0.78"/>
-  <g transform="rotate(-12 256 216) translate(-8 8)">
-  <path d="M250 190 Q150 124 56 194 Q118 198 190 220 Q144 224 100 258 Q176 248 226 254 Q186 264 158 292 Q218 272 260 264Z" fill="url(#wingL)"/>
-  <path d="M260 190 Q360 124 456 190 Q398 198 324 220 Q372 224 414 258 Q338 248 290 254 Q330 264 358 292 Q298 272 252 264Z" fill="url(#wingR)"/>
-  <path d="M254 198 Q194 184 132 198 Q194 204 226 216 Q192 220 162 238 Q226 228 254 232Z" fill="#FBF7E6" opacity="0.62"/>
-  <path d="M258 198 Q318 184 380 198 Q318 204 286 216 Q322 220 352 238 Q286 228 258 232Z" fill="#FBF7E6" opacity="0.62"/>
-  <path d="M170 222 C120 234 86 252 54 284M344 220 C398 232 436 250 468 280" stroke="#FBF7E6" stroke-width="4" opacity="0.3" fill="none"/>
-  <circle cx="70" cy="202" r="6" fill="#88D7E8" opacity="0.9"/><circle cx="442" cy="202" r="6" fill="#88D7E8" opacity="0.9"/>
-  <path d="M232 196 L282 196 L304 290 L314 318 L206 318 L214 286Z" fill="#FBF7E6"/>
-  <path d="M232 196 L240 316M256 196 L258 318M282 196 L274 316" stroke="#8CB6CC" stroke-width="1.5" opacity="0.44" fill="none"/>
-  <circle cx="256" cy="172" r="20" fill="#FBF7E6"/>
-  <path d="M240 168 Q256 158 272 168 Q272 162 256 156 Q240 162 240 168Z" fill="#8CB6CC" opacity="0.18"/>
-  <ellipse cx="256" cy="142" rx="40" ry="11" fill="none" stroke="#FFD27F" stroke-width="4" opacity="0.96"/>
-  <ellipse cx="256" cy="142" rx="46" ry="13" fill="none" stroke="#FFD27F" stroke-width="2" opacity="0.55"/>
-  <ellipse cx="256" cy="142" rx="34" ry="9" fill="none" stroke="#C99841" stroke-width="1.5" opacity="0.75"/>
-  <ellipse cx="246" cy="138" rx="8" ry="2" fill="#FBF7E6" opacity="0.9"/>
-  </g>
-  <circle cx="256" cy="220" r="108" fill="none" stroke="#FFE7A8" stroke-width="1" opacity="0.22"/>
+  <rect x="0" y="456" width="512" height="56" fill="url(#gild)"/>
+  <rect x="0" y="498" width="512" height="14" fill="#04091A" opacity="0.7"/>
+
+  <g transform="rotate(-3 250 220)">${wing}${rim}${knuckle}</g>
 </svg>`;
 
 async function png(outPath, size, flatten = true) {
@@ -146,7 +135,6 @@ const android = [
   ["mipmap-xxhdpi", 144],
   ["mipmap-xxxhdpi", 192],
 ];
-
 for (const [dir, size] of android) {
   const base = path.join(root, "android/app/src/main/res", dir);
   await png(path.join(base, "ic_launcher.png"), size);
@@ -154,4 +142,4 @@ for (const [dir, size] of android) {
   await png(path.join(base, "ic_launcher_foreground.png"), size, false);
 }
 
-console.log("CommunitySafe icon assets regenerated.");
+console.log("CommunitySafe 'Sheltering Wing' icon assets regenerated.");
