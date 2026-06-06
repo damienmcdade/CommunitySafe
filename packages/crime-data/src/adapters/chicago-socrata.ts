@@ -151,17 +151,28 @@ async function fetchChicago(): Promise<{ rows: Incident[]; areaByNum: Map<number
   return { rows, areaByNum };
 }
 
+// v107 — in-flight fetch dedup (the OOM-guard Detroit added in v94). Without it
+// the dispatcher's per-area fan-out fired N concurrent 50k-row fetches on a cold
+// cache. Concurrent callers now await the same promise.
+let inFlightChiFetch: Promise<Incident[]> | null = null;
+
 export async function getRowsChicago(): Promise<Incident[]> {
   const now = Date.now();
   if (cache && cache.rows.length > 0 && now - cache.fetchedAt < CACHE_TTL_MS) return cache.rows;
-  try {
-    const { rows, areaByNum } = await fetchChicago();
-    if (rows.length > 0) cache = { fetchedAt: now, rows, areaByNum };
-    return rows;
-  } catch (err) {
-    console.warn("[chicago] fetch failed:", (err as Error).message);
-    return cache?.rows ?? [];
-  }
+  if (inFlightChiFetch) return inFlightChiFetch;
+  inFlightChiFetch = (async () => {
+    try {
+      const { rows, areaByNum } = await fetchChicago();
+      if (rows.length > 0) cache = { fetchedAt: now, rows, areaByNum };
+      return rows;
+    } catch (err) {
+      console.warn("[chicago] fetch failed:", (err as Error).message);
+      return cache?.rows ?? [];
+    } finally {
+      inFlightChiFetch = null;
+    }
+  })();
+  return inFlightChiFetch;
 }
 
 export async function getDiscoveredAreasChicago(): Promise<KnownArea[]> {

@@ -94,25 +94,39 @@ function parseOccurredAt(r: Record<string, string>): string {
   return new Date(0).toISOString();
 }
 
+// v107 — in-flight fetch dedup (the OOM-guard Detroit added in v94). SDPD is in
+// the heavy warm bucket; without this the dispatcher's per-area fan-out fired N
+// concurrent full CSV fetches on a cold cache. Concurrent callers now await the
+// same promise.
+let inFlightSdFetch: Promise<Incident[]> | null = null;
+
 export async function getRows(): Promise<Incident[]> {
   const now = Date.now();
   if (cache && now - cache.fetchedAt < CACHE_TTL_MS) return cache.rows;
-  const currentYear = new Date().getFullYear();
-  let rows: Incident[] = [];
-  for (let y = currentYear; y >= currentYear - 2 && rows.length === 0; y--) {
+  if (inFlightSdFetch) return inFlightSdFetch;
+  inFlightSdFetch = (async () => {
     try {
-      rows = await fetchYear(y);
-      cache = { fetchedAt: now, year: y, rows };
-      break;
-    } catch (err) {
-      // Log so upstream feed problems show up in deploy logs instead of
-      // silently falling back to the prior year — matches the pattern in
-      // every other adapter's fetch path.
-      console.warn(`[sdpd] fetchYear(${y}) failed:`, (err as Error).message);
-      if (y === currentYear - 2) throw err;
+      const currentYear = new Date().getFullYear();
+      let rows: Incident[] = [];
+      for (let y = currentYear; y >= currentYear - 2 && rows.length === 0; y--) {
+        try {
+          rows = await fetchYear(y);
+          cache = { fetchedAt: now, year: y, rows };
+          break;
+        } catch (err) {
+          // Log so upstream feed problems show up in deploy logs instead of
+          // silently falling back to the prior year — matches the pattern in
+          // every other adapter's fetch path.
+          console.warn(`[sdpd] fetchYear(${y}) failed:`, (err as Error).message);
+          if (y === currentYear - 2) throw err;
+        }
+      }
+      return rows;
+    } finally {
+      inFlightSdFetch = null;
     }
-  }
-  return rows;
+  })();
+  return inFlightSdFetch;
 }
 
 /// Discover neighborhoods from the cached SDPD CSV. Every unique neighborhood

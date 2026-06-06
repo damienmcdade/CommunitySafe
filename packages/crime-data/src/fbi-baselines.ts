@@ -29,6 +29,17 @@
 // PD and needs a separate fix; DC's real 2023 rate is materially higher and is
 // flagged for a follow-up correction).
 //
+// fix(audit fbi-year-label, 2026-06-06): 9 entries still carried `year: 2025`
+// — a reporting year the FBI has NOT published (2024 is the latest, released
+// Aug 2025; 2025 publishes ~Sept 2026). The `year` is metadata ONLY (rendered
+// verbatim in the user-facing citywide disclaimer; it does NOT affect any
+// grade) and it contradicted the 2023 vintage shown elsewhere. Relabeled to
+// 2024 (the latest real FBI year): accurate for the MANUAL_OVERRIDE cities
+// whose comments cite "FBI 2024" (dallas/denver/kansas-city/san-francisco), and
+// the most-recent real year for the held estimates (baton-rouge/colorado-
+// springs/new-york/chicago/oakland) that lacked a clean 2023 CDE agency series.
+// Values are UNCHANGED — this is a labeling-honesty fix only.
+//
 // Each entry is the city's OWN FBI-published rate — the authoritative
 // comparison anchor for citywide scoring (vs the national average, which is
 // pulled down by rural areas and collapses every urban city to grade E).
@@ -50,7 +61,7 @@ export interface CityFbiBaseline {
 }
 
 const BASE_FBI_BASELINES: Record<string, CityFbiBaseline> = {
-  "baton-rouge": { violent: 1422, property: 4927, year: 2025, ori: "LA0170200" },
+  "baton-rouge": { violent: 1422, property: 4927, year: 2024, ori: "LA0170200" },
   "boise": { violent: 280, property: 1268, year: 2023, ori: "ID0010100" },
   "austin": { violent: 516, property: 3360, year: 2023, ori: "TX2270100" },
   "phoenix": { violent: 785, property: 2495, year: 2023, ori: "AZ0072300" },
@@ -62,23 +73,23 @@ const BASE_FBI_BASELINES: Record<string, CityFbiBaseline> = {
   "buffalo": { violent: 761, property: 4286, year: 2023, ori: "NY0140100" },
   "cambridge": { violent: 479, property: 2402, year: 2023, ori: "MA0091100" },
   "charlotte": { violent: 726, property: 3854, year: 2023, ori: "NC0600100" },
-  "chicago": { violent: 420, property: 2956, year: 2025, ori: "ILCPD0000" },
+  "chicago": { violent: 420, property: 2956, year: 2024, ori: "ILCPD0000" },
   "cincinnati": { violent: 743, property: 4303, year: 2023, ori: "OHCIP0000" },
   "cleveland": { violent: 1726, property: 4981, year: 2023, ori: "OHCLP0000" },
-  "dallas": { violent: 576, property: 3070, year: 2025, ori: "TXDPD0000" },
-  "colorado-springs": { violent: 670, property: 3900, year: 2025, ori: "CO0210100" },
-  "denver": { violent: 873, property: 4196, year: 2025, ori: "CO0160100" },
+  "dallas": { violent: 576, property: 3070, year: 2024, ori: "TXDPD0000" },
+  "colorado-springs": { violent: 670, property: 3900, year: 2024, ori: "CO0210100" },
+  "denver": { violent: 873, property: 4196, year: 2024, ori: "CO0160100" },
   "detroit": { violent: 2051, property: 4845, year: 2023, ori: "MI8234900" },
-  "kansas-city": { violent: 1371, property: 3970, year: 2025, ori: "MOKPD0000" },
+  "kansas-city": { violent: 1371, property: 3970, year: 2024, ori: "MOKPD0000" },
   "las-vegas": { violent: 473, property: 3101, year: 2023, ori: "NV0020100" },
   "los-angeles": { violent: 820, property: 2851, year: 2023, ori: "CA0194200" },
   "milwaukee": { violent: 1502, property: 2820, year: 2023, ori: "WIMPD0000" },
   "minneapolis": { violent: 1137, property: 5309, year: 2023, ori: "MN0271100" },
   "baltimore": { violent: 1694, property: 5160, year: 2023, ori: "MDBPD0000" },
   "new-orleans": { violent: 1361, property: 5090, year: 2023, ori: "LANPD0000" },
-  "new-york": { violent: 658, property: 2288, year: 2025, ori: "NY0303000" },
+  "new-york": { violent: 658, property: 2288, year: 2024, ori: "NY0303000" },
   "norfolk": { violent: 543, property: 3851, year: 2023, ori: "VA1170000" },
-  "oakland": { violent: 1475, property: 5255, year: 2025, ori: "CA0010900" },
+  "oakland": { violent: 1475, property: 5255, year: 2024, ori: "CA0010900" },
   "philadelphia": { violent: 992, property: 5121, year: 2023, ori: "PAPEP0000" },
   // v112 — corrected to the REAL Fort Worth PD. The prior ORI TX2200200 was Azle
   // PD (a tiny suburb, 337/1567); Fort Worth PD is TX2201200 → FBI CDE 2023
@@ -87,7 +98,7 @@ const BASE_FBI_BASELINES: Record<string, CityFbiBaseline> = {
   "pittsburgh": { violent: 507, property: 2532, year: 2023, ori: "PAPPD0000" },
   "saint-paul": { violent: 626, property: 3157, year: 2023, ori: "MN0620900" },
   "san-diego": { violent: 425, property: 1831, year: 2023, ori: "CA0371100" },
-  "san-francisco": { violent: 486, property: 2960, year: 2025, ori: "CA0380100" },
+  "san-francisco": { violent: 486, property: 2960, year: 2024, ori: "CA0380100" },
   "seattle": { violent: 789, property: 5071, year: 2023, ori: "WASPD0000" },
   // DC MPD (DCMPD0000) polices all of DC. fix(audit dc-baseline-trueup): the
   // v112 value (1157/4336) overstated it. FBI CDE 2023 for this agency (pop

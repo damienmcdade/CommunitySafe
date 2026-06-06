@@ -184,19 +184,31 @@ async function fetchLapd(): Promise<Incident[]> {
   });
 }
 
+// v107 — in-flight fetch dedup (the OOM-guard Detroit added in v94). The
+// dispatcher fans a per-area Promise.all over every LA neighbourhood; on a cold
+// cache that previously fired N concurrent two-dataset (50k+50k) fetches, each
+// allocating its own buffer. Concurrent callers now await the same promise.
+let inFlightLaFetch: Promise<Incident[]> | null = null;
+
 export async function getRowsLA(): Promise<Incident[]> {
   const now = Date.now();
   // Only honor cache if it actually has data — caching an empty failed fetch
   // for 6 hours would silently break discovery + UI.
   if (cache && cache.rows.length > 0 && now - cache.fetchedAt < CACHE_TTL_MS) return cache.rows;
-  try {
-    const rows = await fetchLapd();
-    if (rows.length > 0) cache = { fetchedAt: now, rows };
-    return rows;
-  } catch (err) {
-    console.warn("[lapd] fetch failed:", (err as Error).message);
-    return cache?.rows ?? [];
-  }
+  if (inFlightLaFetch) return inFlightLaFetch;
+  inFlightLaFetch = (async () => {
+    try {
+      const rows = await fetchLapd();
+      if (rows.length > 0) cache = { fetchedAt: now, rows };
+      return rows;
+    } catch (err) {
+      console.warn("[lapd] fetch failed:", (err as Error).message);
+      return cache?.rows ?? [];
+    } finally {
+      inFlightLaFetch = null;
+    }
+  })();
+  return inFlightLaFetch;
 }
 
 export async function getDiscoveredAreasLA(): Promise<KnownArea[]> {

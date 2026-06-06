@@ -213,21 +213,32 @@ async function fetchDC(): Promise<{ incidents: Incident[]; complete: boolean }> 
   return { incidents: out, complete: pageFailures === 0 };
 }
 
+// v107 — in-flight fetch dedup (the OOM-guard Detroit added in v94). DC is ~120k
+// rows; without this the dispatcher's per-area fan-out fired N concurrent full
+// fetches on a cold cache. Concurrent callers now await the same promise.
+let inFlightDcFetch: Promise<Incident[]> | null = null;
+
 export async function getRowsDC(): Promise<Incident[]> {
   const now = Date.now();
   if (cache && cache.rows.length > 0 && now - cache.fetchedAt < CACHE_TTL_MS) return cache.rows;
-  try {
-    const { incidents, complete } = await fetchDC();
-    // fix(audit loc-dc-partial-cache-2): only cache a COMPLETE pull. Caching a
-    // partial result (some pages errored) would pin an undercount for the whole
-    // TTL — the exact bug Detroit hit. On a partial pull we still SERVE what we
-    // got for this request, but leave the cache so the next request retries.
-    if (incidents.length > 0 && complete) cache = { fetchedAt: now, rows: incidents };
-    return incidents.length > 0 ? incidents : (cache?.rows ?? []);
-  } catch (err) {
-    console.warn("[dc] fetch failed:", (err as Error).message);
-    return cache?.rows ?? [];
-  }
+  if (inFlightDcFetch) return inFlightDcFetch;
+  inFlightDcFetch = (async () => {
+    try {
+      const { incidents, complete } = await fetchDC();
+      // fix(audit loc-dc-partial-cache-2): only cache a COMPLETE pull. Caching a
+      // partial result (some pages errored) would pin an undercount for the whole
+      // TTL — the exact bug Detroit hit. On a partial pull we still SERVE what we
+      // got for this request, but leave the cache so the next request retries.
+      if (incidents.length > 0 && complete) cache = { fetchedAt: now, rows: incidents };
+      return incidents.length > 0 ? incidents : (cache?.rows ?? []);
+    } catch (err) {
+      console.warn("[dc] fetch failed:", (err as Error).message);
+      return cache?.rows ?? [];
+    } finally {
+      inFlightDcFetch = null;
+    }
+  })();
+  return inFlightDcFetch;
 }
 
 export async function getDiscoveredAreasDC(): Promise<KnownArea[]> {

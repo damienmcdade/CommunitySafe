@@ -290,17 +290,29 @@ async function fetchNypd(): Promise<Incident[]> {
   return out;
 }
 
+// v107 — in-flight fetch dedup (the OOM-guard Detroit added in v94). NYPD is the
+// largest single-city buffer in the fleet (up to 4×50k = 200k rows); without
+// this, the dispatcher's per-area fan-out fired N concurrent 200k-row fetches on
+// a cold cache. Concurrent callers now await the same promise.
+let inFlightNycFetch: Promise<Incident[]> | null = null;
+
 export async function getRowsNYC(): Promise<Incident[]> {
   const now = Date.now();
   if (cache && cache.rows.length > 0 && now - cache.fetchedAt < CACHE_TTL_MS) return cache.rows;
-  try {
-    const rows = await fetchNypd();
-    if (rows.length > 0) cache = { fetchedAt: now, rows };
-    return rows;
-  } catch (err) {
-    console.warn("[nypd] fetch failed:", (err as Error).message);
-    return cache?.rows ?? [];
-  }
+  if (inFlightNycFetch) return inFlightNycFetch;
+  inFlightNycFetch = (async () => {
+    try {
+      const rows = await fetchNypd();
+      if (rows.length > 0) cache = { fetchedAt: now, rows };
+      return rows;
+    } catch (err) {
+      console.warn("[nypd] fetch failed:", (err as Error).message);
+      return cache?.rows ?? [];
+    } finally {
+      inFlightNycFetch = null;
+    }
+  })();
+  return inFlightNycFetch;
 }
 
 export async function getDiscoveredAreasNYC(): Promise<KnownArea[]> {
