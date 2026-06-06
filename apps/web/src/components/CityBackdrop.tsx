@@ -50,7 +50,20 @@ export function CityBackdrop() {
       {visible.map((i) => (
         <div
           key={`${city.slug}-${i}`}
-          className={`absolute inset-0 transition-opacity duration-[2000ms] ${i === idx && !imgError[i] ? "opacity-100" : "opacity-0"}`}
+          // Option 2 — depth cross-dissolve. Both opacity AND transform
+          // animate over 2s with an ease-out settle. The active layer rests at
+          // opacity-100/scale-100; inactive layers sit faded at scale-[1.06].
+          // So the INCOMING photo settles in from slightly larger (1.06 → 1)
+          // while the OUTGOING photo gently enlarges and dissolves (1 → 1.06) —
+          // a "push through depth" feel concentrated in the transition moment,
+          // not a continuous pan during the 30s dwell. transform-gpu +
+          // will-change keep it on the compositor. Under prefers-reduced-motion
+          // the scale is pinned to 100 so only the opacity crossfade remains.
+          className={`absolute inset-0 transform-gpu will-change-[opacity,transform] transition-[opacity,transform] duration-[2000ms] ease-out ${
+            i === idx && !imgError[i]
+              ? "opacity-100 scale-100"
+              : "opacity-0 scale-[1.06] motion-reduce:!scale-100"
+          }`}
         >
           {/* Next/Image with fill so it covers the full backdrop pane.
               priority on the first photo so it lands in the LCP budget;
@@ -65,7 +78,7 @@ export function CityBackdrop() {
             sizes="100vw"
             priority={i === 0}
             onError={() => setImgError((e) => ({ ...e, [i]: true }))}
-            className={`object-cover ${i === idx ? "animate-kenburns" : ""}`}
+            className="object-cover"
           />
         </div>
       ))}
