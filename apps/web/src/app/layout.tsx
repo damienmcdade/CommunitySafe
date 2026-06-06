@@ -7,14 +7,19 @@ import type { ReactNode } from "react";
 // notch / home indicator so safe-area-inset-* CSS env() values are
 // non-zero (otherwise iOS clamps everything inside the safe rect and
 // the app looks letterboxed). themeColor tints the iOS status bar.
-// minimum/maximum-scale=1 prevents accidental two-finger zoom on the
-// map and other interactive surfaces.
+//
+// fix(audit a11y-meta-viewport): pinch-zoom must NOT be disabled — locking
+// maximum-scale=1 / user-scalable=no fails WCAG 2.1 AA 1.4.4 (Resize Text) and
+// 1.4.10 (Reflow) and blocks low-vision users on this public safety app. Allow
+// zoom up to 5×. The original concern (accidental two-finger zoom on the map) is
+// moot: Leaflet captures pinch gestures inside the map element itself, so page
+// zoom only kicks in over ordinary content where it's exactly what's wanted.
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   minimumScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  maximumScale: 5,
+  userScalable: true,
   viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#FAF7F2" },
