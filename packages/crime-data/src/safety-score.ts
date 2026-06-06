@@ -154,11 +154,12 @@ const CFS_CALIBRATION: Record<string, CfsScale> = {
   // gap is almost entirely the missing non-weapon aggravated assaults). No
   // public DC source has the missing rows, so calibrate the violent aggregate
   // to the FBI baseline (×2.1) and flag it. Property (~0.90×) is accurate → 1.0.
-  // v112 — retuned to the corrected FBI baseline (748→1157 violent, 3081→4336
-  // property): persons 2.1×(1157/748)=3.25, property 1.0×(4336/3081)=1.41. Keeps
-  // the same calibrated-vs-baseline ratio (no divergence-guard change) while the
-  // displayed rate tracks the now-correct (higher) DC rate. DC is now grade E.
-  "washington-dc": { persons: 3.25, property: 1.41, sourceType: "partial" },
+  // v112 retuned to a 1157/4336 baseline; fix(audit dc-baseline-trueup) retunes
+  // again to the corrected CDE-2023 baseline (1053 violent / 4167 property):
+  // persons 3.25×(1053/1157)=2.96, property 1.41×(4167/4336)=1.36. Keeps the same
+  // calibrated-live≈baseline design point (no divergence-guard change) at the now-
+  // accurate rate. DC's honest combined danger lands at grade D (just under E).
+  "washington-dc": { persons: 2.96, property: 1.36, sourceType: "partial" },
   // v99 — Boston's open feed publishes NO rape/sexual-assault offense at all
   // (confirmed: 0 rape rows in 262k records, 2023-2026) — BPD suppresses it like
   // Cambridge. So the feed structurally caps at ~0.61× FBI (rape is ~7% of

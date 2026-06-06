@@ -135,7 +135,12 @@ export async function getCoverage(): Promise<CoverageResponse> {
       let health: CityHealth = "live";
 
       try {
-        const areas = await withTimeout(city.discover(), PER_CITY_TIMEOUT_MS, [] as Awaited<ReturnType<typeof city.discover>>);
+        // Display the primary (real civic) area list when a city defines one, so
+        // the "neighborhoods tracked" count reflects scoreable areas rather than
+        // every micro-subdivision (VB: ~100 vs 961). The citywide grade still uses
+        // the full discover(). fix(audit vb-over-fragmentation).
+        const discoverForDisplay = city.discoverPrimary ?? city.discover;
+        const areas = await withTimeout(discoverForDisplay(), PER_CITY_TIMEOUT_MS, [] as Awaited<ReturnType<typeof city.discover>>);
         neighborhoodCount = areas.length;
 
         // Provenance from the first area (the adapter shares one upstream pull,
@@ -150,30 +155,31 @@ export async function getCoverage(): Promise<CoverageResponse> {
           const stats = await withTimeout(crimeData.getAreaStats(areas[0].slug).catch(() => null), SAMPLE_TIMEOUT_MS, null);
           if (stats?.provenance.source) sourceLabel = stats.provenance.source;
 
-          // fix(audit coverage-newest-single-area): newestIncidentAt was computed
-          // from areas[0] ONLY (the alphabetically-first discovered area). If that
-          // area is sparse, the dashboard showed a city as ~year-stale while its
-          // feed was 1-2 days fresh (e.g. Tampa "341d" when truly 2d). Sample the
-          // newest incident across a SPREAD of areas and take the global max. The
-          // adapter shares one warm upstream pull, so these reads are cheap; we
-          // still cap each at SAMPLE_TIMEOUT and bound the count so the freshness
-          // probe can never dominate the coverage window.
-          const SAMPLE_AREAS = 12;
+          // fix(audit coverage-newest-single-area + coverage-newest-availability):
+          // newestIncidentAt was first computed from areas[0] ONLY (alphabetically
+          // first) — if sparse, a fresh feed read ~year-stale (Tampa "341d" when 2d).
+          // A naive parallel multi-area sample then REGRESSED availability: every
+          // getIncidents serializes on the per-city withComputeLimit semaphore, so
+          // N concurrent calls queue and blow SAMPLE_TIMEOUT, leaving asOf null for
+          // ~28/44 cities. Correct approach: sample a SPREAD of areas SEQUENTIALLY
+          // (the first call warms the shared upstream pull; the rest are fast warm
+          // reads, one semaphore holder at a time), take the running max, and
+          // EARLY-EXIT once we find a recent (<7d) incident. Bounded so the freshness
+          // probe never dominates the coverage window; any value found beats null.
+          const SAMPLE_AREAS = 8;
           const step = Math.max(1, Math.floor(areas.length / SAMPLE_AREAS));
           const sample = areas.filter((_, i) => i % step === 0).slice(0, SAMPLE_AREAS);
-          const newestPerArea = await Promise.all(
-            sample.map((a) =>
-              withTimeout(crimeData.getIncidents(a.slug, { limit: 50 }).catch(() => []), SAMPLE_TIMEOUT_MS, []).then((recent) => {
-                let max = 0;
-                for (const inc of recent) {
-                  const t = +new Date(inc.occurredAt);
-                  if (Number.isFinite(t) && t > max) max = t;
-                }
-                return max;
-              }),
-            ),
-          );
-          const latest = Math.max(0, ...newestPerArea);
+          const FRESH_MS = 7 * 24 * 60 * 60 * 1000;
+          let latest = 0;
+          for (const a of sample) {
+            const recent = await withTimeout(crimeData.getIncidents(a.slug, { limit: 50 }).catch(() => []), SAMPLE_TIMEOUT_MS, []);
+            for (const inc of recent) {
+              const t = +new Date(inc.occurredAt);
+              if (Number.isFinite(t) && t > latest) latest = t;
+            }
+            // Stop as soon as we have a clearly-fresh read — no need to probe more.
+            if (latest > 0 && now - latest < FRESH_MS) break;
+          }
           if (latest > 0) newestIncidentAt = new Date(latest).toISOString();
         }
 
@@ -198,6 +204,13 @@ export async function getCoverage(): Promise<CoverageResponse> {
         sourceLabel = lkg.source;
         health = "live";
       } else if (neighborhoodCount > 0) {
+        // fix(audit coverage-newest-availability): if this probe discovered areas
+        // but the freshness sample timed out (asOf null), DON'T overwrite a
+        // previously-captured good asOf — a cold-pull window shouldn't wipe a value
+        // we already had. Carry the last good timestamp forward.
+        if (newestIncidentAt === null && lkg?.newestIncidentAt) {
+          newestIncidentAt = lkg.newestIncidentAt;
+        }
         lastKnownGood.set(city.slug, {
           neighborhoodCount,
           newestIncidentAt,

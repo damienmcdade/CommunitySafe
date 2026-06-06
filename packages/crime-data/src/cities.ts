@@ -46,7 +46,7 @@ import { longBeachAdapter, getDiscoveredAreasLongBeach } from "./adapters/long-b
 import { austinAdapter, getDiscoveredAreasAustin } from "./adapters/austin-socrata.js";
 import { phoenixAdapter, getDiscoveredAreasPhoenix } from "./adapters/phoenix-ckan.js";
 import { jacksonvilleAdapter, getDiscoveredAreasJacksonville } from "./adapters/jacksonville-arcgis.js";
-import { virginiaBeachAdapter, getDiscoveredAreasVirginiaBeach } from "./adapters/virginia-beach-arcgis.js";
+import { virginiaBeachAdapter, getDiscoveredAreasVirginiaBeach, getPrimaryAreasVirginiaBeach } from "./adapters/virginia-beach-arcgis.js";
 import { gainesvilleAdapter, getDiscoveredAreasGainesville } from "./adapters/gainesville-socrata.js";
 import { tampaAdapter, getDiscoveredAreasTampa } from "./adapters/tampa-arcgis.js";
 
@@ -65,7 +65,15 @@ export interface CityEntry {
   label: string;
   bbox: { south: number; west: number; north: number; east: number };
   adapter: CrimeDataAdapter;
+  // FULL area list — drives the citywide aggregation (sum incidents per area), so
+  // it must be complete. Never threshold this.
   discover: () => Promise<KnownArea[]>;
+  // OPTIONAL display-only subset for the neighborhood picker + coverage "tracked"
+  // count. Defaults to `discover` when unset. Set ONLY for cities whose feed over-
+  // fragments into many micro-areas (e.g. Virginia Beach's 961 subdivisions) so the
+  // UI shows real civic areas while the full list still feeds the grade. fix(audit
+  // vb-over-fragmentation).
+  discoverPrimary?: () => Promise<KnownArea[]>;
 }
 
 export const CITIES: CityEntry[] = [
@@ -418,6 +426,9 @@ export const CITIES: CityEntry[] = [
     bbox: { south: 36.68, west: -76.23, north: 36.94, east: -75.91 },
     adapter: virginiaBeachAdapter,
     discover: getDiscoveredAreasVirginiaBeach,
+    // Show only the busiest ~real civic areas in the picker/coverage count; the
+    // full 961-subdivision discover() still feeds the citywide grade.
+    discoverPrimary: getPrimaryAreasVirginiaBeach,
   },
   {
     // Gainesville, FL — 43rd city. GPD "Crime Responses" Socrata (lat/lng +

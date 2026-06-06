@@ -179,11 +179,11 @@ export async function getRowsVirginiaBeach(): Promise<Incident[]> {
   }
 }
 
-export async function getDiscoveredAreasVirginiaBeach(): Promise<KnownArea[]> {
+// Aggregate VB rows into [{area, count}], sorted by incident count DESC. Shared
+// by the full-aggregation discover() and the display-only primary list so the two
+// can never diverge in how they identify/slug a subdivision.
+async function aggregateVirginiaBeachAreas(): Promise<Array<{ area: KnownArea; count: number }>> {
   const rows = await getRowsVirginiaBeach();
-  // VB rows carry no coordinates (geometryType None), so we cannot derive
-  // per-area centroids from incidents — every area centroid falls back to
-  // the citywide centroid. Areas are still discovered by Subdivision name.
   const agg = new Map<string, number>();
   for (const r of rows) {
     if (!r.area || r.area === "Unknown" || r.area === "Unmapped") continue;
@@ -193,17 +193,50 @@ export async function getDiscoveredAreasVirginiaBeach(): Promise<KnownArea[]> {
     agg.set(r.area, (agg.get(r.area) ?? 0) + 1);
   }
   return Array.from(agg.entries())
-    .filter(([, count]) => count >= 1)
-    .map(([name]) => {
+    .map(([name, count]) => {
       const slug = `vb-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
       return {
-        slug,
-        label: name,
-        jurisdiction: "Virginia Beach",
-        centroid: VB_AREA_CENTROIDS[slug] ?? VB_CENTROIDS[slug] ?? { ...VB_CENTROID },
+        area: {
+          slug,
+          label: name,
+          jurisdiction: "Virginia Beach",
+          // VB rows carry no coordinates (geometryType None), so per-area centroids
+          // fall back to geocoded/citywide centroids.
+          centroid: VB_AREA_CENTROIDS[slug] ?? VB_CENTROIDS[slug] ?? { ...VB_CENTROID },
+        } as KnownArea,
+        count,
       };
     })
-    .sort((a, b) => a.label.localeCompare(b.label));
+    .sort((a, b) => b.count - a.count);
+}
+
+// FULL discovery — every subdivision with >=1 incident. This list drives the
+// CITYWIDE aggregation (safety-score / dispatcher sum incidents per discovered
+// area), so it MUST stay complete: dropping an area would drop its incidents from
+// the citywide grade and undercount the city. Do NOT threshold this.
+export async function getDiscoveredAreasVirginiaBeach(): Promise<KnownArea[]> {
+  const agg = await aggregateVirginiaBeachAreas();
+  return agg.map((e) => e.area).sort((a, b) => a.label.localeCompare(b.label));
+}
+
+// fix(audit vb-over-fragmentation): VB's ArcGIS feed splits the city into ~961
+// Planning Subdivisions, most with a single incident — so the raw discover() list
+// inflated the user-facing "neighborhoods tracked" count and picker to 961 (22% of
+// the whole fleet). This DISPLAY-ONLY list keeps the busiest subdivisions — those
+// with enough incidents to produce a non-noise neighborhood score — so the count
+// and picker reflect ~real civic areas. The full discover() above still feeds the
+// citywide sum, so NO incident is lost from the grade. A subdivision hidden here is
+// still aggregated citywide and still resolves if deep-linked; it just isn't
+// individually offered in the picker.
+const VB_PRIMARY_MIN_INCIDENTS = 12;
+const VB_PRIMARY_MAX_AREAS = 100;
+export async function getPrimaryAreasVirginiaBeach(): Promise<KnownArea[]> {
+  const agg = await aggregateVirginiaBeachAreas();
+  const primary = agg.filter((e) => e.count >= VB_PRIMARY_MIN_INCIDENTS).slice(0, VB_PRIMARY_MAX_AREAS);
+  // Safety: if a sparse pull leaves too few above-threshold areas, fall back to the
+  // busiest ones so the city never shows an empty picker.
+  const chosen = primary.length >= 10 ? primary : agg.slice(0, Math.min(VB_PRIMARY_MAX_AREAS, agg.length));
+  return chosen.map((e) => e.area).sort((a, b) => a.label.localeCompare(b.label));
 }
 
 function labelForVbSlug(slug: string, rows: Incident[]): string | null {

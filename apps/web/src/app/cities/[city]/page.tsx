@@ -68,7 +68,9 @@ export default async function CityLandingPage({ params }: Props) {
     ]).finally(() => clearTimeout(timer));
   };
   const [areas, citywideScore] = await Promise.all([
-    withTimeout(city.discover().catch(() => []), [] as Awaited<ReturnType<typeof city.discover>>),
+    // Display the primary (real civic) area list where defined (VB: ~100 vs 961);
+    // the citywide score below still uses the full set. fix(audit vb-over-fragmentation).
+    withTimeout((city.discoverPrimary ?? city.discover)().catch(() => []), [] as Awaited<ReturnType<typeof city.discover>>),
     withTimeout(getCitywideSafetyScore(slug).catch(() => null), null),
   ]);
 

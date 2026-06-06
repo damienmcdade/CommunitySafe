@@ -43,8 +43,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     CITIES.map(async (city) => {
       // fix(audit api-code-6): clear the per-city timeout once discover settles.
       let timer: ReturnType<typeof setTimeout>;
+      // Index only primary (real civic) areas where defined, so we don't emit
+      // ~861 thin VB micro-subdivision URLs. Deep links to hidden ones still
+      // resolve via the full discover() on the neighborhood page itself.
+      const discoverForSitemap = city.discoverPrimary ?? city.discover;
       const areas: KnownArea[] = await Promise.race<KnownArea[]>([
-        city.discover().catch(() => [] as KnownArea[]),
+        discoverForSitemap().catch(() => [] as KnownArea[]),
         new Promise<KnownArea[]>((resolve) => { timer = setTimeout(() => resolve([] as KnownArea[]), CITY_DISCOVER_TIMEOUT_MS); }),
       ]).finally(() => clearTimeout(timer));
       return { city, areas };

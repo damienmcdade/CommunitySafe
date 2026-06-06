@@ -42,7 +42,10 @@ export async function GET(req: NextRequest) {
     if (!city) {
       return NextResponse.json({ areas: [] }, { status: 200, headers: STABLE_CACHE_HEADERS });
     }
-    const areas = await city.discover().catch(() => []);
+    // Use the display-only primary list when a city defines one (e.g. Virginia
+    // Beach collapses 961 micro-subdivisions to ~real civic areas for the picker);
+    // the full discover() still feeds the citywide grade. fix(audit vb-over-fragmentation).
+    const areas = await (city.discoverPrimary ?? city.discover)().catch(() => []);
     // Per-adapter staleness. Today only SDPD has a last-known-good
     // fallback wired in (because seshat.datasd.org has intermittently
     // rejected Vercel IPs); generalize as other adapters get the same

@@ -54,6 +54,14 @@ export const CITY_POPULATION: Record<string, number> = {
   "minneapolis":     421_874,
   "cleveland":       362_656,
   "milwaukee":       561_385,
+  // las-vegas is CITY-proper (not LVMPD metro ~1.67M) — and that is CORRECT for
+  // the citywide denominator: the 26 scored polygons are all City-of-Las-Vegas
+  // neighborhoods, so the citywide numerator only counts incidents inside city
+  // limits (metro CFS rows outside them geocode to "Unmapped" and are dropped).
+  // City numerator ÷ city pop is consistent. The FBI baseline (473/100k) is a
+  // metro-derived RATE, which is scope-robust and bridged by CFS calibration.
+  // fix(audit lv-pop-scope): do NOT raise this to metro — that would divide a
+  // city-scoped count by a metro pop and undercount the rate ~2.5×.
   "las-vegas":       660_929,
   "boise":           237_446,
   "buffalo":         272_140,
