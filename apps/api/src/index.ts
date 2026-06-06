@@ -46,9 +46,9 @@ import { safezoneRouter } from "./routes/safezone.routes.js";
 import { startCheckInWorker } from "./services/safety/check-in.worker.js";
 import { startProximityWorker } from "./services/safety/proximity.worker.js";
 import { startDigestWorker } from "./services/push/digest.worker.js";
-// v96p2 — startWarmWorker import removed from the call path. See
+// v107 — startWarmWorker RE-ENABLED (self-gates on WARM_WORKER_ENABLED). See
 // the boot section below for the rationale.
-// import { startWarmWorker } from "./services/warm/cache.worker.js";
+import { startWarmWorker } from "./services/warm/cache.worker.js";
 // v98 — the in-process grade-sanity worker is RETIRED. Grade monitoring
 // moved to the external `audit-ratios` Vercel cron (apps/web/src/app/api/
 // cron/audit-ratios), which is strictly more reliable: it runs off-process
@@ -387,21 +387,18 @@ const server = app.listen(env.LISTEN_PORT, () => {
   startCheckInWorker();
   startProximityWorker();
   startDigestWorker();
-  // v96p2 — startWarmWorker() permanently removed from the boot path.
-  // The 6-cycle deployment-log scan confirmed pods OOM at ~+15 min
-  // every time the worker fires, regardless of mitigations (heavy
-  // bucket trim 14 → 6, GC at cycle / mid-cycle / heap-aware
-  // backoff). Steady-state heap during a heavy cycle reaches 2.8 GB
-  // and the GC reclaims only 24 MB at saturation — the worker
-  // simply outpaces V8's ability to recover. Routes serve from
-  // Redis L2 (warm from prior pods) and on-demand adapter fetches
-  // (each handler triggers one upstream call, 5-min in-process
-  // cache, GC-friendly), which together cover the steady-state load
-  // without the cumulative pressure. Re-enabling the worker is a
-  // future task once the underlying allocation path is profiled
-  // (likely undici body pools or adapter intermediate JSON.parse
-  // outputs not being released between cycles).
-  // startWarmWorker();
+  // v107 — RE-ENABLED. v96p2 removed startWarmWorker() because pods OOM'd at
+  // ~+15 min every cycle (heap reached 2.8 GB, GC reclaimed only ~24 MB). The
+  // ROOT CAUSE was the dispatcher's per-area Promise.all fanning out N concurrent
+  // FULL adapter fetches per city on a cold cache — each allocating its own
+  // multi-MB row buffer — so a heavy warm cycle stacked dozens of buffers faster
+  // than V8 could reclaim them. v107 added in-flight fetch dedup to ALL 44
+  // adapters, so concurrent callers for a city now share ONE fetch/buffer; the
+  // unbounded-memory path is gone. startWarmWorker() self-gates on
+  // WARM_WORKER_ENABLED (default off) so it only runs where the operator opted
+  // in, and keeps the heap-aware backoff (skip cycle when heap >2000 MB) +
+  // per-cycle GC as belt-and-suspenders.
+  startWarmWorker();
   // startGradeSanityWorker() — retired; see import-site note. Grade
   // monitoring is the external audit-ratios Vercel cron now.
   startAuditRetentionWorker();
