@@ -711,7 +711,17 @@ function computeDataConfidence(
   // source — down to a 42-day boundary; at 1,977 Part-1 incidents that feed is
   // statistically high-confidence and was being penalized purely by the rounding.
   const STABLE_VOLUME = 1_500;
-  const windowStable = windowDays >= 90 || (windowDays >= 42 && totalIncidents >= STABLE_VOLUME);
+  // fix(audit area-confidence-thin): even a long window needs a minimum absolute
+  // sample to be "high" — a rate from a handful of incidents has a huge relative
+  // standard error (RSE≈1/√N) no matter how many days it spans. The bare
+  // `windowDays>=90` branch previously rated a single-incident micro-polygon
+  // "high". Floor it. Citywide totals are always far above 30, so this only gates
+  // genuinely-sparse PER-AREA scores down to "medium" (provisional), matching this
+  // function's stated intent that quiet/sparse neighborhoods are medium.
+  const MIN_VOLUME_FOR_HIGH = 30;
+  const windowStable =
+    totalIncidents >= MIN_VOLUME_FOR_HIGH &&
+    (windowDays >= 90 || (windowDays >= 42 && totalIncidents >= STABLE_VOLUME));
   const undercount = pop > 200_000 && ratio < 0.5;
   if (!windowStable || undercount) {
     return {
@@ -970,7 +980,7 @@ function roundWindowDays(raw: number): number {
 }
 
 /// Citywide variant. Aggregates every tracked neighborhood's incidents into
-/// a single rate-per-100k against the FBI 2024 national average. Used as
+/// a single rate-per-100k against the FBI national average (2023-revised). Used as
 /// the default Safety Score view when the user hasn't drilled into a
 /// specific neighborhood — population denominator is the full US Census
 /// city total rather than an even-split per-area approximation, so the

@@ -6,22 +6,22 @@ import { requireCronSecret } from "@/server/lib/bearer-auth";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-/// Account-purge cron (Vercel). Enforces the privacy policy's "permanently
-/// purged within 30 days" promise for the soft-delete path.
+/// Account-purge cron (Vercel). fix(audit purge-cron-stale-doc): the PRODUCTION
+/// self-service delete (apps/web .../account/delete → deleteAccount()) is an
+/// IMMEDIATE, irreversible HARD delete — it sets no deletedAt and there is NO
+/// 30-day recoverable grace window (the privacy policy now says so). So the
+/// soft-delete sweep below is a BACKSTOP, not the primary path: it only catches
+/// rows where User.deletedAt was set by the LEGACY Express stack (apps/api
+/// .../auth.service.ts softDeleteAccount), which the production web UI does not
+/// call. In a web-only deployment that branch finds nothing; the useful work in
+/// production is purgeStaleAnonAccounts() (reaping content-free
+/// device-*@travelsafe.local accounts past the retention window).
 ///
-/// When a user deletes their account through the API, softDeleteAccount() sets
-/// User.deletedAt and obfuscates the PII columns, but the row and its FK'd
-/// records (posts, comments, contacts, timers, push subs, live-share links)
-/// survive a grace window so a mis-click is recoverable and abuse trails stay
-/// briefly intact. The schema explicitly defers the hard purge to "a retention
-/// worker" (see packages/db/prisma/schema.prisma User.deletedAt) — this is it.
-///
-/// Each elapsed-grace account is run through the same deleteAccount() cascade
-/// the self-service hard-delete uses, which also del()s the user's uploaded
-/// photos from public Blob storage (the orphaned-photo erasure gap). Lives on
-/// the web/Vercel side because that's where the Blob token + the cascade are,
-/// and web + API share the Neon database, so the API-set deletedAt is visible
-/// here. Same CRON_SECRET Bearer auth as the other /api/cron/* endpoints.
+/// Any elapsed-grace soft-deleted account it DOES find is run through the same
+/// deleteAccount() cascade the self-service hard-delete uses, which also del()s
+/// the user's uploaded photos from public Blob storage. Lives on the web/Vercel
+/// side because that's where the Blob token + the cascade are, and web + API
+/// share the Neon database. Same CRON_SECRET Bearer auth as other /api/cron/*.
 const DEFAULT_GRACE_DAYS = 30;
 // Bound per-run work so the function fits maxDuration; the daily cron drains
 // any backlog across runs. Small concurrency to keep DB/heap pressure low.

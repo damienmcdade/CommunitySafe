@@ -154,7 +154,7 @@ export default function PrivacyPage() {
 
       <section className="surface p-6 space-y-3 text-sm text-slate2-700 leading-relaxed">
         <h2 className="font-display text-xl text-slate2-900">Public data sources we display</h2>
-        <p>CommunitySafe surfaces police-incident data that the cities themselves publish through their official open-data portals (SDPD, LAPD, SFPD, Chicago PD, NYPD, Detroit PD, and dozens of others). We do not augment, predict, or editorialize that data. The FBI national-rate comparison comes from the FBI Crime Data Explorer 2024 release at <a href="https://cde.ucr.cjis.gov/LATEST/webapp/" target="_blank" rel="noreferrer" className="text-bay-700 hover:underline">cde.ucr.cjis.gov</a>.</p>
+        <p>CommunitySafe surfaces police-incident data that the cities themselves publish through their official open-data portals (SDPD, LAPD, SFPD, Chicago PD, NYPD, Detroit PD, and dozens of others). We do not augment, predict, or editorialize that data. The FBI national-rate comparison comes from the FBI Crime Data Explorer 2023 release at <a href="https://cde.ucr.cjis.gov/LATEST/webapp/" target="_blank" rel="noreferrer" className="text-bay-700 hover:underline">cde.ucr.cjis.gov</a>.</p>
       </section>
 
       <section className="surface p-6 space-y-3 text-sm text-slate2-700 leading-relaxed">

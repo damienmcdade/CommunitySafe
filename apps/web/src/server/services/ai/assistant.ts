@@ -5,14 +5,15 @@ import { crimeData } from "../crime-data";
 import { CITIES, cityBySlug } from "../crime-data/cities";
 import { CITY_POPULATION, POPULATION_VINTAGE } from "../crime-data/population";
 import { getSafetyScore, getCitywideSafetyScore } from "../watch/safety-score";
+import { FBI_NATIONAL_PER_100K, FBI_NATIONAL_SOURCE } from "@travelsafe/crime-data";
 
-// FBI Crime Data Explorer 2024 — most recent published national rates
-// (released October 2025), used for the city-vs-national comparison tool.
-// Per-100k rates round to the same figures across recent years so the
-// numbers are stable; the YEAR label is what gets refreshed when the FBI
-// publishes a new annual release.
-const NATIONAL_PER_100K = { PERSONS: 364, PROPERTY: 1896 };
-const NATIONAL_YEAR = 2024;
+// fix(audit fbi-vintage-drift): use the SINGLE canonical anchor + vintage from the
+// scoring engine so the assistant can never cite a different year/number than the
+// grades it explains. Previously hardcoded 364/1896 "2024" — a third figure that
+// matched neither the real anchor nor any FBI year. The anchor is FBI 2023-revised
+// (379.5 / 1934.1), year-matched to the per-city baselines.
+const NATIONAL_PER_100K = FBI_NATIONAL_PER_100K;
+const NATIONAL_YEAR = FBI_NATIONAL_SOURCE.publishedYear;
 const FBI_SOURCE_URL = "https://cde.ucr.cjis.gov/LATEST/webapp/#/pages/explorer/crime/crime-trend";
 const METHODOLOGY_URL = "/methodology";
 
@@ -307,7 +308,7 @@ export async function streamAssistant(messages: Array<{ role: "user" | "assistan
     }),
     compare_city_to_national: tool({
       description:
-        "Compute the city's per-100,000 rates for Persons (violent) and Property crime from the recent cached window and compare them to the FBI Crime Data Explorer 2024 national averages. Returns the A-E grade, dataConfidence flag, and CFS calibration when applicable. Use this when the user asks 'is X safer than the rest of the country' or for any city-vs-national comparison. Cite the source URL in your response.",
+        `Compute the city's per-100,000 rates for Persons (violent) and Property crime from the recent cached window and compare them to the FBI Crime Data Explorer ${NATIONAL_YEAR} national averages. Returns the A-E grade, dataConfidence flag, and CFS calibration when applicable. Use this when the user asks 'is X safer than the rest of the country' or for any city-vs-national comparison. Cite the source URL in your response.`,
       inputSchema: z.object({
         city_slug: z.string().describe("One of: " + citySlugList().join(", ")),
       }),

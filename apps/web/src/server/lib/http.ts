@@ -30,8 +30,40 @@ export function errorResponse(err: unknown): NextResponse {
 }
 
 /// Wrap an async handler so unhandled errors become consistent JSON responses.
+// fix(audit pentest-csrf-defense-in-depth): the canonical API runs as Next.js
+// Route Handlers on Vercel, which (unlike the Express service's csrfGuard) had no
+// server-side CSRF control — it relied solely on the cs_session cookie's
+// SameSite=Lax. Add the same Sec-Fetch-Site guard here as defense-in-depth: block
+// CROSS-SITE state-changing requests. Reads + same-origin/same-site/none writes +
+// non-browser clients (no header → curl/native/S2S) are allowed; only a browser
+// request initiated by a third-party page is rejected. Token-credentialed routes
+// (/contacts/confirm/<token>, /share/<token>) carry their own unguessable bearer
+// in the path, so they're allowlisted.
+const STATE_CHANGING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+function isCsrfAllowlisted(pathname: string): boolean {
+  return pathname.includes("/confirm/") || pathname.includes("/share/");
+}
+function csrfBlocked(args: unknown[]): NextResponse | null {
+  const req = args[0] as { method?: string; headers?: { get(name: string): string | null }; nextUrl?: { pathname: string } } | undefined;
+  if (!req || typeof req.method !== "string" || !req.headers?.get) return null;
+  if (!STATE_CHANGING.has(req.method)) return null;
+  const site = req.headers.get("sec-fetch-site");
+  // No header → non-browser client (not the CSRF threat model). same-origin/
+  // same-site/none → legitimate first-party or app-initiated. Only "cross-site"
+  // is the CSRF vector.
+  if (site !== "cross-site") return null;
+  if (req.nextUrl && isCsrfAllowlisted(req.nextUrl.pathname)) return null;
+  return NextResponse.json(
+    { error: "csrf_blocked", message: "Cross-site state-changing requests are blocked. Retry from the app." },
+    { status: 403 },
+  );
+}
+
+/// Wrap an async handler so unhandled errors become consistent JSON responses.
 export function wrap<T extends (...args: never[]) => Promise<NextResponse>>(fn: T): T {
   return (async (...args: Parameters<T>) => {
+    const blocked = csrfBlocked(args as unknown[]);
+    if (blocked) return blocked;
     try {
       return await fn(...args);
     } catch (err) {

@@ -81,7 +81,7 @@ export default async function NeighborhoodLandingPage({ params }: Props) {
         "@type": "Place",
         name: `${area.label}, ${city.label}`,
         url: `${base}/cities/${citySlug}/${areaSlug}`,
-        description: `Recent police-feed safety data for ${area.label} in ${city.label}, compared to the FBI Crime Data Explorer ${score?.source.publishedYear ?? 2024} national average.`,
+        description: `Recent police-feed safety data for ${area.label} in ${city.label}, compared to the FBI Crime Data Explorer ${score?.source.publishedYear ?? 2023} national average.`,
         containedInPlace: {
           "@type": "Place",
           name: city.label,

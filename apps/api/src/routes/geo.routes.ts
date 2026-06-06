@@ -40,7 +40,11 @@ geoRouter.get("/areas", async (req, res, next) => {
       // concurrent distinct-city requests (audits/scrapers) the ungated path
       // OOM-crashed the box (502s). Same city-keyed gate the citywide composers
       // use, so a /geo/areas + citywide for the same city share one slot.
-      const areas = await withComputeLimit(citySlug, () => city.discover()).catch(() => []);
+      // fix(audit vb-over-fragmentation-2): the picker must use the display-only
+      // primary list where a city defines one (VB: ~100 vs 961). The Vercel route
+      // already does this, but it PROXIES here first — so this handler also has to
+      // honor discoverPrimary or the proxied response re-introduces the 961 list.
+      const areas = await withComputeLimit(citySlug, () => (city.discoverPrimary ?? city.discover)()).catch(() => []);
       let stale = false;
       let staleMessage: string | undefined;
       if (citySlug === "san-diego" && sdpdStale()) {
