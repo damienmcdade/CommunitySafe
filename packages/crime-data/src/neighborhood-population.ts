@@ -1,4 +1,29 @@
 import { GENERATED_NEIGHBORHOOD_POPS } from "./neighborhood-populations-generated.js";
+import { CITY_POPULATION } from "./population.js";
+
+// fix(audit neighborhood-pop-inflation): the generated ACS table is a tract-
+// centroid∈polygon spatial join. Where a city's neighborhood polygons overlap
+// (or are oversized) the SAME tract is counted in several neighborhoods, so the
+// per-city SUM of generated populations exceeds the city's real population — 22
+// cities over-sum, up to gainesville 4.55×, virginia-beach 3.20×, tampa 1.98×,
+// atlanta 1.84×, baltimore 1.78×. An inflated denominator deflates a
+// neighborhood's per-100k rate and grades it far too SAFE (and distorts the
+// relative ranking, since the inflation isn't uniform). The CITYWIDE path
+// already caps freshPopSum at cityPop (safety-score.ts); this applies the same
+// correction per neighborhood — scale every generated pop by cityPop/sum when a
+// city over-sums, so the table totals the real population while preserving each
+// neighborhood's share. Under-summing cities (legitimate partial polygon
+// coverage, e.g. raleigh 0.85×) are left untouched. Manual POP overrides below
+// are authoritative and never scaled.
+const GENERATED_POP_SCALE: Record<string, number> = (() => {
+  const out: Record<string, number> = {};
+  for (const [city, areas] of Object.entries(GENERATED_NEIGHBORHOOD_POPS)) {
+    const sum = Object.values(areas).reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
+    const cityPop = CITY_POPULATION[city];
+    out[city] = cityPop && sum > cityPop ? cityPop / sum : 1;
+  }
+  return out;
+})();
 
 // Per-neighborhood population resolution. The hierarchy:
 //
@@ -88,7 +113,11 @@ export function knownNeighborhoodPopulation(
   //    for across the 28 cities currently in the pipeline output.
   const generated = GENERATED_NEIGHBORHOOD_POPS[citySlug]?.[areaSlug];
   if (Number.isFinite(generated) && generated > 0) {
-    return { population: generated, source: "Census ACS 5-year (latest) via Census Reporter — tract centroid ∈ polygon spatial join" };
+    // Normalize to the real city population when this city's polygons over-sum
+    // (spatial-join double-count); preserves the neighborhood's share. No-op
+    // (scale 1) for cities that sum at/under their population.
+    const scaled = Math.max(1, Math.round(generated * (GENERATED_POP_SCALE[citySlug] ?? 1)));
+    return { population: scaled, source: "Census ACS 5-year (latest) via Census Reporter — tract centroid ∈ polygon spatial join, normalized to city population" };
   }
   return null;
 }
