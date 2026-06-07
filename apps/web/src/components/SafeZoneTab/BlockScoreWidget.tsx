@@ -1,6 +1,7 @@
 "use client";
 import type { BlockScore, BlockScoreBand } from "./types";
 import { DataFreshnessBadge } from "../DataFreshnessBadge";
+import { Collapsible } from "../Collapsible";
 // Import from the package directly (not the server-only shim) — this
 // is a client component, same reasoning as CityScoreCard.tsx.
 import { POPULATION_VINTAGE } from "@travelsafe/crime-data/population";
@@ -131,16 +132,6 @@ export function BlockScoreWidget({ score, loading, unavailable, contextLabel }: 
           </div>
           <h3 className="mt-2 font-display text-lg text-slate2-900">{contextLabel}</h3>
           <p className="mt-1 text-sm text-slate2-700 leading-snug">{score.headline}</p>
-          {/* v67 — rewrote the inverted "Higher means fewer..." copy.
-              Card-audit caught it reads backwards. Now a linear scale
-              users can follow left-to-right. */}
-          <p className="mt-2 text-xs text-slate2-500 leading-snug">
-            Score legend: <strong>100</strong> = quietest (well below your city&apos;s baseline) ·
-            {" "}<strong>50</strong> = roughly matches the baseline ·
-            {" "}<strong>0</strong> = most activity (well above the baseline).
-            Areas with no recent reports in the cached window show as
-            &ldquo;data unavailable&rdquo; instead of a score.
-          </p>
           <a
             href={score.benchmark.url}
             target="_blank"
@@ -152,42 +143,65 @@ export function BlockScoreWidget({ score, loading, unavailable, contextLabel }: 
         </div>
       </div>
 
-      <BandLegend currentBand={score.band} />
+      {/* v108 — all of the scoring/grade EXPLANATION (legend, band ranges,
+          how the grade works, the step-by-step calculation, and the
+          disclaimer) is now consolidated into one card-level Collapsible,
+          collapsed by default. The score ring, band chip, headline and
+          benchmark link above stay always-visible so the number is never
+          hidden; readers who want the methodology expand this. */}
+      <div className="mt-4 -mx-6 -mb-6">
+        <Collapsible
+          title="How this score works"
+          summary="legend · bands · method"
+          defaultCollapsed
+          storageKey="blockscore-explainer"
+          className="border-t border-sand-200/80"
+        >
+          {/* v67 — linear scale users can follow left-to-right. */}
+          <p className="text-xs text-slate2-600 leading-snug pt-1">
+            Score legend: <strong>100</strong> = quietest (well below your city&apos;s baseline) ·
+            {" "}<strong>50</strong> = roughly matches the baseline ·
+            {" "}<strong>0</strong> = most activity (well above the baseline).
+            Areas with no recent reports in the cached window show as
+            &ldquo;data unavailable&rdquo; instead of a score.
+          </p>
 
-      {/* v102 — explain the new grading scheme to users. */}
-      <aside className="mt-4 rounded-xl border border-bay-200 bg-bay-50/60 px-4 py-3 text-xs text-slate2-700 leading-snug" role="note">
-        <strong className="text-slate2-900">How the letter grade works (updated):</strong> a <em>city&apos;s</em> grade
-        now reflects its crime rate compared to the <strong>U.S. national average</strong> (violent crime weighted more
-        heavily) — so a genuinely low-crime city earns an <strong>A</strong> and a high-crime city an <strong>E</strong>,
-        instead of every city landing at C. A <em>neighborhood&apos;s</em> grade still compares it to its own city, so you
-        can see which areas are quieter or busier than the local norm. The Safety Index dial above is always
-        neighborhood-vs-city.
-      </aside>
+          <BandLegend currentBand={score.band} />
 
-      <HowItsCalculated benchmark={score.benchmark} />
+          {/* v102 — explain the grading scheme. */}
+          <aside className="mt-4 rounded-xl border border-bay-200 bg-bay-50/60 px-4 py-3 text-xs text-slate2-700 leading-snug" role="note">
+            <strong className="text-slate2-900">How the letter grade works:</strong> a <em>city&apos;s</em> grade
+            reflects its crime rate compared to the <strong>U.S. national average</strong> (violent crime weighted more
+            heavily) — so a genuinely low-crime city earns an <strong>A</strong> and a high-crime city an <strong>E</strong>,
+            instead of every city landing at C. A <em>neighborhood&apos;s</em> grade compares it to its own city, so you
+            can see which areas are quieter or busier than the local norm. The Safety Index dial above is always
+            neighborhood-vs-city.
+          </aside>
 
-      <p className="mt-3 text-[11px] text-slate2-500 leading-snug">
-        Based on publicly published police reports over the cached window. Reflects historical reporting only — not a prediction
-        of future risk, and not a substitute for professional safety advice. These scores should not be used as the sole basis for housing,
-        lending, insurance, or hiring decisions.
-      </p>
+          <HowItsCalculated benchmark={score.benchmark} />
+
+          <p className="mt-3 text-[11px] text-slate2-500 leading-snug">
+            Based on publicly published police reports over the cached window. Reflects historical reporting only — not a prediction
+            of future risk, and not a substitute for professional safety advice. These scores should not be used as the sole basis for housing,
+            lending, insurance, or hiring decisions.
+          </p>
+        </Collapsible>
+      </div>
     </section>
   );
 }
 
-/// Plain-English methodology disclosure. Collapsed by default so it
-/// doesn't crowd the score, expanded on click. Walks the user through
-/// the four-step calculation in everyday language and names the two
-/// public datasets that drive it (the city's police feed and the FBI
-/// national rate) so the math is auditable, not magical.
+/// Plain-English methodology disclosure. Walks the user through the
+/// four-step calculation in everyday language and names the two public
+/// datasets that drive it (the city's police feed and the FBI national
+/// rate) so the math is auditable, not magical. v108 — the outer
+/// <details> was removed because this now lives inside the card-level
+/// "How this score works" Collapsible (no nested collapse).
 function HowItsCalculated({ benchmark }: { benchmark: BlockScore["benchmark"] }) {
   return (
-    <details className="mt-4 group">
-      <summary className="cursor-pointer list-none flex items-center gap-1.5 text-xs font-medium text-bay-700 hover:underline select-none">
-        <span className="inline-block w-3 transition-transform group-open:rotate-90">›</span>
-        How is this score calculated?
-      </summary>
-      <div className="mt-3 surface-muted p-4 text-xs text-slate2-700 leading-relaxed space-y-2.5">
+    <div className="mt-4">
+      <h4 className="text-xs font-medium text-slate2-900">How is this score calculated?</h4>
+      <div className="mt-2 surface-muted p-4 text-xs text-slate2-700 leading-relaxed space-y-2.5">
         <p>
           We translate two public datasets into one easy-to-read number. No private
           information, no predictions — just published report counts plus arithmetic.
@@ -228,7 +242,7 @@ function HowItsCalculated({ benchmark }: { benchmark: BlockScore["benchmark"] })
           </a>
         </p>
       </div>
-    </details>
+    </div>
   );
 }
 
@@ -261,7 +275,7 @@ function BandLegend({ currentBand }: { currentBand: BlockScoreBand }) {
 function SkeletonRing() {
   return (
     <div className="relative shrink-0" style={{ width: SIZE, height: SIZE }}>
-      <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
+      <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-label="Loading Safety Index">
         <circle cx={SIZE / 2} cy={SIZE / 2} r={RADIUS} fill="none" stroke="#e9eef3" strokeWidth={STROKE} />
         <circle
           cx={SIZE / 2}

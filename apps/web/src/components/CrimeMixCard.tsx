@@ -98,9 +98,9 @@ export function CrimeMixCard({ areaSlug, jurisdictionSlug, title }: { areaSlug?:
   // citywide fallback passed `jurisdiction=<citySlug>` which the route
   // treated as an area slug → zero incidents → empty mix card.
   const path = areaSlug
-    ? `/crime-data/mix?neighborhood=${areaSlug}`
+    ? `/crime-data/mix?neighborhood=${encodeURIComponent(areaSlug)}`
     : jurisdictionSlug
-      ? `/crime-data/mix?city=${jurisdictionSlug}`
+      ? `/crime-data/mix?city=${encodeURIComponent(jurisdictionSlug)}`
       : null;
   const { data, loading, error } = useApi<Mix>(path, [path]);
 

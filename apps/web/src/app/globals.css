@@ -287,6 +287,22 @@ html.dark svg line[stroke="#e9eef3"]   { stroke: #2A3445; }
 }
 .surface:hover::after { transform: translateX(100%); opacity: 1; }
 
+/* v108 — city backdrop cross-dissolve. The incoming photo fades in (and
+   settles from a slight 1.06 zoom) ON TOP of the previous photo, which stays
+   fully opaque underneath. `both` fill mode holds opacity:0 before the
+   animation starts so there is never a transparent frame — fixing the bright
+   white flash the old unmount-then-fade approach produced. The global
+   prefers-reduced-motion rule below collapses the duration to ~0ms, turning
+   this into an instant (flash-free) swap for motion-sensitive users. */
+@keyframes cs-backdrop-fade-in {
+  from { opacity: 0; transform: scale(1.06); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.cs-backdrop-fade-in {
+  animation: cs-backdrop-fade-in 1500ms ease-out both;
+  will-change: opacity, transform;
+}
+
 /* Reduced-motion respect — honors the OS-level prefers-reduced-motion
    setting. Disables CSS animations, transitions, smooth scrolls, and
    marquee-style gradients across the app. JS that calls scrollIntoView

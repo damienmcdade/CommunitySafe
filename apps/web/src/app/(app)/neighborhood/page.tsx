@@ -198,7 +198,7 @@ function NeighborhoodView() {
           {pushStatus && <p>{pushStatus}</p>}
           {locStatus && <p className="text-sage-700">{locStatus}</p>}
           {locError && <p className="text-amber2-700">{locError}</p>}
-          {!pushStatus && !locStatus && !locError && <p>Change city + neighborhood from the header. Notifications default to a once-daily digest.</p>}
+          {!pushStatus && !locStatus && !locError && <p>Use the selector in the top-right header to change your city and neighborhood. Notifications default to a once-daily digest.</p>}
         </div>
       </div>
 

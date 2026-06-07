@@ -64,7 +64,7 @@ export function SafetyTipsPanel({ areaSlug, jurisdictionSlug }: { areaSlug?: str
         <>
           <Section title="Prevention tips for this area" subtitle="Matched to the offenses most commonly reported here." tips={data.prevention} />
           <Section title="Self-defense principles" subtitle="Layered awareness and de-escalation come first. Physical defense is a last resort." tips={data.selfDefense} />
-          <Section title="Self-defense law: what is and is not legal" subtitle="Plain-language summary of the law that governs personal defense. Self-defense law varies by state — verify your state's specific rules." tips={data.caLegal} />
+          <Section title="Self-defense law: what is legal and what isn't" subtitle="Plain-language summary of the law that governs personal defense. Self-defense law varies by state — verify your state's specific rules." tips={data.caLegal} />
 
           <p className="surface-muted p-3 text-xs text-slate2-700 leading-snug">
             {data.disclaimer}

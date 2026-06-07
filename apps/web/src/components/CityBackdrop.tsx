@@ -15,75 +15,102 @@ import { PHOTOS } from "@/lib/city-photos";
 // v93p3 — exported for the /credits page to render per-photo attribution
 // (CC-BY-SA 4.0 §3(a)(2)).
 
-
-// 30-second rotation — keeps the backdrop visibly dynamic without distracting
-// the user. Each city carries 8 verified photos, so a full cycle is 4 minutes.
-const ROTATE_MS = 30 * 1000;
+// v108 — 60-second rotation (was 30s). Each city carries 8 verified photos,
+// so a full cycle is ~8 minutes — calmer and less distracting, per request.
+const ROTATE_MS = 60 * 1000;
 
 export function CityBackdrop() {
   const { city } = useCity();
   const photos = PHOTOS[city.slug] ?? [];
+  // `idx` is the photo currently settling in; `prevIdx` is the one beneath it.
   const [idx, setIdx] = useState(0);
+  const [prevIdx, setPrevIdx] = useState(0);
   const [imgError, setImgError] = useState<Record<number, boolean>>({});
 
   // Reset to the first photo whenever the city changes so the user sees the
   // new city's downtown immediately, then resume rotation.
-  useEffect(() => { setIdx(0); setImgError({}); }, [city.slug]);
+  useEffect(() => { setIdx(0); setPrevIdx(0); setImgError({}); }, [city.slug]);
 
   useEffect(() => {
     if (photos.length <= 1) return;
     const id = window.setInterval(() => {
-      setIdx((i) => (i + 1) % photos.length);
+      setIdx((i) => {
+        // Remember the outgoing photo so it can stay as the opaque base while
+        // the incoming one cross-fades in on top (no transparent gap → no flash).
+        setPrevIdx(i);
+        return (i + 1) % photos.length;
+      });
     }, ROTATE_MS);
     return () => window.clearInterval(id);
   }, [photos.length]);
 
-  // fix(audit perf-web-1): only the current photo is visible, but rendering all
-  // ~8 as overlapping fullscreen <Image>s made the browser fetch every one (~2MB)
-  // on each city — and the backdrop is in the root layout, so it taxed landing
-  // LCP. Render only the current photo plus the NEXT one (preloaded for a smooth
-  // crossfade); that's at most 2 images in flight instead of the whole set.
-  const visible = photos.length <= 1 ? [0] : [idx, (idx + 1) % photos.length];
+  // No verified photos for this city — render a neutral brand wash instead of a
+  // broken <img> or a stark white pane.
+  if (photos.length === 0) {
+    return (
+      <div
+        className="fixed inset-0 z-0 pointer-events-none bg-gradient-to-b from-sand-50 via-bay-50/60 to-bay-100/50"
+        aria-hidden
+      />
+    );
+  }
 
+  const next = photos.length > 1 ? (idx + 1) % photos.length : idx;
+
+  // fix(audit perf-web-1): only render at most 3 fullscreen <Image>s (base +
+  // incoming + a hidden preload of the NEXT photo) instead of all ~8, so the
+  // browser never fetches the whole set on each city.
+  //
+  // v108 — bright-white-flash fix. The previous build kept `visible = [idx,
+  // idx+1]` and UNMOUNTED the outgoing photo the instant idx changed, so the
+  // incoming photo cross-faded in over the (white) page background — a visible
+  // brightening at every swap. Now the previous photo stays mounted as a fully
+  // opaque BASE while the incoming photo fades in on top of it, so there is
+  // never a transparent frame between the two. Once the dissolve finishes the
+  // incoming photo becomes the next base seamlessly.
   return (
     <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden>
-      {visible.map((i) => (
-        <div
-          key={`${city.slug}-${i}`}
-          // Option 2 — depth cross-dissolve. Both opacity AND transform
-          // animate over 2s with an ease-out settle. The active layer rests at
-          // opacity-100/scale-100; inactive layers sit faded at scale-[1.06].
-          // So the INCOMING photo settles in from slightly larger (1.06 → 1)
-          // while the OUTGOING photo gently enlarges and dissolves (1 → 1.06) —
-          // a "push through depth" feel concentrated in the transition moment,
-          // not a continuous pan during the 30s dwell. transform-gpu +
-          // will-change keep it on the compositor. Under prefers-reduced-motion
-          // the scale is pinned to 100 so only the opacity crossfade remains.
-          className={`absolute inset-0 transform-gpu will-change-[opacity,transform] transition-[opacity,transform] duration-[2000ms] ease-out ${
-            i === idx && !imgError[i]
-              ? "opacity-100 scale-100"
-              : "opacity-0 scale-[1.06] motion-reduce:!scale-100"
-          }`}
-        >
-          {/* Next/Image with fill so it covers the full backdrop pane.
-              priority on the first photo so it lands in the LCP budget;
-              the rest lazy-load. sizes=100vw because backdrop spans the
-              full viewport. unoptimized would skip AVIF conversion —
-              we deliberately allow optimization via the remotePatterns
-              entry in next.config.ts. */}
+      {/* Base — the previous photo, fully opaque. On first paint (and for a
+          single-photo city) prevIdx === idx, so this simply shows the current
+          photo. */}
+      <div className="absolute inset-0">
+        <Image
+          src={photos[prevIdx]}
+          alt=""
+          fill
+          sizes="100vw"
+          priority
+          className="object-cover"
+        />
+      </div>
+
+      {/* Incoming — the current photo, cross-dissolving in ON TOP of the base
+          via the cs-backdrop-fade-in keyframe (opacity 0→1, scale 1.06→1).
+          Keyed by idx so each swap re-mounts and restarts the animation. Only
+          rendered while it differs from the base and hasn't errored. */}
+      {idx !== prevIdx && !imgError[idx] && (
+        <div key={`${city.slug}-in-${idx}`} className="absolute inset-0 cs-backdrop-fade-in">
           <Image
-            src={photos[i]}
+            src={photos[idx]}
             alt=""
             fill
             sizes="100vw"
-            priority={i === 0}
-            onError={() => setImgError((e) => ({ ...e, [i]: true }))}
+            onError={() => setImgError((e) => ({ ...e, [idx]: true }))}
             className="object-cover"
           />
         </div>
-      ))}
-      {/* Light legibility overlay — the photo reads clearly while text on top
-          stays comfortable to read. No sand-50 wash on the bottom anymore. */}
+      )}
+
+      {/* Preload the next photo (hidden) so the upcoming dissolve has it
+          decoded and cached — keeps the transition smooth. */}
+      {next !== idx && (
+        <div className="absolute inset-0 opacity-0">
+          <Image src={photos[next]} alt="" fill sizes="100vw" className="object-cover" />
+        </div>
+      )}
+
+      {/* Constant legibility overlay (NOT part of the transition) — the photo
+          reads clearly while text on top stays comfortable to read. */}
       <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-white/45 to-white/65" />
     </div>
   );

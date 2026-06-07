@@ -1,5 +1,6 @@
 "use client";
 import { useApi } from "@/lib/api-client";
+import { Collapsible } from "./Collapsible";
 import { formatRatePer100k, formatRatePer100kProse, formatDeltaPct, formatReportDate } from "@/lib/format";
 // Import the vintage label DIRECTLY from the package (not the apps/web
 // server-only shim) so this client component can include it in the
@@ -103,37 +104,48 @@ export function CityScoreCard({ citySlug, cityLabel }: { citySlug: string; cityL
         )}
       </section>
 
-      <ul className={`grid grid-cols-1 ${score.rows.length > 1 ? "md:grid-cols-2" : ""} gap-3`}>
-        {score.rows.map((r) => {
-          const above = r.deltaPct > 5;
-          const below = r.deltaPct < -5;
-          return (
-            <li key={r.category}>
-              <article className="surface p-5 h-full">
-                <header className="flex items-baseline justify-between gap-2">
-                  <h3 className="font-display text-base text-slate2-900">{CAT_LABEL[r.category]}</h3>
-                  <span className={`text-xs font-medium ${above ? "text-coral-700" : below ? "text-sage-700" : "text-slate2-500"}`}>
-                    {formatDeltaPct(r.deltaPct)} vs national
-                  </span>
-                </header>
-                <svg viewBox="0 0 200 50" className="mt-3 w-full h-12" role="img" aria-label={`${CAT_LABEL[r.category]}: ${formatRatePer100kProse(r.localPer100k)} ${cityLabel} citywide, ${formatRatePer100kProse(r.nationalPer100k)} national`}>
-                  <text x="0" y="9" style={{ fontSize: 6 }} fill="#475569">{cityLabel}</text>
-                  <rect x="0" y="12" width="200" height="7" rx="2" fill="#e9eef3" />
-                  <rect x="0" y="12" width={(r.localPer100k / max) * 200} height="7" rx="2" fill={above ? "#DC2626" : below ? "#7BA86E" : "#2563EB"} />
-                  <text x="200" y="9" textAnchor="end" style={{ fontSize: 6 }} fill="#475569">{formatRatePer100k(r.localPer100k)}</text>
-                  <text x="0" y="32" style={{ fontSize: 6 }} fill="#475569">National (FBI {score.source.publishedYear})</text>
-                  <rect x="0" y="35" width="200" height="7" rx="2" fill="#e9eef3" />
-                  <rect x="0" y="35" width={(r.nationalPer100k / max) * 200} height="7" rx="2" fill="#94a3b8" />
-                  <text x="200" y="32" textAnchor="end" style={{ fontSize: 6 }} fill="#475569">{formatRatePer100k(r.nationalPer100k)}</text>
-                </svg>
-                <p className="mt-2 text-xs text-slate2-500 tabular-nums">
-                  {r.count.toLocaleString()} reported in the cached window.
-                </p>
-              </article>
-            </li>
-          );
-        })}
-      </ul>
+      {/* v108 — the per-category scoring breakdown (how the grade is derived
+          vs the FBI national rate) is collapsed by default so the page leads
+          with the grade + headline and stays scannable; users who want the
+          methodology expand it. The grade card above stays always-visible. */}
+      <Collapsible
+        title="How this grade is scored"
+        summary="vs FBI national rate"
+        defaultCollapsed
+        storageKey={`city-score-breakdown-${citySlug}`}
+      >
+        <ul className={`grid grid-cols-1 ${score.rows.length > 1 ? "md:grid-cols-2" : ""} gap-3 pt-1`}>
+          {score.rows.map((r) => {
+            const above = r.deltaPct > 5;
+            const below = r.deltaPct < -5;
+            return (
+              <li key={r.category}>
+                <article className="surface p-5 h-full">
+                  <header className="flex items-baseline justify-between gap-2">
+                    <h3 className="font-display text-base text-slate2-900">{CAT_LABEL[r.category]}</h3>
+                    <span className={`text-xs font-medium ${above ? "text-coral-700" : below ? "text-sage-700" : "text-slate2-500"}`}>
+                      {formatDeltaPct(r.deltaPct)} vs national
+                    </span>
+                  </header>
+                  <svg viewBox="0 0 200 50" className="mt-3 w-full h-12" role="img" aria-label={`${CAT_LABEL[r.category]}: ${formatRatePer100kProse(r.localPer100k)} ${cityLabel} citywide, ${formatRatePer100kProse(r.nationalPer100k)} national`}>
+                    <text x="0" y="9" style={{ fontSize: 6 }} fill="#475569">{cityLabel}</text>
+                    <rect x="0" y="12" width="200" height="7" rx="2" fill="#e9eef3" />
+                    <rect x="0" y="12" width={(r.localPer100k / max) * 200} height="7" rx="2" fill={above ? "#DC2626" : below ? "#7BA86E" : "#2563EB"} />
+                    <text x="200" y="9" textAnchor="end" style={{ fontSize: 6 }} fill="#475569">{formatRatePer100k(r.localPer100k)}</text>
+                    <text x="0" y="32" style={{ fontSize: 6 }} fill="#475569">National (FBI {score.source.publishedYear})</text>
+                    <rect x="0" y="35" width="200" height="7" rx="2" fill="#e9eef3" />
+                    <rect x="0" y="35" width={(r.nationalPer100k / max) * 200} height="7" rx="2" fill="#94a3b8" />
+                    <text x="200" y="32" textAnchor="end" style={{ fontSize: 6 }} fill="#475569">{formatRatePer100k(r.nationalPer100k)}</text>
+                  </svg>
+                  <p className="mt-2 text-xs text-slate2-500 tabular-nums">
+                    {r.count.toLocaleString()} reported in the cached window.
+                  </p>
+                </article>
+              </li>
+            );
+          })}
+        </ul>
+      </Collapsible>
     </section>
   );
 }

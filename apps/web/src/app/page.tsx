@@ -14,18 +14,18 @@ export default function WelcomePage() {
 
       {/* Hero — glass card so the city backdrop shows through. */}
       <section className="relative">
-        <div className="relative max-w-5xl mx-auto px-6 py-24 sm:py-32">
-          <div className="max-w-2xl rounded-2xl bg-slate2-900/55 backdrop-blur-md p-6 sm:p-8 shadow-card-lift border border-white/10">
-            <p className="text-bay-200 text-sm tracking-wide uppercase animate-fade-in">Area-level safety · 44 US cities, coast to coast</p>
-            <h1 className="mt-2 font-display text-5xl sm:text-6xl text-white animate-rise-in">
+        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 py-16 sm:py-24 md:py-32">
+          <div className="max-w-2xl rounded-2xl bg-slate2-900/55 backdrop-blur-md p-5 sm:p-8 shadow-card-lift border border-white/10">
+            <p className="text-bay-200 text-xs sm:text-sm tracking-wide uppercase animate-fade-in">Area-level safety · 44 US cities, coast to coast</p>
+            <h1 className="mt-2 font-display text-4xl sm:text-5xl md:text-6xl text-white animate-rise-in">
               <span className="bg-gradient-to-r from-white to-coral-200 bg-clip-text text-transparent">Community</span>Safe
             </h1>
-            <p className="mt-4 text-sand-100 text-lg animate-rise-in">
+            <p className="mt-4 text-sand-100 text-base sm:text-lg animate-rise-in">
               Calm, neighborhood-level safety context for major US cities. The application draws on official police data and moderated community reports, without surveillance, profiling, or alarmism.
             </p>
-            <div className="mt-8 flex flex-wrap gap-3 animate-rise-in">
-              <Link href="/now" className="btn-coral text-base px-6 py-3">Explore CommunitySafe →</Link>
-              <Link href="/map" className="btn-secondary text-base px-6 py-3 !bg-white/10 !border-white/30 !text-white hover:!bg-white/20">
+            <div className="mt-8 flex flex-col sm:flex-row sm:flex-wrap gap-3 animate-rise-in">
+              <Link href="/now" className="btn-coral text-base px-6 py-3 w-full sm:w-auto text-center justify-center">Explore CommunitySafe →</Link>
+              <Link href="/map" className="btn-secondary text-base px-6 py-3 w-full sm:w-auto text-center justify-center !bg-white/10 !border-white/30 !text-white hover:!bg-white/20">
                 Open the Crime Map
               </Link>
             </div>
@@ -37,7 +37,7 @@ export default function WelcomePage() {
       </section>
 
       {/* Pillars */}
-      <section className="max-w-5xl mx-auto px-6 py-16">
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Pillar
             tone="bay"
@@ -61,9 +61,9 @@ export default function WelcomePage() {
       </section>
 
       {/* Not list */}
-      <section className="max-w-5xl mx-auto px-6 pb-16">
-        <div className="surface p-8">
-          <h2 className="font-display text-2xl text-slate2-900">What this application does not do</h2>
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 pb-12 sm:pb-16">
+        <div className="surface p-5 sm:p-8">
+          <h2 className="font-display text-xl sm:text-2xl text-slate2-900">What this application does not do</h2>
           <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-slate2-700">
             <Bullet>It does not surveil, track, or geolocate individuals.</Bullet>
             <Bullet>It does not contact emergency services on your behalf. In an emergency, call 911 directly.</Bullet>
@@ -74,13 +74,13 @@ export default function WelcomePage() {
       </section>
 
       {/* Founder + contact */}
-      <section className="max-w-5xl mx-auto px-6 pb-24">
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <article className="surface p-6">
+          <article className="surface p-5 sm:p-6">
             <span className="inline-block text-[11px] uppercase tracking-wider px-2 py-0.5 rounded-full text-bay-700 bg-bay-200">
               Founder
             </span>
-            <h2 className="mt-3 font-display text-2xl text-slate2-900">Built by a U.S. Army Veteran</h2>
+            <h2 className="mt-3 font-display text-xl sm:text-2xl text-slate2-900">Built by a U.S. Army Veteran</h2>
             <p className="mt-3 text-sm text-slate2-700 leading-relaxed">
               CommunitySafe is founded by a U.S. Army Veteran. The product was
               built around what actually keeps people safe in a neighborhood:
@@ -91,11 +91,11 @@ export default function WelcomePage() {
             </p>
           </article>
 
-          <article className="surface p-6">
+          <article className="surface p-5 sm:p-6">
             <span className="inline-block text-[11px] uppercase tracking-wider px-2 py-0.5 rounded-full text-coral-700 bg-coral-200">
               Contact
             </span>
-            <h2 className="mt-3 font-display text-2xl text-slate2-900">Questions, press, partnerships</h2>
+            <h2 className="mt-3 font-display text-xl sm:text-2xl text-slate2-900">Questions, press, partnerships</h2>
             <p className="mt-3 text-sm text-slate2-700 leading-relaxed">
               For any inquiry — feedback, press, data-source corrections,
               privacy-rights requests, partnerships — email us. We read

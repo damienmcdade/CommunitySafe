@@ -87,17 +87,32 @@ export function WheelCityAreaPicker({
     if (slug !== city.slug) setCity(slug);
   }
 
-  // Auto-commit the first area of a new city once the area list
-  // loads, so users who picked a city never see "no area selected"
-  // downstream. Only fires when the current area doesn't belong to
-  // the now-selected city.
+  // Seed a default neighborhood for a city ONLY the first time it's visited
+  // (no saved pick yet), so a freshly-picked city never lands on "no area
+  // selected" downstream — while NEVER overriding a real user selection.
+  //
+  // v108 — two bugs fixed here, both reported as "I have to pick my
+  // neighborhood several times / it keeps snapping to a default":
+  //   1. CROSS-CITY BLEED. `setArea` is bound to the COMMITTED city
+  //      (useArea(city.slug)), but `cityAreas` is the PENDING city's list.
+  //      While the user scrubs the State/City wheels, pendingCity changes
+  //      WITHOUT committing — the old code then wrote the pending city's
+  //      first area into the *committed* city's saved slot, corrupting it.
+  //      Guard: only run when pendingCity === the committed city.
+  //   2. OVERRIDING A VALID PICK. The old code re-defaulted whenever the
+  //      saved area wasn't in `cityAreas`. With the new tiered/progressive
+  //      area loading, a saved neighborhood is briefly absent from the
+  //      partial list (and the jurisdiction filter can transiently drop it),
+  //      so the effect clobbered the user's choice with cityAreas[0]. Guard:
+  //      only seed when there is NO saved area for this city; once the user
+  //      (or this seed) has set one, leave it untouched.
   useEffect(() => {
-    if (cityAreas.length === 0) return;
-    const current = area?.slug ?? null;
-    if (current && cityAreas.some((a) => a.slug === current)) return;
+    if (pendingCity !== city.slug) return;     // don't write while scrubbing other cities
+    if (area?.slug) return;                     // never override an existing pick
+    if (cityAreas.length === 0) return;         // wait for the area list
     const first = cityAreas[0];
     setArea({ slug: first.slug, label: first.label, jurisdiction: first.jurisdiction });
-  }, [cityAreas, area?.slug, setArea]);
+  }, [pendingCity, city.slug, cityAreas, area?.slug, setArea]);
 
   function handleAreaChange(slug: string) {
     const picked = cityAreas.find((a) => a.slug === slug);

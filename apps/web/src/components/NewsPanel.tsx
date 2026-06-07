@@ -221,7 +221,7 @@ export function NewsPanel({ areaSlug }: { areaSlug?: string }) {
         </ul>
       )}
       {error && !loading && (
-        <p className="mt-3 text-sm text-dusk-700">Could not load news right now. The Google News feed may be rate-limited; please try again in a minute.</p>
+        <p className="mt-3 text-sm text-dusk-700">Could not load news right now. The Google News feed may be rate-limited; try again in a moment.</p>
       )}
       {!loading && !error && visibleItems.length === 0 && items.length > 0 && (
         <p className="mt-3 text-sm text-slate2-500">All sources are hidden. Use the source picker to enable some.</p>

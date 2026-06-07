@@ -393,7 +393,7 @@ function ContactPicker({
   if (confirmed.length === 0) {
     return (
       <div className="text-xs text-slate2-500 surface-muted p-3 rounded-lg">
-        {label} No confirmed contacts yet — add one below to enable this.
+        No confirmed contacts yet — add one below to enable this.
       </div>
     );
   }

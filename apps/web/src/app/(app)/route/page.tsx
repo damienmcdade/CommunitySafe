@@ -370,7 +370,7 @@ export default function SafeRoutePage() {
                   </header>
                   <p className="mt-2 text-sm text-slate2-700 leading-snug">{r.headline}</p>
                   <p className="mt-2 text-xs text-slate2-500 tabular-nums">
-                    Exposure score: {r.exposureScore.toLocaleString()} · {r.exposurePer100k.toLocaleString()} per 100k m
+                    Exposure score: {r.exposureScore.toLocaleString()} · {r.exposurePer100k.toLocaleString()} per 100k
                   </p>
                 </button>
               );
