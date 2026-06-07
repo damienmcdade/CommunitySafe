@@ -75,7 +75,13 @@ const lkgRecentReports = new Map<string, Incident[]>();
 // thousands, so the cap is a backstop, not a normal-operation limit.
 const LKG_MAX_ENTRIES = 4000;
 function lkgSet<V>(map: Map<string, V>, key: string, value: V): void {
-  if (!map.has(key) && map.size >= LKG_MAX_ENTRIES) {
+  // v108 audit — true LRU. Map preserves INSERTION order, so re-setting an
+  // existing key does NOT move it to the most-recent position. Delete first,
+  // then re-insert, so a frequently-refreshed (hot) entry moves to the end and
+  // the oldest-USED entry is the one evicted under the cap — not a hot one that
+  // merely happened to be inserted first.
+  map.delete(key);
+  if (map.size >= LKG_MAX_ENTRIES) {
     const oldest = map.keys().next().value;
     if (oldest !== undefined) map.delete(oldest);
   }

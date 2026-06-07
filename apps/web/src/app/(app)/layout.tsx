@@ -71,6 +71,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             CommunitySafe surfaces official city police-incident data and the {FBI_DATA_LABEL} national rate.
             Historical reporting only — not a substitute for emergency services.
           </p>
+          {/* v108 audit — the header ThemeToggle is desktop-only (hidden
+              sm:inline-flex) to keep the mobile header uncrowded; surface a
+              copy here so mobile users can switch theme without opening
+              Settings. */}
+          <div className="sm:hidden w-full flex items-center gap-2">
+            <span className="text-slate2-500">Theme</span>
+            <ThemeToggle align="left" size="sm" />
+          </div>
           <nav aria-label="Legal" className="flex gap-3 flex-wrap">
             <Link href="/coverage" className="text-bay-700 hover:underline">Coverage</Link>
             <Link href="/watch" className="text-bay-700 hover:underline">Watch</Link>

@@ -94,9 +94,13 @@ async function fetchPage(offset: number, sinceIso: string): Promise<BpdFeature[]
 }
 
 function mapBaltimore(feats: BpdFeature[], baseIndex: number): Incident[] {
+  // v108 audit — map over the UNFILTERED page so `i` is the raw page-relative
+  // index, then drop nulls. This keeps the `idx${baseIndex+i}` fallback ids
+  // stable + unique across the recent/deep tiers (the tiered-loader dedup-merge
+  // contract); a filter-before-map would index the dense filtered array instead.
   return feats
-    .filter((f) => typeof f.attributes.CrimeDateTime === "number")
-    .map((f, i) => {
+    .map((f, i): Incident | null => {
+      if (typeof f.attributes.CrimeDateTime !== "number") return null;
       const a = f.attributes;
       const lng = f.geometry && f.geometry.x !== 0 ? f.geometry.x : undefined;
       const lat = f.geometry && f.geometry.y !== 0 ? f.geometry.y : undefined;
@@ -113,7 +117,8 @@ function mapBaltimore(feats: BpdFeature[], baseIndex: number): Incident[] {
         lat,
         lng,
       };
-    });
+    })
+    .filter((x): x is Incident => x !== null);
 }
 
 // Fetch the half-open page range [startPage, endPage) with bounded concurrency

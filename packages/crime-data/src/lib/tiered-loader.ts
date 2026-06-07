@@ -49,6 +49,13 @@ export interface TieredLoader {
 
 export function createTieredLoader(opts: TieredLoaderOptions): TieredLoader {
   const ttl = opts.ttlMs ?? 5 * 60 * 1000;
+  // v108 audit — make the `full` flag load-bearing. A NON-complete cache
+  // (recent-tier-only while the deep backfill runs, or a deep pull that didn't
+  // fully succeed) is re-validated sooner so it converges to the full dataset
+  // instead of serving a partial set for the entire TTL. This is what the
+  // deepen() comment below ("leave full=false so the next TTL lapse re-attempts
+  // a complete backfill") always meant — previously the TTL ignored `full`.
+  const NON_FULL_TTL_MS = Math.min(ttl, 90_000);
   const tiered = opts.recentPages > 0 && opts.recentPages < opts.pages;
   let cache: { fetchedAt: number; rows: Incident[]; full: boolean } | null = null;
   // In-flight fetch dedup (the OOM-guard Detroit added in v94): the dispatcher
@@ -82,7 +89,8 @@ export function createTieredLoader(opts: TieredLoaderOptions): TieredLoader {
 
   async function getRows(): Promise<Incident[]> {
     const now = Date.now();
-    if (cache && cache.rows.length > 0 && now - cache.fetchedAt < ttl) return cache.rows;
+    const effTtl = cache?.full ? ttl : NON_FULL_TTL_MS;
+    if (cache && cache.rows.length > 0 && now - cache.fetchedAt < effTtl) return cache.rows;
     if (inFlight) return inFlight;
     inFlight = (async () => {
       try {

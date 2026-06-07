@@ -136,9 +136,11 @@ async function fetchPage(offset: number, sinceIso: string): Promise<JsoFeature[]
 }
 
 function mapJacksonville(feats: JsoFeature[], baseIndex: number): Incident[] {
+  // v108 audit — map over the UNFILTERED page so `i` is the raw page-relative
+  // index (stable + unique `idx` fallback ids across tiers), then drop nulls.
   return feats
-    .filter((f) => typeof f.attributes.IncidentDateTime === "number")
-    .map((f, i) => {
+    .map((f, i): Incident | null => {
+      if (typeof f.attributes.IncidentDateTime !== "number") return null;
       const a = f.attributes;
       const lng = f.geometry && f.geometry.x !== 0 ? f.geometry.x : undefined;
       const lat = f.geometry && f.geometry.y !== 0 ? f.geometry.y : undefined;
@@ -154,7 +156,8 @@ function mapJacksonville(feats: JsoFeature[], baseIndex: number): Incident[] {
         lat,
         lng,
       };
-    });
+    })
+    .filter((x): x is Incident => x !== null);
 }
 
 // Fetch the half-open page range [startPage, endPage) with bounded concurrency

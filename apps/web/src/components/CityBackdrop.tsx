@@ -26,6 +26,17 @@ export function CityBackdrop() {
   const [idx, setIdx] = useState(0);
   const [prevIdx, setPrevIdx] = useState(0);
   const [imgError, setImgError] = useState<Record<number, boolean>>({});
+  // v108 audit — defer mounting the hidden next-photo preloader off the initial
+  // LCP window. `loading="lazy"` can't help here: the preload layer is
+  // absolute-inset-0 (it intersects the viewport), so the browser would fetch a
+  // second full-screen image on first paint, competing with the priority base
+  // image's LCP. The first rotation is 60s out, so mounting the preloader a few
+  // seconds after paint still has it cached well before it's needed.
+  const [preloadReady, setPreloadReady] = useState(false);
+  useEffect(() => {
+    const t = window.setTimeout(() => setPreloadReady(true), 2500);
+    return () => window.clearTimeout(t);
+  }, []);
 
   // Reset to the first photo whenever the city changes so the user sees the
   // new city's downtown immediately, then resume rotation.
@@ -103,7 +114,7 @@ export function CityBackdrop() {
 
       {/* Preload the next photo (hidden) so the upcoming dissolve has it
           decoded and cached — keeps the transition smooth. */}
-      {next !== idx && (
+      {preloadReady && next !== idx && (
         <div className="absolute inset-0 opacity-0">
           <Image src={photos[next]} alt="" fill sizes="100vw" className="object-cover" />
         </div>

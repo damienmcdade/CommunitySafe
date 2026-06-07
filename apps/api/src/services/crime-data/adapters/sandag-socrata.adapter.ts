@@ -1,6 +1,7 @@
 import { env } from "../../../env.js";
 import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../types.js";
 import { findArea } from "../neighborhoods.js";
+import { readJsonSafe } from "../../../lib/safe-json.js";
 
 // SANDAG Crime Data on the San Diego County Open Data Portal (Socrata).
 // Dataset: yearly crime rates per jurisdiction (San Diego, Chula Vista, La Mesa,
@@ -99,7 +100,7 @@ async function sodaGet(query: Record<string, string>): Promise<SodaRow[]> {
   if (env.SANDAG_SOCRATA_APP_TOKEN) headers["X-App-Token"] = env.SANDAG_SOCRATA_APP_TOKEN;
   const res = await fetch(url, { headers });
   if (!res.ok) throw new Error(`SANDAG SODA ${res.status}: ${await res.text()}`);
-  return (await res.json()) as SodaRow[];
+  return await readJsonSafe<SodaRow[]>(res);
 }
 
 export const sandagSocrataAdapter: CrimeDataAdapter = {

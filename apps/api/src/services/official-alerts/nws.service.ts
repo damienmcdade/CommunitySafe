@@ -15,6 +15,8 @@
 // is low-leverage versus the statewide/national sources above. Revisit
 // only if a city-specific "local agency bulletin" surface is greenlit.
 
+import { readJsonSafe } from "../../lib/safe-json.js";
+
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cache: { fetchedAt: number; alerts: OfficialAlert[] } | null = null;
 
@@ -58,7 +60,7 @@ export async function getOfficialAlerts(): Promise<OfficialAlert[]> {
       signal: AbortSignal.timeout(8_000),
     });
     if (!res.ok) return cache?.alerts ?? [];
-    const json = (await res.json()) as { features?: NwsFeature[] };
+    const json = await readJsonSafe<{ features?: NwsFeature[] }>(res);
     const alerts: OfficialAlert[] = (json.features ?? [])
       .filter((f) => {
         const area = f.properties.areaDesc?.toLowerCase() ?? "";

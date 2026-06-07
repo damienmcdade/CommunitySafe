@@ -142,9 +142,11 @@ async function fetchPage(offset: number, sinceIso: string): Promise<FwFeature[]>
 }
 
 function mapFortWorth(feats: FwFeature[], baseIndex: number): Incident[] {
+  // v108 audit — map over the UNFILTERED page so `i` is the raw page-relative
+  // index (stable + unique `idx` fallback ids across tiers), then drop nulls.
   return feats
-    .filter((f) => typeof f.attributes.Reported_Date === "number")
-    .map((f, i) => {
+    .map((f, i): Incident | null => {
+      if (typeof f.attributes.Reported_Date !== "number") return null;
       const a = f.attributes;
       const lat = typeof a.Latitude === "number" && Math.abs(a.Latitude) > 1 ? a.Latitude : undefined;
       const lng = typeof a.Longitude === "number" && Math.abs(a.Longitude) > 1 ? a.Longitude : undefined;
@@ -160,7 +162,8 @@ function mapFortWorth(feats: FwFeature[], baseIndex: number): Incident[] {
         lat,
         lng,
       };
-    });
+    })
+    .filter((x): x is Incident => x !== null);
 }
 
 // Fetch the half-open page range [startPage, endPage) with bounded concurrency

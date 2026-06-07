@@ -1,4 +1,5 @@
 import { SD_AREAS, findArea, nearestArea, type KnownArea } from "../crime-data/neighborhoods.js";
+import { readJsonSafe } from "../../lib/safe-json.js";
 import { CITIES, cityBySlug } from "@travelsafe/crime-data/cities";
 
 // v95p22 — when citySlug is supplied, snap-to-nearest runs against
@@ -106,7 +107,7 @@ async function nominatimGeocode(query: string, citySlug?: string): Promise<{ lat
       signal: AbortSignal.timeout(5_000),
     });
     if (!res.ok) return null;
-    const arr = (await res.json()) as Array<{ lat: string; lon: string }>;
+    const arr = await readJsonSafe<Array<{ lat: string; lon: string }>>(res);
     if (!arr.length) return null;
     return { lat: Number(arr[0].lat), lng: Number(arr[0].lon) };
   } catch {
