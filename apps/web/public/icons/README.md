@@ -1,16 +1,17 @@
 # CommunitySafe — Icon System (v108 — "Sheltering Wing")
 
 ## Concept
-A single luminous guardian-angel **wing arcing protectively over a minimal
-downtown-Manhattan skyline** at dusk — Empire State Building (with antenna spire)
-center, a terraced Art-Deco crown to the left, a warm gilded street glow below.
-The wing is the focal element (it survives at 48px); the skyline is a supporting
-silhouette baseline. Secular by design (no halo/face), claiming the safety
-category's unclaimed "wing" white space — competitors are all flat blue shields,
-location pins, and house glyphs. The art is built **parametrically** (feather fan
-along a leading-edge arc) in the generator, so the feathering is tunable. A
-hyper-realistic photographic master can be swapped in via the same `png()`
-fan-out by replacing the `svg` source with a 1024×1024 PNG.
+Luminous guardian-angel **wings spread protectively over the downtown-Manhattan
+skyline** at dusk, Empire State Building glowing gold dead-center. Secular by
+design (no halo/face), claiming the safety category's unclaimed "wings" white
+space — competitors are all flat blue shields, location pins, and house glyphs.
+
+The icon is now a **hyper-realistic photographic master** (`scripts/icon-master.png`,
+generated with FLUX.1 [schnell] — Apache-2.0, commercial-use OK). The generator
+center-crops it (`CROP = { zoom: 0.84, yShift: -0.03 }`) so the focal wings +
+landmark fill the icon frame, then fans out to every platform via sharp. **To
+change the icon: drop a new 1024×1024 master at `scripts/icon-master.png` and
+rerun `npm run icons:generate`** — no other edits needed.
 
 ## Color palette
 | Token | Hex | Usage |
