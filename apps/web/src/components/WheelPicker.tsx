@@ -175,7 +175,7 @@ export function WheelPicker({ items, value, onChange, height = 196, rowHeight = 
               type="button"
               onClick={() => setQuery("")}
               aria-label="Clear filter"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate2-500 hover:text-slate2-900 text-xs px-1.5 py-0.5"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate2-500 hover:text-slate2-900 text-sm leading-none p-2"
             >
               ×
             </button>
@@ -199,9 +199,11 @@ export function WheelPicker({ items, value, onChange, height = 196, rowHeight = 
       <div className="pointer-events-none absolute inset-x-0 z-0" style={{ top: padding, height: rowHeight }}>
         <div className="h-full mx-1 rounded-md border-2 border-bay-500" />
       </div>
-      {/* Top + bottom gradient fades for the drum effect. */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-12 bg-gradient-to-b from-white to-transparent" />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-12 bg-gradient-to-t from-white to-transparent" />
+      {/* Top + bottom gradient fades for the drum effect. The `wheel-fade`
+          hook lets globals.css recolor the fade to the dark surface in dark
+          mode (the from-white stop would otherwise stay a white wash). */}
+      <div className="wheel-fade pointer-events-none absolute inset-x-0 top-0 z-20 h-12 bg-gradient-to-b from-white to-transparent" />
+      <div className="wheel-fade pointer-events-none absolute inset-x-0 bottom-0 z-20 h-12 bg-gradient-to-t from-white to-transparent" />
 
       {/* fix(audit a11y-wheelpicker): the scroll container <ul> IS the listbox,
           so the role="option" rows are its DIRECT children (fixes

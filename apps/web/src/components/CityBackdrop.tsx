@@ -110,8 +110,10 @@ export function CityBackdrop() {
       )}
 
       {/* Constant legibility overlay (NOT part of the transition) — the photo
-          reads clearly while text on top stays comfortable to read. */}
-      <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-white/45 to-white/65" />
+          reads clearly while text on top stays comfortable to read. The
+          `cs-backdrop-overlay` hook flips this to a dark wash in dark mode
+          (globals.css) so overlaid text keeps its contrast. */}
+      <div className="cs-backdrop-overlay absolute inset-0 bg-gradient-to-b from-white/30 via-white/45 to-white/65" />
     </div>
   );
 }

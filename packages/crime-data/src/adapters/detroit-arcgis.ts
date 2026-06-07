@@ -266,7 +266,9 @@ export async function getRowsDetroit(): Promise<Incident[]> {
       // representative for grading until the deep tier widens the window.
       const { rows: recent } = await fetchRange(0, RECENT_PAGES);
       if (recent.length > 0) {
-        cache = { fetchedAt: now, rows: recent, full: false, ...buildIndexes(recent) };
+        // v108 audit — stamp fetchedAt at assignment time, not entry-time `now`
+        // (a cold Detroit fetch is multi-second; `now` would shorten the TTL).
+        cache = { fetchedAt: Date.now(), rows: recent, full: false, ...buildIndexes(recent) };
         void deepenDetroit(recent);
         return recent;
       }

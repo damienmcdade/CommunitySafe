@@ -451,6 +451,28 @@ export default function CrimeMap() {
   // ---- Selection (autocomplete + zoom + drill-down) ------------------------
   const [query, setQuery] = useState("");
   const [selectedName, setSelectedName] = useState<string | null>(null);
+  // v108 audit (perf-map-geojson-key) — keep the <GeoJSON> layer ALIVE across
+  // selection + data refresh. The React key used to include selectedName +
+  // maxCount, so every polygon click and every 15-min refresh unmounted and
+  // rebuilt all ~280 polygons (re-binding every tooltip). We now restyle/retip
+  // imperatively: a ref to the layer (for tooltip refresh) and a ref mirroring
+  // the live selection (so the construction-time onEachFeature mouseout reads
+  // the CURRENT selection, not its stale closure value).
+  const geoJsonRef = useRef<L.GeoJSON | null>(null);
+  const selectedNameRef = useRef<string | null>(null);
+  useEffect(() => { selectedNameRef.current = selectedName; }, [selectedName]);
+  // Refresh per-feature tooltip content in place when the incident stats change
+  // (a background data refresh). bindTooltip runs only at layer construction, so
+  // without this a refresh would show stale counts until the layer rebuilds.
+  useEffect(() => {
+    const g = geoJsonRef.current;
+    if (!g) return;
+    g.eachLayer((lyr) => {
+      const f = (lyr as L.Layer & { feature?: Feature<Geometry> }).feature;
+      const nm = (f?.properties as { name?: string } | null)?.name ?? "";
+      (lyr as L.Layer).setTooltipContent?.(tooltipHtml(nm, polygonStats.get(nm) ?? null));
+    });
+  }, [polygonStats]);
   // Sync selection to the global area store so picking a polygon here also
   // updates /threats, /safety-score, /trends, etc. via useArea. Bidirectional:
   // a pick MADE elsewhere reflects on the map by highlighting the matching
@@ -581,7 +603,7 @@ export default function CrimeMap() {
     layer.on({
       click: () => pickPolygon(name),
       mouseover: (e: LeafletMouseEvent) => { (e.target as L.Path).setStyle({ weight: 2 }); },
-      mouseout:  (e: LeafletMouseEvent) => { (e.target as L.Path).setStyle({ weight: name === selectedName ? 2.5 : 0.9 }); },
+      mouseout:  (e: LeafletMouseEvent) => { (e.target as L.Path).setStyle({ weight: name === selectedNameRef.current ? 2.5 : 0.9 }); },
     });
   }
 
@@ -666,7 +688,13 @@ export default function CrimeMap() {
           />
           {polygonsForRender && (
             <GeoJSON
-              key={`${city.slug}-${maxCount}-${selectedName ?? ""}-${polygonsForRender.features.length}`}
+              // v108 — key on data identity ONLY (city + feature count), so the
+              // layer is NOT rebuilt on selection/refresh. Selection highlight
+              // re-applies via the changing `style` closure (react-leaflet calls
+              // setStyle when the style prop ref changes); tooltips refresh via
+              // the [polygonStats] effect above; mouseout reads selectedNameRef.
+              key={`${city.slug}-${polygonsForRender.features.length}`}
+              ref={geoJsonRef}
               data={polygonsForRender}
               style={stylePolygon as L.StyleFunction}
               onEachFeature={onEachFeature}

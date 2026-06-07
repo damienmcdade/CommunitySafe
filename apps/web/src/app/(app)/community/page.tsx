@@ -22,7 +22,7 @@ interface PostListItem {
   createdAt: string;
   reviewedAt: string | null;
   area: { id: string; name: string; slug: string };
-  author: { id: string; displayName: string | null; trustLevel?: "NEW" | "REGULAR" | "TRUSTED" | "MODERATOR" };
+  author: { displayName: string | null; trustLevel?: "NEW" | "REGULAR" | "TRUSTED" | "MODERATOR" };
   _count: { comments: number; reactions: number };
 }
 const KIND_LABEL: Record<PostListItem["kind"], string> = {

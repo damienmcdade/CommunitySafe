@@ -2,7 +2,7 @@ import { CrimeCategory } from "../crime-category.js";
 import { readJson } from "../lib/http.js";
 import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../types.js";
 import { createTieredLoader } from "../lib/tiered-loader.js";
-import { riskLevelFromAreaCounts } from "../risk-bands.js";
+import { deriveBands, bucketByBands } from "../risk-bands.js";
 import type { KnownArea } from "../neighborhoods.js";
 import { districtNumberToName } from "../data/saint-paul-neighborhoods.js";
 import { GENERATED_AREA_CENTROIDS } from "../area-centroids-generated.js";
@@ -184,6 +184,38 @@ export async function getRowsSaintPaul(): Promise<Incident[]> {
   return saintPaulLoader.getRows();
 }
 
+// perf(saint-paul-index): the citywide compose path calls getAreaStats /
+// getIncidents once per district (17 areas), and each call used to scan all
+// ~45k rows (rows.filter + a full re-scan inside labelForSaintPaulSlug and
+// riskLevelFromAreaCounts) → O(areas × rows). Mirror Detroit's labelToRows:
+// build a label → Incident[] Map once, memoized by the rows-array identity
+// returned by the tiered loader, and rebuild only when that array changes
+// (i.e. the background deep-load swaps in a larger array).
+interface SpIndex {
+  rows: Incident[];
+  labelToRows: Map<string, Incident[]>;
+  slugToLabel: Map<string, string>;
+}
+let spIndex: SpIndex | null = null;
+function getSaintPaulIndex(rows: Incident[]): SpIndex {
+  if (spIndex && spIndex.rows === rows) return spIndex;
+  const labelToRows = new Map<string, Incident[]>();
+  const slugToLabel = new Map<string, string>();
+  for (const r of rows) {
+    if (!r.area || r.area === "Unknown") continue;
+    let bucket = labelToRows.get(r.area);
+    if (!bucket) {
+      bucket = [];
+      labelToRows.set(r.area, bucket);
+      const slug = r.area.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      slugToLabel.set(slug, r.area);
+    }
+    bucket.push(r);
+  }
+  spIndex = { rows, labelToRows, slugToLabel };
+  return spIndex;
+}
+
 export async function getDiscoveredAreasSaintPaul(): Promise<KnownArea[]> {
   const rows = await getRowsSaintPaul();
   const counts = new Map<string, number>();
@@ -205,35 +237,39 @@ export async function getDiscoveredAreasSaintPaul(): Promise<KnownArea[]> {
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
-function labelForSaintPaulSlug(slug: string, rows: Incident[]): string | null {
+function labelForSaintPaulSlug(slug: string, index: SpIndex): string | null {
   const s = slug.toLowerCase();
   const want = s.startsWith("sp-") ? s.slice(3) : s;
-  for (const r of rows) {
-    const candidate = r.area.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-    if (candidate === want) return r.area;
-  }
-  return null;
+  return index.slugToLabel.get(want) ?? null;
 }
 
 export const saintPaulAdapter: CrimeDataAdapter = {
   name: "saint-paul-arcgis",
 
   async getAreaStats(area: string): Promise<AreaStats | null> {
-    const rows = await getRowsSaintPaul();
-    const label = labelForSaintPaulSlug(area, rows);
+    const index = getSaintPaulIndex(await getRowsSaintPaul());
+    const label = labelForSaintPaulSlug(area, index);
     if (!label) return null;
-    const inArea = rows.filter((r) => r.area === label);
+    const inArea = index.labelToRows.get(label) ?? [];
     if (inArea.length === 0) return null;
-    const riskLevel = riskLevelFromAreaCounts(rows, inArea.length, [30, 100, 200, 400]);
+    // Self-calibrating quintile bands over this city's own per-area
+    // distribution (the indexed bucket sizes, floored at 3 to ignore stray
+    // geocodes); degrades to the prior hand-tuned thresholds. Equivalent to
+    // the prior riskLevelFromAreaCounts(rows, …) but without re-scanning rows.
+    const dist = [...index.labelToRows.values()].map((g) => g.length).filter((n) => n >= 3);
+    const riskLevel = bucketByBands(inArea.length, deriveBands(dist, [30, 100, 200, 400]));
     return { area: label, crimeRate: null, violentCrimeRate: null, propertyCrimeRate: null, riskLevel, provenance: PROVENANCE };
   },
 
   async getIncidents(area: string, opts?: { limit?: number; since?: Date }) {
-    const rows = await getRowsSaintPaul();
-    const label = labelForSaintPaulSlug(area, rows);
+    const index = getSaintPaulIndex(await getRowsSaintPaul());
+    const label = labelForSaintPaulSlug(area, index);
     if (!label) return [];
-    let filtered = rows.filter((r) => r.area === label);
+    // The index bucket is shared/cached — copy before sorting so we never
+    // mutate it in place.
+    let filtered = index.labelToRows.get(label) ?? [];
     if (opts?.since) filtered = filtered.filter((r) => new Date(r.occurredAt) >= opts.since!);
+    else filtered = [...filtered];
     filtered.sort((a, b) => +new Date(b.occurredAt) - +new Date(a.occurredAt));
     return filtered.slice(0, opts?.limit ?? 50);
   },

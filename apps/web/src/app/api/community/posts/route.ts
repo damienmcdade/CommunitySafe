@@ -71,7 +71,7 @@ export const GET = wrap(async (req: NextRequest) => {
     orderBy: { createdAt: "desc" },
     take: 50,
     include: {
-      author: { select: { id: true, displayName: true, trustLevel: true } },
+      author: { select: { displayName: true, trustLevel: true } },
       area: true,
       // fix(audit perf-feed-reactions-include): the client only reads
       // _count.reactions, never the rows. Including every reaction row per post

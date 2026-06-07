@@ -90,7 +90,10 @@ export function createTieredLoader(opts: TieredLoaderOptions): TieredLoader {
         const firstEnd = tiered ? opts.recentPages : opts.pages;
         const { rows: recent, complete } = await opts.fetchRange(0, firstEnd);
         if (recent.length > 0) {
-          cache = { fetchedAt: now, rows: recent, full: tiered ? false : complete };
+          // v108 audit — stamp fetchedAt at cache-assignment time, NOT the
+          // entry-time `now`. A cold fetch can take 5-45s; using `now` would
+          // make the cache instantly that-many-seconds old and shorten the TTL.
+          cache = { fetchedAt: Date.now(), rows: recent, full: tiered ? false : complete };
           if (tiered) void deepen(recent);
           return recent;
         }

@@ -135,6 +135,20 @@ html.dark .bg-sand-50 { background-color: #131A24; }
 html.dark .bg-sand-100 { background-color: #1A2330; }
 html.dark .divide-sand-200 > * + * { border-color: #2A3445; }
 
+/* v108 audit — dark-mode fixes for gradient OVERLAYS. Tailwind gradient
+   color-stops (from-/via-/to-) set --tw-gradient-* vars, which the bg-white
+   overrides above don't reach, so a `from-white` fade stays a white wash on a
+   dark surface. Recolor the two gradient overlays to the dark surface here
+   (same #1A2330 used for bg-white above), preserving each light-mode look. */
+html.dark .wheel-fade {
+  --tw-gradient-from: #1A2330 var(--tw-gradient-from-position);
+  --tw-gradient-to: rgba(26, 35, 48, 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+html.dark .cs-backdrop-overlay {
+  background-image: linear-gradient(to bottom, rgba(15, 23, 42, 0.30), rgba(15, 23, 42, 0.48), rgba(15, 23, 42, 0.66));
+}
+
 /* Leaflet popup / control dark-mode overrides — Leaflet ships with
    hardcoded light styles; we override the most-visible ones so map
    chrome doesn't read as a bright punch-out against a dark page. */

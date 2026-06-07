@@ -42,7 +42,7 @@ export function SavedAreasRail() {
             <button
               onClick={() => remove(a.slug)}
               aria-label={`Remove ${a.label} from saved`}
-              className={`px-1.5 rounded-full transition-colors ${active ? "hover:bg-bay-700" : "hover:bg-coral-100"}`}
+              className={`inline-flex items-center justify-center min-w-[40px] min-h-[40px] leading-none rounded-full transition-colors ${active ? "hover:bg-bay-700" : "hover:bg-coral-100"}`}
               title="Remove from saved"
             >
               ×

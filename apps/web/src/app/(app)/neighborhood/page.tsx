@@ -10,13 +10,9 @@ import { useArea } from "@/lib/use-area";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { DataProvenanceBanner, type ProvenanceLike } from "@/components/DataProvenanceBanner";
 import { LiveActivityBadge } from "@/components/LiveActivityBadge";
-import { TimeOfDayCard } from "@/components/TimeOfDayCard";
-import { NewsPanel } from "@/components/NewsPanel";
 import { CrimeMixCard } from "@/components/CrimeMixCard";
-import { AreaBriefPanel } from "@/components/AreaBriefPanel";
 import { DataFreshnessBanner } from "@/components/DataFreshnessBanner";
 import { AmberAlertsBanner } from "@/components/AmberAlertsBanner";
-import { TrendPanel } from "@/components/TrendPanel";
 import {
   BlockScoreWidget,
   ThreatFeed,
@@ -28,6 +24,15 @@ import {
 // "personal". Defer the import so the chunk only loads when the user
 // actually switches tabs.
 const SafetyPage = dynamic(() => import("../safety/page"), { ssr: false });
+
+// v108 — defer the below-the-fold neighborhood cards. They only render inside
+// the `{area && ...}` block after client-side area selection, so statically
+// importing them just bloats /neighborhood's First Load JS (this was the
+// heaviest route). Same dynamic(ssr:false) pattern as SafetyPage above.
+const TimeOfDayCard = dynamic(() => import("@/components/TimeOfDayCard").then((m) => m.TimeOfDayCard), { ssr: false });
+const NewsPanel = dynamic(() => import("@/components/NewsPanel").then((m) => m.NewsPanel), { ssr: false });
+const TrendPanel = dynamic(() => import("@/components/TrendPanel").then((m) => m.TrendPanel), { ssr: false });
+const AreaBriefPanel = dynamic(() => import("@/components/AreaBriefPanel").then((m) => m.AreaBriefPanel), { ssr: false });
 
 interface Alert { area: string; category: "PERSONS"|"PROPERTY"|"SOCIETY"; riskLevel: 1|2|3|4|5; summary: string; recency: string; provenance: ProvenanceLike }
 
