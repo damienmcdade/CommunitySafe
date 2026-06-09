@@ -1,18 +1,16 @@
 import rateLimit from "express-rate-limit";
 import type { Request } from "express";
 
-// fix(security rate-limit-xff-spoof): the limiters previously keyed on the
-// default `req.ip`, which `trust proxy: 1` derives from a CLIENT-SPOOFABLE
-// position in X-Forwarded-For — so an attacker rotating XFF got effectively
-// unlimited /ai/* (LLM cost), /auth (brute-force), and global requests on the
-// publicly-reachable Railway host. (The Vercel edge was already fixed to use
-// x-real-ip.) Railway's edge proxy (Envoy) stamps `x-envoy-external-address`
-// with the true external client IP and OVERWRITES any client-supplied value,
-// so it can't be forged. We key on it when present, falling back to `req.ip`
-// — i.e. STRICTLY no worse than before if the header is ever absent, and it
-// never collapses to a single shared key (the header is per-client).
+// fix(security rate-limit-key): the limiters previously keyed on the default
+// `req.ip`, which `trust proxy: 1` resolves to Railway's EDGE-NODE IP (a small
+// 84.17.44.x pool) — NOT the client. That made the cap per-edge-node, so it
+// neither limited a real client correctly nor stopped an attacker spread across
+// edges. Empirically verified (/diag/whoami) that Railway's edge STRIPS any
+// client-supplied X-Forwarded-For / X-Real-IP and sets `x-real-ip` to the true
+// client IP — so it is non-forgeable. Key on it; fall back to `req.ip` only if
+// it's ever absent (internal calls). Per-client, never a single shared bucket.
 function clientIpKey(req: Request): string {
-  const raw = req.headers["x-envoy-external-address"];
+  const raw = req.headers["x-real-ip"];
   let ip = typeof raw === "string" ? raw.split(",")[0]!.trim() : "";
   if (!ip) ip = req.ip || "0.0.0.0";
   // Group IPv6 by /64 (first four hextets) so a client can't rotate the host
