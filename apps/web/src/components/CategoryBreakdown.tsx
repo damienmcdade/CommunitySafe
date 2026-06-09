@@ -16,7 +16,7 @@ export function CategoryBreakdown({ counts, title = "Category mix", subtitle }: 
         <h3 className="font-display text-lg text-slate2-900">{title}</h3>
         {subtitle && <p className="mt-1 text-xs text-slate2-500">{subtitle}</p>}
         <div className="flex-1 flex items-center justify-center text-center">
-          <p className="text-sm text-slate2-500 max-w-xs">No incidents in the recent cached window for this view. This is typical for many neighborhoods in any given week.</p>
+          <p className="text-sm text-slate2-500 max-w-xs">No incidents recently for this view. This is typical for many neighborhoods in any given week.</p>
         </div>
       </section>
     );

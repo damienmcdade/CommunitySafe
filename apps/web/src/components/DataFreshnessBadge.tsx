@@ -23,7 +23,7 @@ interface Props {
 /// caption. Renders a green check + relative timestamp like
 /// "Synced · newest report 4 min ago". The check signals "we have current
 /// data" (not "this data has been independently verified"); the caption
-/// quotes the recency of the newest published incident in the cache, which
+/// quotes the recency of the newest report we have, which
 /// is the most honest single proxy for data freshness available to the UI.
 /// Hovering or focusing the badge surfaces the exact ISO timestamp +
 /// source label as a native tooltip.
@@ -50,8 +50,8 @@ export function DataFreshnessBadge({ asOf, sourceLabel, size = "sm", showCheck =
   const rel = now != null ? relativeAgo(now - t.getTime()) : "recently";
   const exact = now != null ? t.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : null;
   const title = exact
-    ? (sourceLabel ? `Newest report from ${sourceLabel}: ${exact}` : `Newest report in the cache: ${exact}`)
-    : (sourceLabel ? `Newest report from ${sourceLabel}` : "Newest report in the cache");
+    ? (sourceLabel ? `Newest report from ${sourceLabel}: ${exact}` : `Newest report we have: ${exact}`)
+    : (sourceLabel ? `Newest report from ${sourceLabel}` : "Newest report we have");
 
   const padding = size === "md" ? "px-2.5 py-1" : "px-2 py-0.5";
   const text = size === "md" ? "text-xs" : "text-[11px]";
@@ -73,7 +73,7 @@ export function DataFreshnessBadge({ asOf, sourceLabel, size = "sm", showCheck =
         </svg>
       )}
       <span>
-        <span className="font-medium">Synced</span>
+        <span className="font-medium">Up to date</span>
         <span className="text-sage-700/80"> · newest report {rel}</span>
       </span>
     </span>

@@ -183,7 +183,7 @@ export function CrimeMixCard({ areaSlug, jurisdictionSlug, title }: { areaSlug?:
       )}
       {error && !loading && <p className="mt-3 text-sm text-dusk-700">Could not reach the {city.label} police data feed right now.</p>}
       {!loading && !error && (data?.topOffenses ?? []).length === 0 && (
-        <p className="mt-3 text-sm text-slate2-500">No incidents from {sourceLabel} for this area in the recent cached window.</p>
+        <p className="mt-3 text-sm text-slate2-500">No incidents from {sourceLabel} for this area recently.</p>
       )}
       {!loading && !error && (data?.topOffenses ?? []).length > 0 && filteredOffenses.length === 0 && (
         <p className="mt-3 text-sm text-slate2-500">

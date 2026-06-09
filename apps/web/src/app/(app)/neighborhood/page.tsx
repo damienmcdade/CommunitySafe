@@ -220,7 +220,7 @@ function NeighborhoodView() {
       {area && areaStatsErr && (
         <div role="alert" className="surface p-4 text-sm text-dusk-700">
           Couldn&apos;t reach the police feed for {area.label} just now. Cards below may
-          show stale cached data — try again in ~10 seconds. ({areaStatsErr.message})
+          show older saved data — try again in ~10 seconds. ({areaStatsErr.message})
         </div>
       )}
 

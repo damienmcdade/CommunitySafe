@@ -67,7 +67,7 @@ const WINDOW_ITEMS: WheelItem[] = [
   { value: "90",  label: "Last 90 days",    detail: "recent quarter" },
   { value: "180", label: "Last 6 months",   detail: "half-year trend" },
   { value: "365", label: "Last 12 months",  detail: "full annual cycle" },
-  { value: "all", label: "All cached data", detail: "every incident the adapter holds" },
+  { value: "all", label: "All saved reports", detail: "every report we have" },
 ];
 
 /// Crime Chart — successor to the legacy Category Mix card. Self-fetches
@@ -193,7 +193,7 @@ export function CrimeChart({
 
         {/* Time-interval picker — converted from a WheelPicker drum to
             a vertical button list because the wheel's 32px row height
-            truncated long labels like "All cached data" and
+            truncated long labels like "All saved reports" and
             "Last 12 months" even with break-words. Buttons auto-size to
             the full label, no clipping possible. */}
         <div className="rounded-xl bg-sand-50 ring-1 ring-sand-200 p-2">

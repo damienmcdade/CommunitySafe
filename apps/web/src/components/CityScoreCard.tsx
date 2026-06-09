@@ -138,7 +138,7 @@ export function CityScoreCard({ citySlug, cityLabel }: { citySlug: string; cityL
                     <text x="200" y="32" textAnchor="end" style={{ fontSize: 6 }} fill="#475569">{formatRatePer100k(r.nationalPer100k)}</text>
                   </svg>
                   <p className="mt-2 text-xs text-slate2-500 tabular-nums">
-                    {r.count.toLocaleString()} reported in the cached window.
+                    {r.count.toLocaleString()} reported recently.
                   </p>
                 </article>
               </li>

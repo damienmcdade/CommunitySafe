@@ -69,7 +69,7 @@ export default function MethodologyPage() {
         <ol className="list-decimal pl-5 space-y-2">
           <li>
             <strong className="text-slate2-900">Count the recent reports.</strong> We pull every
-            police-incident record the city has published in the cached window (typically 30&ndash;180 days
+            police-incident record the city has published recently (typically 30&ndash;180 days
             depending on the adapter). Records are split into the two FBI categories with a published
             national rate: Violent (Persons) and Property. Society / public-order offenses are tracked
             internally but excluded from the score because the FBI doesn&apos;t publish a national rate

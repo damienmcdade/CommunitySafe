@@ -147,7 +147,7 @@ function fuseColor(
   // v51 — bumped opacity floor 0.42 → 0.55 and ceiling 0.82 → 0.95
   // after a user reported "crime maps for some cities such as New
   // Orleans will not populate coloring scheme." NOLA's top
-  // neighborhood has ~520 incidents in the cached window — much
+  // neighborhood has ~520 incidents recently — much
   // sparser than Chicago / Detroit which can hit 5k+. Under the old
   // floor every mid-density NOLA polygon landed near 0.5 opacity
   // against a grey-blue background, which read as "no color." The

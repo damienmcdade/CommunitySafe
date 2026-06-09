@@ -89,7 +89,7 @@ export default function CityAwarenessPage() {
       {citywideErr && !citywideLoading && (
         <div role="alert" className="surface p-4 text-sm text-dusk-700">
           Couldn&apos;t reach the {city.label} citywide police feed just now. Cards below may show
-          stale cached data — try again in ~10 seconds. ({citywideErr.message})
+          older saved data — try again in ~10 seconds. ({citywideErr.message})
         </div>
       )}
 

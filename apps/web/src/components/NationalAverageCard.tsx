@@ -59,7 +59,7 @@ export function NationalAverageCard() {
       <p className="mt-1 text-xs text-slate2-500">
         Bars compare {city.label}&apos;s <span
           className="underline decoration-dotted decoration-slate2-300 cursor-help"
-          title="Annualized per-100,000 rate — incidents per 100,000 residents, scaled to a one-year period from the cached data window."
+          title="How many crimes happen per 100,000 people, stretched out to a full year so cities can be compared fairly."
         >incidents per resident</span> against the FBI&apos;s national average for the same category. Longer bar = more incidents per resident.
       </p>
 
@@ -128,7 +128,7 @@ function Legend() {
       <span className="inline-flex items-center gap-1.5"><span className="inline-block w-3 h-2 rounded-sm bg-bay-500" /> near national</span>
       <span className="inline-flex items-center gap-1.5"><span className="inline-block w-3 h-2 rounded-sm bg-coral-500" /> above national</span>
       <span className="inline-flex items-center gap-1.5"><span className="inline-block w-3 h-2 rounded-sm bg-slate2-400" /> national reference</span>
-      <span className="ml-auto italic">Annualized rate from the recent cached window.</span>
+      <span className="ml-auto italic">Annualized rate from recent reports.</span>
     </div>
   );
 }

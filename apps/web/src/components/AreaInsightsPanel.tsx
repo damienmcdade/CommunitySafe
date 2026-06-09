@@ -76,7 +76,7 @@ export function AreaInsightsPanel({ areaQueryString }: { areaQueryString: string
                 ))}
                 {data.trends.length === 0 && (
                   <li className="surface-muted p-3 text-xs text-slate2-500 sm:col-span-3">
-                    Not enough incidents in the cached window to draw a trend. This is typical for many neighborhoods on a quiet week.
+                    Not enough incidents recently to draw a trend. This is typical for many neighborhoods on a quiet week.
                   </li>
                 )}
               </ul>

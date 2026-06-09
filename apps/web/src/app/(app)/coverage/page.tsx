@@ -181,13 +181,12 @@ export default function CoveragePage() {
       )}
 
       <p className="surface-muted p-3 text-xs text-slate2-700 leading-snug" role="note">
-        <strong className="text-slate2-900">Methodology:</strong> Status is computed by pinging
-        each city&apos;s adapter at request time. <strong>Live</strong> means the adapter returned
-        a non-empty neighborhood list. <strong>Warming up</strong> means the upstream feed
-        didn&apos;t return data this request — where the adapter has a last-known-good cache it
-        serves that, so neighborhoods may still appear but can be a few minutes behind.
-        <strong>No data yet</strong> means the adapter threw an error (rare; usually a transient
-        upstream outage). See{" "}
+        <strong className="text-slate2-900">How we check:</strong> we check each city&apos;s
+        data feed when you load this page. <strong>Live</strong> means the city returned its
+        neighborhood list. <strong>Warming up</strong> means the city&apos;s feed didn&apos;t
+        answer this time. We show the last good data we have, so neighborhoods may still appear
+        but can be a few minutes behind. <strong>No data yet</strong> means the feed had an error
+        (rare, and usually clears on its own). See{" "}
         <Link href="/methodology" className="text-bay-700 hover:underline">/methodology</Link>{" "}
         for the full breakdown.
       </p>

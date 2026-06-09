@@ -5,7 +5,7 @@ import { api } from "@/lib/api-client";
 import { snapToSupported, useTimeWindow, type WindowValue } from "@/lib/use-time-window";
 
 export interface ThreatFeedProps {
-  /// Chronological sanitized incidents for the cached window, newest first.
+  /// Chronological sanitized incidents for recent reports, newest first.
   threats: ThreatItem[];
   /// Weekly bucket counts used as the analytical-baseline fallback when
   /// the threat list is empty for the requested window.

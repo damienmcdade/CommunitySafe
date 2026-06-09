@@ -56,10 +56,9 @@ export function BlockScoreWidget({ score, loading, unavailable, contextLabel }: 
         <p className="text-xs uppercase tracking-wider text-slate2-500">Safety Index unavailable</p>
         <h3 className="mt-1 font-display text-base text-slate2-900">{contextLabel}</h3>
         <p className="mt-2 text-sm text-slate2-700 max-w-md">
-          No recent police reports are published for this area in the cached window.
-          This is common for quieter neighborhoods, and may also indicate the city&apos;s
-          data adapter is warming up or hasn&apos;t pulled this area yet. The score
-          will appear once new reports publish — try another neighborhood or refresh
+          No recent police reports for this area yet. That&apos;s normal for quieter
+          neighborhoods. It can also mean this city&apos;s data is still loading. The score
+          will appear once new reports come in. Try another neighborhood, or check back
           in a moment.
         </p>
       </section>
@@ -162,7 +161,7 @@ export function BlockScoreWidget({ score, loading, unavailable, contextLabel }: 
             Score legend: <strong>100</strong> = quietest (well below your city&apos;s baseline) ·
             {" "}<strong>50</strong> = roughly matches the baseline ·
             {" "}<strong>0</strong> = most activity (well above the baseline).
-            Areas with no recent reports in the cached window show as
+            Areas with no recent reports recently show as
             &ldquo;data unavailable&rdquo; instead of a score.
           </p>
 
@@ -181,9 +180,9 @@ export function BlockScoreWidget({ score, loading, unavailable, contextLabel }: 
           <HowItsCalculated benchmark={score.benchmark} />
 
           <p className="mt-3 text-[11px] text-slate2-500 leading-snug">
-            Based on publicly published police reports over the cached window. Reflects historical reporting only — not a prediction
-            of future risk, and not a substitute for professional safety advice. These scores should not be used as the sole basis for housing,
-            lending, insurance, or hiring decisions.
+            Based on recent public police reports. It shows what has already been reported, not a
+            prediction of future risk, and it is not professional safety advice. Please don&apos;t use
+            these scores as the only reason for a housing, lending, insurance, or hiring decision.
           </p>
         </Collapsible>
       </div>
@@ -231,8 +230,8 @@ function HowItsCalculated({ benchmark }: { benchmark: BlockScore["benchmark"] })
             scale. <strong>100</strong> means far below the baseline; <strong>50</strong>{" "}
             roughly matches it; below 50 means above the baseline. Higher is always
             safer in the data, lower is always more activity. Neighborhoods with no
-            recent reports in the cached window show as &ldquo;data unavailable&rdquo;
-            instead of a score, so a quiet adapter can&apos;t masquerade as a perfect 100.
+            recent reports show as &ldquo;data unavailable&rdquo;
+            instead of a score, so a quiet area can&apos;t look like a perfect 100.
           </li>
         </ol>
         <p className="text-[11px] text-slate2-500 pt-1">
