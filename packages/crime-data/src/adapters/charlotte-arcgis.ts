@@ -4,15 +4,87 @@ import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../t
 import { registerRowCache } from "../cache-registry.js";
 import { riskLevelFromAreaCounts } from "../risk-bands.js";
 import type { KnownArea } from "../neighborhoods.js";
+import { charlottePolygons, charlottePoints } from "../data/charlotte-neighborhoods.js";
 
 // Charlotte — CMPD Incidents on gis.charlottenc.gov ArcGIS MapServer.
-// ~14 patrol divisions (University City, Steele Creek, North, Westover,
-// Central, Metro, Freedom, Providence, North Tryon, Hickory Grove,
-// Independence, South, Eastway, Airport). CMPD also publishes an
-// integer NPA (Neighborhood Profile Area) on every row but there are
-// ~460 NPAs city-wide — too granular for users to recognize, so we use
-// the named patrol division as the area label.
+// v110 — incidents are now resolved to RECOGNIZABLE NAMED NEIGHBORHOODS
+// (NoDa, Dilworth, Plaza Midwood, Biddleville…) via their public lat/lng,
+// instead of CMPD's 14 coarse patrol divisions. Charlotte publishes no
+// official named-neighborhood boundary set (its official geographies are
+// 462 NUMBERED Quality-of-Life NPAs or the 14 divisions), so the named
+// boundaries come from OpenStreetMap (© OpenStreetMap contributors, ODbL),
+// clipped to the Charlotte municipal boundary — see data/charlotte-
+// neighborhoods.ts. The crime DATA itself remains official CMPD.
+// Assignment: point-in-polygon where a neighborhood polygon contains the
+// incident; else snap to the nearest named neighborhood within 1.4 km; else
+// fall back to the CMPD patrol division so no incident is dropped (~80% land
+// in a named neighborhood, the rest in their division).
 // Doc: https://gis.charlottenc.gov/arcgis/rest/services/CMPD/CMPDIncidents/MapServer/0
+
+// --- Neighborhood assignment index (point-in-polygon + nearest-name snap) ---
+interface CltPolyIndex { name: string; bbox: [number, number, number, number]; rings: number[][][] }
+const CLT_POLY_INDEX: CltPolyIndex[] = charlottePolygons.map((p) => {
+  const rings: number[][][] =
+    p.geometry.type === "Polygon"
+      ? (p.geometry.coordinates as number[][][])
+      : (p.geometry.coordinates as number[][][][]).flat();
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const ring of rings) {
+    for (const pt of ring) {
+      if (pt[0] < minX) minX = pt[0];
+      if (pt[0] > maxX) maxX = pt[0];
+      if (pt[1] < minY) minY = pt[1];
+      if (pt[1] > maxY) maxY = pt[1];
+    }
+  }
+  return { name: p.name, bbox: [minX, minY, maxX, maxY], rings };
+});
+// Snap targets: every neighborhood's representative point (polygon centroid +
+// OSM label points) so a neighborhood OSM maps only as a point still catches
+// nearby incidents.
+const CLT_SNAP_TARGETS: Array<{ name: string; lng: number; lat: number }> = [
+  ...charlottePolygons.map((p) => ({ name: p.name, lng: p.centroid.lng, lat: p.centroid.lat })),
+  ...charlottePoints.map((p) => ({ name: p.name, lng: p.lng, lat: p.lat })),
+];
+const CLT_SNAP_CAP_KM = 1.4;
+function cltPointInRing(lng: number, lat: number, ring: number[][]): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+    if (yi > lat !== yj > lat && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+function cltNeighborhoodForPoint(lng: number, lat: number): string | null {
+  for (const p of CLT_POLY_INDEX) {
+    if (lng < p.bbox[0] || lng > p.bbox[2] || lat < p.bbox[1] || lat > p.bbox[3]) continue;
+    let inside = false;
+    for (const ring of p.rings) if (cltPointInRing(lng, lat, ring)) inside = !inside;
+    if (inside) return p.name;
+  }
+  return null;
+}
+function cltSnapToNearest(lng: number, lat: number): string | null {
+  let best: string | null = null;
+  let bestKm = CLT_SNAP_CAP_KM;
+  const cosLat = Math.cos((lat * Math.PI) / 180);
+  for (const t of CLT_SNAP_TARGETS) {
+    const dx = (t.lng - lng) * cosLat * 111.32;
+    const dy = (t.lat - lat) * 111.32;
+    const d = Math.hypot(dx, dy);
+    if (d < bestKm) { bestKm = d; best = t.name; }
+  }
+  return best;
+}
+/// Resolve an incident's neighborhood from its coordinate, falling back to the
+/// CMPD patrol division (then "Unknown") so every incident is still placed.
+export function resolveCharlotteArea(lat: number | undefined, lng: number | undefined, division: string | null): string {
+  if (typeof lat === "number" && typeof lng === "number" && lat !== 0 && lng !== 0) {
+    const hit = cltNeighborhoodForPoint(lng, lat) ?? cltSnapToNearest(lng, lat);
+    if (hit) return hit;
+  }
+  return division && division !== "NA" ? division : "Unknown";
+}
 
 const BASE = "https://gis.charlottenc.gov/arcgis/rest/services/CMPD/CMPDIncidents/MapServer/0/query";
 const PAGE_SIZE = 2000;
@@ -82,18 +154,17 @@ function mapToNibrs(row: CmpdRow): CrimeCategory {
 }
 
 const PROVENANCE: DataProvenance = {
-  source: "Charlotte-Mecklenburg Police Department CMPD Incidents (City of Charlotte Open Data, ArcGIS MapServer)",
+  source: "Charlotte-Mecklenburg Police Department CMPD Incidents (City of Charlotte Open Data) · neighborhood boundaries © OpenStreetMap contributors (ODbL)",
   datasetUrl: "https://data.charlottenc.gov/datasets/CharlotteNC::cmpd-incidents",
   recency: "Refreshed daily by CMPD",
-  // fix(audit coverage-clt-divisions): the areas are CMPD's 14 patrol DIVISIONS
-  // (each ~10-20 sq mi), not neighborhoods — label the grain as "beat" (police
-  // patrol area) so the at-a-glance provenance doesn't overstate the resolution.
-  // The disclaimer below spells out the division grain.
-  granularity: "beat",
+  granularity: "neighborhood",
   disclaimer:
-    "Incidents are reported by the Charlotte-Mecklenburg Police Department and " +
-    "aggregated to CMPD's 14 patrol divisions (each ~10-20 sq mi). CMPD does not " +
-    "publish suspect / victim demographic columns on this feed.",
+    "Incidents are reported by the Charlotte-Mecklenburg Police Department and placed " +
+    "in a recognizable named neighborhood by their public coordinate. Charlotte publishes no " +
+    "official named-neighborhood boundaries, so neighborhood shapes are sourced from " +
+    "OpenStreetMap (© OpenStreetMap contributors, ODbL); incidents outside any mapped " +
+    "neighborhood fall back to the CMPD patrol division. CMPD does not publish suspect / " +
+    "victim demographic columns on this feed.",
 };
 
 async function fetchPage(offset: number): Promise<CmpdRow[]> {
@@ -129,8 +200,12 @@ function mapCharlotteRows(rows: CmpdRow[]): Incident[] {
     if (rawDate == null) continue;
     const d = new Date(rawDate);
     if (Number.isNaN(d.getTime()) || d.getTime() <= 0) continue;
-    const div = r.CMPD_PATROL_DIVISION?.trim();
-    const area = div && div !== "NA" ? div : "Unknown";
+    const div = r.CMPD_PATROL_DIVISION?.trim() ?? null;
+    const lat = typeof r.LATITUDE_PUBLIC === "number" && r.LATITUDE_PUBLIC !== 0 ? r.LATITUDE_PUBLIC : undefined;
+    const lng = typeof r.LONGITUDE_PUBLIC === "number" && r.LONGITUDE_PUBLIC !== 0 ? r.LONGITUDE_PUBLIC : undefined;
+    // v110 — resolve to a recognizable named neighborhood by coordinate;
+    // CMPD division is the fallback so no incident is dropped.
+    const area = resolveCharlotteArea(lat, lng, div);
     out.push({
       id: `clt-${r.INCIDENT_REPORT_ID ?? i}`,
       area,
@@ -139,8 +214,8 @@ function mapCharlotteRows(rows: CmpdRow[]): Incident[] {
       ibrOffenseDescription: r.HIGHEST_NIBRS_DESCRIPTION?.trim() || "Unknown",
       beat: r.NPA != null ? `NPA ${r.NPA}` : null,
       blockLabel: undefined,
-      lat: typeof r.LATITUDE_PUBLIC === "number" && r.LATITUDE_PUBLIC !== 0 ? r.LATITUDE_PUBLIC : undefined,
-      lng: typeof r.LONGITUDE_PUBLIC === "number" && r.LONGITUDE_PUBLIC !== 0 ? r.LONGITUDE_PUBLIC : undefined,
+      lat,
+      lng,
     });
   }
   return out;
