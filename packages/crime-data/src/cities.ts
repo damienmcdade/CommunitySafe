@@ -47,6 +47,7 @@ import { virginiaBeachAdapter, getDiscoveredAreasVirginiaBeach, getPrimaryAreasV
 import { gainesvilleAdapter, getDiscoveredAreasGainesville } from "./adapters/gainesville-socrata.js";
 import { tampaAdapter, getDiscoveredAreasTampa } from "./adapters/tampa-arcgis.js";
 import { nashvilleAdapter, getDiscoveredAreasNashville } from "./adapters/nashville-arcgis.js";
+import { houstonAdapter, getDiscoveredAreasHouston } from "./adapters/houston-arcgis.js";
 
 // City registry.
 //
@@ -434,6 +435,16 @@ export const CITIES: CityEntry[] = [
     adapter: nashvilleAdapter,
     discover: getDiscoveredAreasNashville,
   },
+  {
+    // Houston, TX — HPD NIBRS (City of Houston ArcGIS); per-incident lat/lng +
+    // NIBRS class, geocoded to recognizable named neighborhoods via OSM
+    // boundaries (ODbL). Complete-year file through 2024 (provenance is honest).
+    slug: "houston",
+    label: "Houston",
+    bbox: { south: 29.52, west: -95.91, north: 30.11, east: -95.01 },
+    adapter: houstonAdapter,
+    discover: getDiscoveredAreasHouston,
+  },
 ];
 
 export function cityFromLatLng(point: { lat: number; lng: number }): CityEntry | null {
@@ -532,6 +543,7 @@ const AREA_SLUG_PREFIX: Record<string, string> = {
   "phoenix": "phx-", "jacksonville": "jax-", "virginia-beach": "vb-", "gainesville": "gnv-",
   "tampa": "tpa-",
   "nashville": "bna-",
+  "houston": "hou-",
 };
 
 const COMPASS = new Set(["n", "s", "e", "w", "nw", "ne", "sw", "se"]);

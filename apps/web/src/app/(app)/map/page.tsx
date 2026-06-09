@@ -49,6 +49,7 @@ const SOURCES: Record<string, string> = {
   "saint-paul":    "Saint Paul police crime reports, grouped into 17 planning districts, from the City of Saint Paul open-data site.",
   "pittsburgh":    "Pittsburgh police crime reports, grouped into 90 official neighborhoods, from the WPRDC open-data site.",
   "nashville":     "Nashville police crime reports, placed into named neighborhoods, from the Metro Nashville open-data site. Neighborhood boundaries © OpenStreetMap contributors.",
+  "houston":       "Houston police crime reports (data through 2024), placed into named neighborhoods, from the City of Houston open-data site. Neighborhood boundaries © OpenStreetMap contributors.",
 };
 
 export default function MapPage() {

@@ -39,6 +39,7 @@ export const CITY_POPULATION: Record<string, number> = {
   "gainesville":     141_085,  // 2020 US Census
   "tampa":           384_959,  // 2020 US Census
   "nashville":       689_447,  // 2020 US Census — Nashville-Davidson metro govt (balance)
+  "houston":         2_304_580, // 2020 US Census
   "denver":          716_577,  // v70 — US Census Bureau Vintage 2024 estimate
   "detroit":         633_218,
   "washington-dc":   678_972,

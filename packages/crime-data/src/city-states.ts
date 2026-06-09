@@ -55,6 +55,7 @@ export const CITY_STATES: Record<string, UsState> = {
   "gainesville":       { abbr: "FL", label: "Florida" },
   "tampa":             { abbr: "FL", label: "Florida" },
   "nashville":         { abbr: "TN", label: "Tennessee" },
+  "houston":           { abbr: "TX", label: "Texas" },
   "kansas-city":       { abbr: "MO", label: "Missouri" },
   "atlanta":           { abbr: "GA", label: "Georgia" },
   "indianapolis":      { abbr: "IN", label: "Indiana" },

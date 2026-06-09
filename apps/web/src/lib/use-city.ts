@@ -98,6 +98,7 @@ export const CITIES: CityInfo[] = [
   { slug: "gainesville",   label: "Gainesville",   state: "FL", stateLabel: "Florida",        defaultArea: "gnv-duval",        centroid: { lat: 29.6516, lng: -82.3248 }, status: "live", source: "GPD Crime Responses · data.cityofgainesville.org (Socrata)" },
   { slug: "tampa",         label: "Tampa",         state: "FL", stateLabel: "Florida",        defaultArea: "tpa-old-seminole-heights", centroid: { lat: 27.9506, lng: -82.4572 }, status: "live", source: "TPD Crimes (last 365 days) · City of Tampa GIS (ArcGIS)" },
   { slug: "nashville",     label: "Nashville",     state: "TN", stateLabel: "Tennessee",      defaultArea: "bna-east-nashville", centroid: { lat: 36.1627, lng: -86.7816 }, status: "live", source: "MNPD Incidents · Metro Nashville Open Data (ArcGIS); neighborhood boundaries © OpenStreetMap (ODbL)" },
+  { slug: "houston",       label: "Houston",       state: "TX", stateLabel: "Texas",          defaultArea: "hou-montrose", centroid: { lat: 29.7604, lng: -95.3698 }, status: "live", source: "HPD NIBRS Crime (City of Houston Open Data, data through 2024); neighborhood boundaries © OpenStreetMap (ODbL)" },
 ];
 
 /// All US states with at least one CommunitySafe city, sorted alphabetically.

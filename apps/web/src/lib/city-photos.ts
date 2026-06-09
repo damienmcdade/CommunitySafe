@@ -463,4 +463,15 @@ export const PHOTOS: Record<string, string[]> = {
     "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Nashville_panorama.jpg/1920px-Nashville_panorama.jpg",
     "https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/Nashville_panorama_Kaldari_01.jpg/1920px-Nashville_panorama_Kaldari_01.jpg",
   ],
+  // Houston, TX — 8× 1920×1080 Wikimedia Commons cityscapes (HTTP-verified).
+  "houston": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Buildings-city-houston-skyline-1870617.jpg/1920px-Buildings-city-houston-skyline-1870617.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/Downtown_Houston%2C_TX_Skyline_-_2018.jpg/1920px-Downtown_Houston%2C_TX_Skyline_-_2018.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/Gfp-texas-houston-skyline-1.jpg/1920px-Gfp-texas-houston-skyline-1.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Gfp-texas-houston-skyline-buildings.jpg/1920px-Gfp-texas-houston-skyline-buildings.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Houston%2C_Texas_%282024%29_-_19.jpg/1920px-Houston%2C_Texas_%282024%29_-_19.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Houston%2C_Texas_Skyline_%2832614523857%29.jpg/1920px-Houston%2C_Texas_Skyline_%2832614523857%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Houston%2C_Texas_Skyline_2017.jpg/1920px-Houston%2C_Texas_Skyline_2017.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/Houston_Skyline_-_Illustration.jpg/1920px-Houston_Skyline_-_Illustration.jpg",
+  ],
 };
