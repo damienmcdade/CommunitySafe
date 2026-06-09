@@ -123,11 +123,40 @@ export async function updateLiveShareLocation(userId: string, lat: number, lng: 
   return { updated: result.count };
 }
 
+// fix(legal liveshare-expiry-coord-retention): the privacy policy promises the
+// sharer's precise location is cleared when a link is revoked OR EXPIRES, and
+// that coordinates are "retained only for the duration of an active session."
+// revokeLiveShare() already nulls coords; expiry did NOT, so an expired row kept
+// lastLat/lastLng/lastLocationAt at rest indefinitely — contradicting the policy
+// (FTC §5 / CCPA minimization) and leaving stale precise location if breached.
+// This sweep nulls coords on every expired, not-yet-cleared link; it's wired into
+// the daily purge-accounts cron. Idempotent (the WHERE excludes already-nulled
+// rows) and bounded by the natural count of expired links.
+export async function clearExpiredLiveShareLocations(): Promise<{ cleared: number }> {
+  const result = await prisma.liveShareLink.updateMany({
+    where: {
+      expiresAt: { lt: new Date() },
+      OR: [{ lastLat: { not: null } }, { lastLng: { not: null } }, { lastLocationAt: { not: null } }],
+    },
+    data: { lastLat: null, lastLng: null, lastLocationAt: null },
+  });
+  return { cleared: result.count };
+}
+
 export async function resolveSharedView(token: string) {
   const link = await prisma.liveShareLink.findUnique({ where: { token } });
   if (!link) throw new HttpError(404, "not_found");
   if (link.revokedAt) throw new HttpError(410, "revoked");
-  if (link.expiresAt < new Date()) throw new HttpError(410, "expired");
+  if (link.expiresAt < new Date()) {
+    // Defense-in-depth: lazily null coords the moment an expired link is touched,
+    // so the policy holds even between the daily sweep runs. Best-effort.
+    if (link.lastLat != null || link.lastLng != null || link.lastLocationAt != null) {
+      void prisma.liveShareLink
+        .update({ where: { token }, data: { lastLat: null, lastLng: null, lastLocationAt: null } })
+        .catch(() => {});
+    }
+    throw new HttpError(410, "expired");
+  }
   // fix(audit loc-share-userid-leak-2): the public, token-only share endpoint
   // must NOT leak the sharer's internal userId (cuid). Return only the public
   // view: expiry + the latest broadcast position (null until the first heartbeat).

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/server/lib/prisma";
 import { deleteAccount } from "@/server/services/account";
+import { clearExpiredLiveShareLocations } from "@/server/services/safety/live-share";
 import { requireCronSecret } from "@/server/lib/bearer-auth";
 
 export const dynamic = "force-dynamic";
@@ -168,8 +169,20 @@ export async function GET(req: NextRequest) {
     auditLog.error = (e as Error)?.message?.slice(0, 160) ?? "unknown";
   }
 
+  // Fourth pass: clear the precise broadcast position from EXPIRED live-share
+  // links so coordinates are "retained only for the duration of an active
+  // session" as the privacy policy promises (revoke already nulls them; expiry
+  // didn't until now). Isolated so a failure can't fail the purges above.
+  const liveShare = { cleared: 0, error: null as string | null };
+  try {
+    const r = await clearExpiredLiveShareLocations();
+    liveShare.cleared = r.cleared;
+  } catch (e) {
+    liveShare.error = (e as Error)?.message?.slice(0, 160) ?? "unknown";
+  }
+
   return NextResponse.json({
-    ok: errors.length === 0 && !anon.error && !auditLog.error,
+    ok: errors.length === 0 && !anon.error && !auditLog.error && !liveShare.error,
     generatedAt: new Date().toISOString(),
     graceDays: days,
     cutoff: cutoff.toISOString(),
@@ -181,6 +194,7 @@ export async function GET(req: NextRequest) {
     errors,
     anonAccounts: { retentionDays: anonRetentionDays(), ...anon },
     auditLog,
+    liveShareExpiry: liveShare,
     totalMs: Date.now() - startedAt,
   });
 }

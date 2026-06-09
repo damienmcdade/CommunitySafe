@@ -125,7 +125,13 @@ const PROVENANCE: DataProvenance = {
     "county's recognizable constituent communities (Silver Spring, Rockville, Bethesda, " +
     "Gaithersburg, Germantown…) by their public coordinate, using US Census place boundaries. " +
     "Incidents outside every mapped place fall back to the report's own city tag; the small " +
-    "remainder are bucketed as \"Unmapped\" but still count countywide. CommunitySafe does not track individuals.",
+    "remainder are bucketed as \"Unmapped\" but still count countywide. CommunitySafe does not track individuals. " +
+    // Required by the Data Montgomery open-data Terms of Use (attribution +
+    // warranty disclaimer + non-endorsement).
+    "The data made available here has been modified for use from its original source, which is " +
+    "Montgomery County, Maryland; the County makes no claims as to the completeness, accuracy, or " +
+    "timeliness of the data and it is used at your own risk. CommunitySafe is not affiliated with, " +
+    "sponsored by, or endorsed by Montgomery County.",
 };
 
 async function fetchMoco(): Promise<Incident[]> {

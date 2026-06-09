@@ -7,7 +7,7 @@ export const metadata: Metadata = {
     "CommunitySafe privacy practices — what's stored on your device, what's stored on our servers when you create a Safety account, what's transmitted to third parties, and how to control it.",
 };
 
-const LAST_UPDATED = "2026-05-30";
+const LAST_UPDATED = "2026-06-09";
 
 export default function PrivacyPage() {
   return (
@@ -31,7 +31,7 @@ export default function PrivacyPage() {
           <li>No demographic data — race, ethnicity, religion, age, gender, sexual orientation are not stored, displayed, or analyzed anywhere in the app.</li>
           <li>No individual identification from public data — police-incident data is aggregated to neighborhood-level only; names, addresses below the block level, plates, and photos are never surfaced.</li>
           <li>No persistent background tracking. Geolocation is requested only when you tap &quot;Use my location&quot; OR when you arm a Check-In timer / Live Share link (both opt-in). The mobile shells (iOS / Android) declare permissions for background-location, contacts, and camera so that <em>if</em> you opt into Check-In, Live Share, Trusted Contact import, or photo attachment, the OS allows it — none of these run without an explicit user action.</li>
-          <li>No data sales. We do not currently show ads. If advertising is ever enabled, it will be Google AdSense and disclosed here; see the <strong>Advertising</strong> section below for what AdSense would receive, what it wouldn&apos;t, and how to opt out of personalized ads.</li>
+          <li>No data sales. CommunitySafe shows ads served by <strong>Google AdSense</strong> to cover hosting costs; ad scripts load only after you accept cookies via the consent banner — decline and no ad scripts or advertising cookies load. See the <strong>Advertising</strong> section below for what AdSense receives, what it doesn&apos;t, and how to opt out of personalized ads.</li>
           <li>Browsing the map / safety scores / community feed does NOT require an account. Account-required features are explicitly labeled (Personal Safety, CommunitySafe posts).</li>
         </ul>
       </section>
@@ -75,7 +75,7 @@ export default function PrivacyPage() {
           <li>Standard server logs from our hosting provider (IP address, user-agent, request path, timestamp). Retained up to 30 days; see <strong>Data retention</strong> below.</li>
           <li>Anonymous rate-limiting state: a short-lived in-memory counter keyed by IP+endpoint to throttle abuse. Not persisted.</li>
         </ul>
-        <p>We do not sell, license, or share user-account data with third parties for advertising or marketing. CommunitySafe accounts, contacts, check-in timers, and posts are never transmitted to ad networks. If advertising is ever enabled, AdSense&apos;s collection is limited to what the browser sends directly to Google when an ad slot loads (described in the <strong>Advertising</strong> section below).</p>
+        <p>We do not sell, license, or share user-account data with third parties for advertising or marketing. CommunitySafe accounts, contacts, check-in timers, and posts are never transmitted to ad networks. AdSense&apos;s collection is limited to what the browser sends directly to Google when an ad slot loads, and only after you accept cookies (described in the <strong>Advertising</strong> section below).</p>
       </section>
 
       <section className="surface p-6 space-y-3 text-sm text-slate2-700 leading-relaxed">
@@ -91,13 +91,13 @@ export default function PrivacyPage() {
 
       <section className="surface p-6 space-y-3 text-sm text-slate2-700 leading-relaxed">
         <h2 className="font-display text-xl text-slate2-900">Advertising</h2>
-        <p>We do not currently show ads. If advertising is ever enabled, it will be served by <strong>Google AdSense</strong> to cover hosting costs, and this section describes what that would involve. AdSense is a Google product; its data practices are governed by{" "}
+        <p>CommunitySafe shows ads served by <strong>Google AdSense</strong> to cover hosting costs, and this section describes what that involves. Ad scripts load only after you accept cookies via the consent banner; if you decline, no AdSense script and no advertising cookies load. AdSense is a Google product; its data practices are governed by{" "}
           <a href="https://policies.google.com/technologies/ads" target="_blank" rel="noreferrer" className="text-bay-700 hover:underline">Google&apos;s ad-policy disclosures</a>.</p>
-        <p>What CommunitySafe would send to AdSense:</p>
+        <p>What CommunitySafe sends to AdSense:</p>
         <ul className="list-disc pl-5 space-y-1">
           <li>Nothing from our backend. Account records, contacts, timers, posts, and the personal-safety surfaces are not transmitted to AdSense.</li>
         </ul>
-        <p>If advertising is enabled, what your browser would send to Google when an ad slot loads (we do not control these):</p>
+        <p>Once you accept cookies, what your browser sends to Google when an ad slot loads (we do not control these):</p>
         <ul className="list-disc pl-5 space-y-1">
           <li>The URL of the page you&apos;re viewing (so the ad context can be matched).</li>
           <li>Your IP address, user-agent, language, and screen size.</li>

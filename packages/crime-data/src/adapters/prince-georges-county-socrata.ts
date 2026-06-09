@@ -142,7 +142,13 @@ const PROVENANCE: DataProvenance = {
     "county's recognizable constituent communities (Bowie, College Park, Hyattsville, Laurel, " +
     "Greenbelt, Suitland, Oxon Hill, Clinton, Fort Washington…) by their public coordinate, using " +
     "US Census place boundaries. Traffic and administrative call types are dropped; points outside " +
-    "every mapped place are bucketed as \"Unmapped\" but still count countywide. CommunitySafe does not track individuals.",
+    "every mapped place are bucketed as \"Unmapped\" but still count countywide. CommunitySafe does not track individuals. " +
+    // Required by the Prince George's County open-data Terms of Use (attribution +
+    // warranty disclaimer + non-endorsement).
+    "The data made available here has been modified for use from its original source, which is " +
+    "Prince George's County, Maryland; the County makes no claims as to the completeness, accuracy, " +
+    "or timeliness of the data and it is used at your own risk. CommunitySafe is not affiliated with, " +
+    "sponsored by, or endorsed by Prince George's County.",
 };
 
 async function fetchPg(): Promise<Incident[]> {
