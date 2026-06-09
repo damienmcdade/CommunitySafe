@@ -204,7 +204,7 @@ function TrendReport({ trend, csvPath, accent, sectionHeadingLevel = 2, windowDa
         >
           <span className="flex items-baseline gap-2 min-w-0">
             <span aria-hidden="true" className={`inline-block transition-transform text-slate2-500 text-sm shrink-0 ${dispatchesOpen ? "rotate-90" : ""}`}>▶</span>
-            <SubHeading className="font-display text-lg text-slate2-900 truncate">Recent dispatches in {trend.area.label}</SubHeading>
+            <SubHeading className="font-display text-lg text-slate2-900 truncate">Recent reports in {trend.area.label}</SubHeading>
           </span>
           <span className="text-xs text-slate2-500 shrink-0">{trend.totalIncidents.toLocaleString()} in last {windowDays} days</span>
         </button>
@@ -216,7 +216,7 @@ function TrendReport({ trend, csvPath, accent, sectionHeadingLevel = 2, windowDa
                 <button
                   onClick={() => downloadDispatchCsv(csvPath, trend, dispatchBullets)}
                   className="text-xs text-bay-700 hover:underline"
-                  aria-label="Download dispatches as CSV"
+                  aria-label="Download reports as CSV"
                 >
                   Download CSV
                 </button>
@@ -227,7 +227,7 @@ function TrendReport({ trend, csvPath, accent, sectionHeadingLevel = 2, windowDa
                 {/* v64 — was hardcoded "past 30 days" even when the window
                     picker was set to 7d / 90d / 180d. User trust hit when
                     the label and the actual window diverged. */}
-                No dispatches in the past {windowDays} days for this neighborhood — that&apos;s normal for many areas in any given month.
+                No reports in the past {windowDays} days for this neighborhood. That&apos;s normal for many areas in any given month.
               </p>
             ) : (
               <>
@@ -240,7 +240,7 @@ function TrendReport({ trend, csvPath, accent, sectionHeadingLevel = 2, windowDa
                     roughly DISPATCH_VISIBLE_ROWS rows. */}
                 <ol
                   className="mt-3 space-y-1.5 max-h-[22rem] overflow-y-auto pr-2"
-                  aria-label={`Recent dispatches in ${trend.area.label}, scroll for more`}
+                  aria-label={`Recent reports in ${trend.area.label}, scroll for more`}
                 >
                   {dispatchBullets.slice(0, DISPATCH_RENDER_CAP).map((b, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm text-slate2-700">
@@ -250,13 +250,13 @@ function TrendReport({ trend, csvPath, accent, sectionHeadingLevel = 2, windowDa
                   ))}
                   {dispatchBullets.length > DISPATCH_RENDER_CAP && (
                     <li className="text-xs text-slate2-500 pt-1">
-                      Showing the {DISPATCH_RENDER_CAP} most recent — use Download CSV for the complete list.
+                      Showing the {DISPATCH_RENDER_CAP} most recent. Use Download CSV for the full list.
                     </li>
                   )}
                 </ol>
                 {dispatchBullets.length > DISPATCH_VISIBLE_ROWS && (
                   <p className="mt-2 text-xs text-slate2-400">
-                    Showing the {Math.min(DISPATCH_VISIBLE_ROWS, dispatchBullets.length)} most recent — scroll within the list to see more.
+                    Showing the {Math.min(DISPATCH_VISIBLE_ROWS, dispatchBullets.length)} most recent. Scroll the list to see more.
                   </p>
                 )}
               </>

@@ -34,22 +34,22 @@ const CONFIDENCE_BADGE: Record<ThreatConfidence, { label: string; cls: string; t
   verified: {
     label: "Verified",
     cls: "bg-sage-100 text-sage-700 ring-sage-200",
-    title: "From an official police data feed; report has stabilized (older than 2 hours).",
+    title: "From an official police source and more than 2 hours old, so the details are settled.",
   },
   "community-confirmed": {
     label: "Community confirmed",
     cls: "bg-bay-100 text-bay-700 ring-bay-200",
-    title: "Multiple community signals OR moderator-approved community post.",
+    title: "Backed up by several neighbors, or a post a moderator has approved.",
   },
   developing: {
     label: "Developing",
     cls: "bg-amber2-50 text-amber2-700 ring-amber2-300",
-    title: "Fresh initial report (under 2 hours old) — description may be revised as the case file is updated.",
+    title: "Just reported (under 2 hours old). The details may still change as police update it.",
   },
   unverified: {
     label: "Unverified",
     cls: "bg-sand-100 text-slate2-500 ring-sand-300",
-    title: "Single community signal, not yet reviewed by a moderator.",
+    title: "Reported by one neighbor and not yet checked by a moderator.",
   },
 };
 
@@ -105,7 +105,7 @@ export function ThreatFeed({ threats, windowDays, contextLabel, source, loading 
           </div>
         </div>
         <span className="text-xs text-slate2-500 tabular-nums shrink-0">
-          {threats.length === 0 ? "0 in window" : `${threats.length} in window`}
+          {threats.length === 0 ? "0 reports" : `${threats.length} reports`}
         </span>
       </button>
       {!panelOpen ? null : <>
@@ -144,13 +144,13 @@ export function ThreatFeed({ threats, windowDays, contextLabel, source, loading 
       {eligible.length === 0 ? (
         <div className="mt-4">
           <p className="text-sm text-slate2-700">
-            No reported dispatches in the past {windowDays} days.
+            No reports in the past {windowDays} days.
           </p>
         </div>
       ) : (
         <ol
           className="mt-3 max-h-72 overflow-y-auto pr-1 space-y-1.5 [scrollbar-width:thin]"
-          aria-label={`${eligible.length} dispatches over last ${windowDays} days, scroll to see more`}
+          aria-label={`${eligible.length} reports over the last ${windowDays} days, scroll to see more`}
         >
           {eligible.map((t) => {
             const badge = CONFIDENCE_BADGE[t.confidence];
@@ -237,7 +237,7 @@ function ConfidenceBadge({
             <p className="font-medium text-slate2-900">{label} confidence</p>
             <p className="mt-1 text-slate2-700">{title}</p>
             <p className="mt-2 text-[11px] text-slate2-500 leading-snug">
-              Confidence combines source credibility, report age, and clustering with peer incidents in the same category within 24 hours. A fresh report stays &ldquo;developing&rdquo; until either 2+ same-category peers corroborate it or 2 hours pass.
+              Confidence looks at where the report came from, how old it is, and whether similar reports nearby back it up within 24 hours. A new report stays &ldquo;developing&rdquo; until either two similar reports back it up or 2 hours pass.
             </p>
             <ConfidenceLevelGuide active={confidence} />
           </div>
@@ -249,10 +249,10 @@ function ConfidenceBadge({
 
 function ConfidenceLevelGuide({ active }: { active: ThreatConfidence }) {
   const levels: Array<{ id: ThreatConfidence; label: string; copy: string }> = [
-    { id: "verified", label: "Verified", copy: "Official feed + report stabilized (>2h or clustered)." },
-    { id: "community-confirmed", label: "Community confirmed", copy: "Multi-signal community post or moderator-approved." },
-    { id: "developing", label: "Developing", copy: "Fresh adapter row (<2h); description may be revised." },
-    { id: "unverified", label: "Unverified", copy: "Single community signal, not yet moderated." },
+    { id: "verified", label: "Verified", copy: "From an official source and settled (over 2 hours old or backed up)." },
+    { id: "community-confirmed", label: "Community confirmed", copy: "Backed by several neighbors or approved by a moderator." },
+    { id: "developing", label: "Developing", copy: "Just reported (under 2 hours old); details may still change." },
+    { id: "unverified", label: "Unverified", copy: "Reported by one neighbor, not yet checked." },
   ];
   return (
     <ul className="mt-3 space-y-1.5 text-[11px]">

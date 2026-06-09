@@ -60,7 +60,7 @@ export function DataFreshnessBanner({
       >
         <span aria-hidden="true" className="shrink-0 mt-0.5">⚠</span>
         <span>
-          <strong className="text-slate2-900">Upstream feed looks stale.</strong> {fresh.note}
+          <strong className="text-slate2-900">This city&apos;s data hasn&apos;t updated recently.</strong> {fresh.note}
         </span>
       </aside>
     );

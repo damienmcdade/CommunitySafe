@@ -54,7 +54,7 @@ export function AreaInsightsPanel({ areaQueryString }: { areaQueryString: string
         <div className="mt-3">
           {loading && !data && <p className="text-sm text-slate2-500 animate-pulse">Crunching trend data…</p>}
           {error && !loading && (
-            <p className="text-sm text-dusk-700">Could not load insights right now — the police data feed may be warming up.</p>
+            <p className="text-sm text-dusk-700">Couldn&apos;t load this right now. The police data may still be loading.</p>
           )}
           {data && (
             <>
@@ -70,7 +70,7 @@ export function AreaInsightsPanel({ areaQueryString }: { areaQueryString: string
                       <Sparkline values={t.weekly} />
                     </div>
                     <div className="text-xs text-slate2-500 mt-1">
-                      baseline {t.baseline.toFixed(1)}/wk
+                      usual {t.baseline.toFixed(1)}/week
                     </div>
                   </li>
                 ))}
@@ -95,5 +95,5 @@ function DeltaPill({ value }: { value: number }) {
     pct <= -25 ? "bg-sage-200 text-sage-700" :
     "bg-sand-100 text-slate2-700";
   const sign = pct > 0 ? "+" : "";
-  return <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${cls}`}>{sign}{pct}% vs baseline</span>;
+  return <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${cls}`}>{sign}{pct}% vs usual</span>;
 }

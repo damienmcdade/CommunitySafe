@@ -79,17 +79,17 @@ function offenseBarStyle(offense: string, category: Slice["category"]): string {
 }
 
 const SOURCE_LABEL: Record<string, string> = {
-  "san-diego":     "SDPD NIBRS",
-  "los-angeles":   "LAPD Crime Data",
-  "san-francisco": "SFPD Incident Reports",
-  "chicago":       "Chicago CPD",
-  "seattle":       "Seattle PD",
-  "new-york":      "NYPD Complaint Data",
-  "colorado-springs": "CSPD Open Data",
-  "detroit":       "Detroit RMS",
-  "washington-dc": "DC MPD",
-  "boston":        "Boston BPD",
-  "philadelphia":  "Philadelphia PPD",
+  "san-diego":     "San Diego Police",
+  "los-angeles":   "Los Angeles Police",
+  "san-francisco": "San Francisco Police",
+  "chicago":       "Chicago Police",
+  "seattle":       "Seattle Police",
+  "new-york":      "New York Police",
+  "colorado-springs": "Colorado Springs Police",
+  "detroit":       "Detroit Police",
+  "washington-dc": "DC Police",
+  "boston":        "Boston Police",
+  "philadelphia":  "Philadelphia Police",
 };
 
 export function CrimeMixCard({ areaSlug, jurisdictionSlug, title }: { areaSlug?: string; jurisdictionSlug?: string; title?: string }) {
@@ -149,7 +149,7 @@ export function CrimeMixCard({ areaSlug, jurisdictionSlug, title }: { areaSlug?:
         )}
       </header>
       <p className="mt-1 text-xs text-slate2-500">
-        Top reported offense types from {sourceLabel}{data?.asOf ? `. Most recent report ${relativeTime(data.asOf)}` : ""}. Hover a bar for the most-recent occurrence of that offense.
+        Most-reported types of offense from {sourceLabel}{data?.asOf ? `. Latest report ${relativeTime(data.asOf)}` : ""}. Hover a bar to see when that offense was last reported.
       </p>
 
       {/* Personalized category filter chips. Narrows the displayed

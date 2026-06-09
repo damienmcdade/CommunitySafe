@@ -31,28 +31,25 @@ const COLORS: Record<keyof CategoryCounts, { bg: string; text: string; label: st
 // comparison and the BlockScore methodology.
 const CATEGORY_EXPLAINER: Record<keyof CategoryCounts, { headline: string; body: string; examples: string }> = {
   PERSONS: {
-    headline: "Persons — crimes that have a direct victim",
+    headline: "Persons — crimes with a direct victim",
     body:
-      "Offenses where a specific person is the target. The FBI groups these under " +
-      "\"Crimes Against Persons\" in NIBRS and publishes the national rate against the " +
-      "full US population.",
+      "Crimes aimed at a specific person. The FBI calls these \"Crimes Against Persons\" and " +
+      "publishes a national rate for them.",
     examples: "Examples: assault, robbery, kidnapping, sex offenses, homicide.",
   },
   PROPERTY: {
-    headline: "Property — crimes against a thing, not a person",
+    headline: "Property — crimes against things, not people",
     body:
-      "Offenses where something owned is stolen, damaged, or unlawfully taken without a " +
-      "direct human victim at the scene. FBI publishes a separate national property-crime " +
-      "rate per 100,000 residents.",
+      "Crimes where something someone owns is stolen, damaged, or taken, with no person harmed " +
+      "directly. The FBI publishes a separate national rate for these.",
     examples: "Examples: burglary, theft, motor-vehicle theft, vandalism, arson, fraud.",
   },
   SOCIETY: {
-    headline: "Society — public-order offenses",
+    headline: "Society — other offenses",
     body:
-      "Offenses against the rules of an orderly society rather than a specific person or " +
-      "their property. The FBI tracks these in NIBRS but does NOT publish a national " +
-      "per-100k rate for them, so /safety-score's national comparison excludes Society — " +
-      "it's only shown here for completeness.",
+      "Offenses against public order rather than a specific person or their property. The FBI has " +
+      "no national rate for these, so they don't count toward the safety score. They're shown here " +
+      "just so you can see the full picture.",
     examples: "Examples: drug offenses, weapon law violations, DUI, prostitution, gambling.",
   },
 };
@@ -62,11 +59,11 @@ const CATEGORY_EXPLAINER: Record<keyof CategoryCounts, { headline: string; body:
 // cached incident counts (the adapter's full back-catalogue, which
 // varies per city from days to multi-year).
 const WINDOW_ITEMS: WheelItem[] = [
-  { value: "7",   label: "Last 7 days",     detail: "tight recent slice" },
-  { value: "30",  label: "Last 30 days",    detail: "default — recent month" },
-  { value: "90",  label: "Last 90 days",    detail: "recent quarter" },
-  { value: "180", label: "Last 6 months",   detail: "half-year trend" },
-  { value: "365", label: "Last 12 months",  detail: "full annual cycle" },
+  { value: "7",   label: "Last 7 days",     detail: "just this past week" },
+  { value: "30",  label: "Last 30 days",    detail: "default; the past month" },
+  { value: "90",  label: "Last 90 days",    detail: "the past three months" },
+  { value: "180", label: "Last 6 months",   detail: "the past half year" },
+  { value: "365", label: "Last 12 months",  detail: "the past full year" },
   { value: "all", label: "All saved reports", detail: "every report we have" },
 ];
 

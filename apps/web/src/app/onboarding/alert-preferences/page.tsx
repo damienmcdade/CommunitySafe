@@ -7,9 +7,9 @@ type Cat = "PERSONS" | "PROPERTY" | "SOCIETY";
 type Freq = "DIGEST_DAILY" | "REAL_TIME";
 
 const CATEGORIES: { value: Cat; label: string; help: string }[] = [
-  { value: "PERSONS",  label: "Crimes against persons",     help: "Assault, robbery, intimidation (NIBRS Group A — Persons)." },
-  { value: "PROPERTY", label: "Property crimes",            help: "Theft, burglary, vandalism (NIBRS Group A — Property)." },
-  { value: "SOCIETY",  label: "Society / other offenses",   help: "Drug, weapons, disorderly conduct (NIBRS Group A/B — Society)." },
+  { value: "PERSONS",  label: "Crimes against people",      help: "Things like assault, robbery, and threats." },
+  { value: "PROPERTY", label: "Property crimes",            help: "Things like theft, burglary, and vandalism." },
+  { value: "SOCIETY",  label: "Other offenses",             help: "Things like drug, weapon, and disorderly-conduct offenses." },
 ];
 
 export default function AlertPreferencesPage() {
