@@ -13,11 +13,11 @@ import { anonPostLimited } from "@/server/lib/rate-limit";
 // fix(security anon-post-shared-budget): every anonymous post attributes to the
 // single shared "anonymous@travelsafe.local" row, so the per-author DB cap below
 // is a GLOBAL counter for all anonymous traffic — one source could exhaust it and
-// block anonymous posting for everyone (feature-DoS), and across Vercel instances
-// the per-instance edge limiter multiplies (content-injection amplification). Gate
-// anonymous posting on a per-IP DISTRIBUTED (Redis) limit keyed on the
-// Vercel-attested x-real-ip: a short burst window + a daily cap. Redis-down fails
-// open to the existing global DB cap, which still bounds total volume.
+// block anonymous posting for everyone (feature-DoS). Gate anonymous posting on a
+// per-IP cross-instance limit (anonPostLimited) keyed on the sha256-hashed
+// Vercel-attested x-real-ip: a short burst window + a daily cap. Backed by Redis
+// when wired, else by an atomic Postgres counter (always reachable from Vercel);
+// fails open to the global DB cap below.
 const ANON_BURST_LIMIT = 5;          // posts per IP per...
 const ANON_BURST_WINDOW_SEC = 600;   // ...10 minutes
 const ANON_DAILY_LIMIT = 20;         // posts per IP per day

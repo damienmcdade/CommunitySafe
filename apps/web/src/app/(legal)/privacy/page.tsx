@@ -73,7 +73,7 @@ export default function PrivacyPage() {
         <h2 className="font-display text-xl text-slate2-900">What we receive when you use the app (without an account)</h2>
         <ul className="list-disc pl-5 space-y-1">
           <li>Standard server logs from our hosting provider (IP address, user-agent, request path, timestamp). Retained up to 30 days; see <strong>Data retention</strong> below.</li>
-          <li>Anonymous rate-limiting state: a short-lived in-memory counter keyed by IP+endpoint to throttle abuse. Not persisted.</li>
+          <li>Anonymous rate-limiting state: short-lived counters keyed by a one-way <strong>hashed</strong> IP + endpoint to throttle abuse (for example, to cap anonymous community posting per source). The raw IP is never stored; these counters expire quickly and are purged automatically.</li>
         </ul>
         <p>We do not sell, license, or share user-account data with third parties for advertising or marketing. CommunitySafe accounts, contacts, check-in timers, and posts are never transmitted to ad networks. AdSense&apos;s collection is limited to what the browser sends directly to Google when an ad slot loads, and only after you accept cookies (described in the <strong>Advertising</strong> section below).</p>
       </section>

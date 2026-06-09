@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/server/lib/prisma";
 import { deleteAccount } from "@/server/services/account";
 import { clearExpiredLiveShareLocations } from "@/server/services/safety/live-share";
+import { purgeExpiredAnonPostRate } from "@/server/lib/rate-limit";
 import { requireCronSecret } from "@/server/lib/bearer-auth";
 
 export const dynamic = "force-dynamic";
@@ -181,6 +182,15 @@ export async function GET(req: NextRequest) {
     liveShare.error = (e as Error)?.message?.slice(0, 160) ?? "unknown";
   }
 
+  // Fifth pass: drop expired rows from the anonymous-post per-IP rate counter so
+  // its table never grows unbounded. Isolated like the others.
+  const anonRate = { purged: 0, error: null as string | null };
+  try {
+    anonRate.purged = await purgeExpiredAnonPostRate();
+  } catch (e) {
+    anonRate.error = (e as Error)?.message?.slice(0, 160) ?? "unknown";
+  }
+
   return NextResponse.json({
     ok: errors.length === 0 && !anon.error && !auditLog.error && !liveShare.error,
     generatedAt: new Date().toISOString(),
@@ -195,6 +205,7 @@ export async function GET(req: NextRequest) {
     anonAccounts: { retentionDays: anonRetentionDays(), ...anon },
     auditLog,
     liveShareExpiry: liveShare,
+    anonPostRate: anonRate,
     totalMs: Date.now() - startedAt,
   });
 }

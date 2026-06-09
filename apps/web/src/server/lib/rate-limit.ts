@@ -146,42 +146,88 @@ export async function distributedRateLimit(
   }
 }
 
-// Dedicated in-memory fixed-window counter for the anon-post limiter's
-// per-INSTANCE floor. Separate from the read-route `buckets` map so the two
-// can't evict each other.
-const anonBuckets = new Map<string, Bucket>();
-function memBucketLimited(key: string, limit: number, windowMs: number): boolean {
-  const now = Date.now();
-  let b = anonBuckets.get(key);
-  if (!b || b.resetAt <= now) b = { count: 0, resetAt: now + windowMs };
-  b.count += 1;
-  anonBuckets.delete(key);
-  anonBuckets.set(key, b);
-  if (anonBuckets.size > MAX_BUCKETS) {
-    const first = anonBuckets.keys().next().value;
-    if (first !== undefined) anonBuckets.delete(first);
-  }
-  return b.count > limit;
+// ---------------------------------------------------------------------------
+// DB-backed fixed-window counter. Vercel's serverless runtime is stateless with
+// no instance affinity, so the in-memory bucket above can't reliably enforce a
+// per-IP cap (a paced trickle spreads across instances) and Redis isn't wired on
+// the web runtime (REDIS_URL unset → getRedis() null). Postgres (Neon), however,
+// is ALWAYS reachable from the web runtime — the app already uses it — and is a
+// single shared store, so an atomic INSERT…ON CONFLICT increment gives accurate
+// CROSS-instance per-IP enforcement with no Redis and no schema migration (the
+// table is created on first use). The IP is sha256-hashed (never stored raw) and
+// rows are short-lived (cleaned by the purge cron), so this is a privacy-safe,
+// ephemeral abuse-prevention counter.
+import { prisma } from "./prisma";
+import { createHash } from "node:crypto";
+
+function ipHash(ip: string): string {
+  return createHash("sha256").update(`anonpost:${ip}`).digest("hex").slice(0, 32);
 }
 
-/// Per-IP rate gate for ANONYMOUS community posts. Two layers so the protection
-/// holds in every deployment:
-///   1. In-memory per-instance burst floor — ALWAYS active, even with no Redis,
-///      so a single instance can't be flooded from one IP.
-///   2. Distributed (Redis) burst + daily — active when REDIS_URL is set on the
-///      web runtime, giving accurate CROSS-instance enforcement (set REDIS_URL to
-///      the same instance the Railway API uses to enable it).
-/// Returns true if the request should be rejected (429). The global per-author DB
-/// cap in the route remains the absolute backstop regardless.
+let anonRateTableReady = false;
+async function ensureAnonRateTable(): Promise<void> {
+  if (anonRateTableReady) return;
+  await prisma.$executeRawUnsafe(
+    `CREATE TABLE IF NOT EXISTS "AnonPostRate" (` +
+    `"key" text PRIMARY KEY, "count" integer NOT NULL DEFAULT 0, "expiresAt" timestamptz NOT NULL)`,
+  );
+  anonRateTableReady = true;
+}
+
+/// Atomic fixed-window increment in Postgres. Returns true if over `limit`.
+async function dbWindowLimited(key: string, limit: number, windowSec: number): Promise<boolean> {
+  await ensureAnonRateTable();
+  const nowSec = Math.floor(Date.now() / 1000);
+  const windowStart = Math.floor(nowSec / windowSec) * windowSec; // fixed-window id
+  const k = `${key}:${windowStart}`;
+  const expiresAt = new Date((windowStart + windowSec) * 1000);
+  // Parameterized ($1/$2) — no string interpolation, no injection surface.
+  const rows = await prisma.$queryRawUnsafe<Array<{ count: number }>>(
+    `INSERT INTO "AnonPostRate" ("key","count","expiresAt") VALUES ($1, 1, $2) ` +
+    `ON CONFLICT ("key") DO UPDATE SET "count" = "AnonPostRate"."count" + 1 RETURNING "count"`,
+    k,
+    expiresAt,
+  );
+  return Number(rows[0]?.count ?? 1) > limit;
+}
+
+/// Deletes expired AnonPostRate rows. Called by the daily purge cron so the
+/// table never grows unbounded. Returns the number of rows removed.
+export async function purgeExpiredAnonPostRate(): Promise<number> {
+  try {
+    await ensureAnonRateTable();
+    const rows = await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(
+      `WITH d AS (DELETE FROM "AnonPostRate" WHERE "expiresAt" < now() RETURNING 1) SELECT count(*)::bigint AS count FROM d`,
+    );
+    return Number(rows[0]?.count ?? 0);
+  } catch {
+    return 0;
+  }
+}
+
+/// Per-IP rate gate for ANONYMOUS community posts. Uses Redis when configured
+/// (lowest latency, cross-instance) and otherwise the DB-backed counter (also
+/// cross-instance, always reachable from Vercel). Both burst + daily windows are
+/// keyed on the sha256-hashed attested IP. Returns true if the request should be
+/// rejected (429). FAILS OPEN on infra error — the global per-author DB cap in the
+/// route remains the absolute backstop regardless.
 export async function anonPostLimited(
   req: NextRequest,
   opts: { burstLimit: number; burstWindowSec: number; dailyLimit: number },
 ): Promise<boolean> {
-  const ip = attestedClientIp(req);
-  if (memBucketLimited(`anonpost:${ip}`, opts.burstLimit, opts.burstWindowSec * 1000)) return true;
-  const [burst, daily] = await Promise.all([
-    distributedRateLimit(`anonpost:burst:${ip}`, opts.burstLimit, opts.burstWindowSec),
-    distributedRateLimit(`anonpost:day:${ip}`, opts.dailyLimit, 24 * 60 * 60),
-  ]);
-  return Boolean(burst?.limited || daily?.limited);
+  const h = ipHash(attestedClientIp(req));
+  // Fast path: Redis, when REDIS_URL is wired on the web runtime.
+  const burstR = await distributedRateLimit(`anonpost:burst:${h}`, opts.burstLimit, opts.burstWindowSec);
+  const dailyR = await distributedRateLimit(`anonpost:day:${h}`, opts.dailyLimit, 24 * 60 * 60);
+  if (burstR || dailyR) return Boolean(burstR?.limited || dailyR?.limited);
+  // Redis absent/errored → DB-backed counter (the reliable path on Vercel today).
+  try {
+    const [burst, daily] = await Promise.all([
+      dbWindowLimited(`anonpost:burst:${h}`, opts.burstLimit, opts.burstWindowSec),
+      dbWindowLimited(`anonpost:day:${h}`, opts.dailyLimit, 24 * 60 * 60),
+    ]);
+    return burst || daily;
+  } catch {
+    return false; // fail open to the route's global DB cap
+  }
 }
