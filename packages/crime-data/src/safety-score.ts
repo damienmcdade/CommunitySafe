@@ -661,7 +661,7 @@ function computeDataConfidence(
     return {
       dataConfidence: "low",
       dataConfidenceNote:
-        "No incidents are in the cached window — the upstream feed may be temporarily unavailable. Grade is shown for shape only.",
+        "No recent reports right now. The city's data feed may be briefly unavailable, so this grade is only approximate.",
     };
   }
   if (windowDays < 30) {
@@ -1382,9 +1382,9 @@ async function computeCitywideSafetyScore(citySlug: string): Promise<SafetyScore
     rows,
     source: FBI_NATIONAL_SOURCE,
     disclaimer:
-      "Citywide rate is the sum of incidents across every tracked neighborhood, " +
-      `annualized from the cached window and scaled to per-100,000 residents using ` +
-      `${city.label}'s US Census Bureau Vintage 2023-2024 population (${pop.toLocaleString()}). ` +
+      "The citywide rate adds up reports from every tracked neighborhood, " +
+      `based on recent reports and scaled to a yearly rate per 100,000 residents using ` +
+      `${city.label}'s US Census population (${pop.toLocaleString()}). ` +
       (fbiBaseline
         ? `The letter grade is an absolute, cross-city measure: ${city.label}'s own FBI-published rate for ${fbiBaseline.year} ` +
           `(violent ${fbiBaseline.violent}/100k, property ${fbiBaseline.property}/100k, via cde.ucr.cjis.gov agency ORI ${fbiBaseline.ori}) ` +

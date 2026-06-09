@@ -303,12 +303,10 @@ async function computeCitywideTrend(citySlug: string, opts?: { windowDays?: numb
       url: sample?.provenance.datasetUrl ?? "about:blank",
     },
     disclaimer:
-      `Bullets reflect the most recent ${windowDays} days of incidents the city's official ` +
-      `police open-data feed has published across every tracked ${city.label} ` +
-      "neighborhood. Week-over-week shifts compare days 0-7 to days 8-14; if " +
-      "the feed has a publishing lag longer than seven days, the 'recent week' " +
-      "period may be sparse. None of this is a prediction — only what has " +
-      "already been reported.",
+      `This shows the most recent ${windowDays} days of police reports across every ` +
+      `tracked ${city.label} neighborhood. We compare the last 7 days to the 7 days ` +
+      "before. If the city is slow to post reports, the latest week can look quiet. " +
+      "None of this predicts the future. It only shows what has already been reported.",
   };
 }
 
@@ -440,10 +438,9 @@ export async function getTrendForArea(areaSlug: string, areaLabel: string, opts?
       url: sample?.provenance.datasetUrl ?? "about:blank",
     },
     disclaimer:
-      `Bullets reflect the most recent ${windowDays} days of incidents the city's police ` +
-      "open-data feed has published for this neighborhood. Week-over-week shifts " +
-      "compare days 0-7 to days 8-14; if the city's feed has a publishing lag " +
-      "longer than seven days, the 'recent week' period may be sparse. None of " +
-      "this is a prediction — only what has already been reported.",
+      `This shows the most recent ${windowDays} days of police reports for this ` +
+      "neighborhood. We compare the last 7 days to the 7 days before. If the city is " +
+      "slow to post reports, the latest week can look quiet. None of this predicts the " +
+      "future. It only shows what has already been reported.",
   };
 }
