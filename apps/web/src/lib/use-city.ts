@@ -76,13 +76,10 @@ export const CITIES: CityInfo[] = [
   { slug: "sacramento",    label: "Sacramento",    state: "CA", stateLabel: "California",     defaultArea: "sac-midtown",      centroid: { lat: 38.58, lng: -121.49 }, status: "live",        source: "Sacramento PD Daily Crime · data.cityofsacramento.org (ArcGIS)" },
   { slug: "atlanta",       label: "Atlanta",       state: "GA", stateLabel: "Georgia",        defaultArea: "atl-midtown",      centroid: { lat: 33.75, lng: -84.39 }, status: "live",        source: "APD Crime Incidents · opendata.atlantapd.org (ArcGIS)" },
   { slug: "indianapolis",  label: "Indianapolis",  state: "IN", stateLabel: "Indiana",        defaultArea: "indy-downtown",    centroid: { lat: 39.77, lng: -86.16 }, status: "live",        source: "IMPD Crime Incidents · data.indy.gov (ArcGIS)" },
-  { slug: "raleigh",       label: "Raleigh",       state: "NC", stateLabel: "North Carolina", defaultArea: "rdu-downtown",     centroid: { lat: 35.78, lng: -78.64 }, status: "live",        source: "Raleigh Police Incidents · data.raleighnc.gov (ArcGIS)" },
-  // v108 — Tucson repointed to the COMPLETE "Tucson Police Reported Crimes"
-  // table (UCR Part 1, 2017→present, ~256k rows). The old 45-day neighborhood
-  // layer was too thin to grade (N/A); the new feed grades properly but is
-  // Ward-level (6 council wards) since the complete table has no neighborhood
-  // geography. See adapters/tucson-arcgis.ts.
-  { slug: "tucson",        label: "Tucson",        state: "AZ", stateLabel: "Arizona",        defaultArea: "tuc-ward-1",       centroid: { lat: 32.22, lng: -110.97 }, status: "live",        source: "Tucson Police Reported Crimes (UCR Part 1) · City of Tucson Open Data (ArcGIS)" },
+  // v110 — Raleigh + Tucson removed: their feeds expose only coarse police
+  // districts / city-council wards (no neighborhood geography, no usable
+  // coordinates to derive one), so they couldn't meet the recognizable-
+  // neighborhood standard the rest of the fleet holds to. See cities.ts.
   // v95p1/v95p4 — Honolulu added as the 37th city. HPD's
   // data.honolulu.gov feed lacks lat/lng, so per-neighborhood comes
   // from a one-time OSM Nominatim geocode of every blockaddress.
@@ -92,7 +89,9 @@ export const CITIES: CityInfo[] = [
   // couldn't select it. Added here so the city + its neighborhoods are
   // reachable in the selector.
   { slug: "long-beach",    label: "Long Beach",    state: "CA", stateLabel: "California",     defaultArea: "lb-downtown",      centroid: { lat: 33.81, lng: -118.16 }, status: "live",        source: "LBPD NIBRS Incidents · CityofLB GIS (ArcGIS)" },
-  { slug: "austin",        label: "Austin",        state: "TX", stateLabel: "Texas",          defaultArea: "atx-southwest-sector-david", centroid: { lat: 30.2672, lng: -97.7431 }, status: "live", source: "APD Crime Reports · data.austintexas.gov" },
+  // v110 — Austin removed: APD's public Crime Reports feed publishes no
+  // lat/lng (only census block group / sector / district), so incidents
+  // could only bucket into 10 coarse police sectors, not neighborhoods.
   { slug: "phoenix",       label: "Phoenix",       state: "AZ", stateLabel: "Arizona",        defaultArea: "phx-maryvale",     centroid: { lat: 33.4484, lng: -112.0740 }, status: "live", source: "Phoenix PD Crime Data · phoenixopendata.com (through Dec 2025)" },
   { slug: "jacksonville",  label: "Jacksonville",  state: "FL", stateLabel: "Florida",        defaultArea: "jax-downtown-jacksonville", centroid: { lat: 30.3322, lng: -81.6557 }, status: "live", source: "JSO NIBRS Incidents · Jacksonville Sheriff's Office (ArcGIS)" },
   { slug: "virginia-beach", label: "Virginia Beach", state: "VA", stateLabel: "Virginia",     defaultArea: "vb-aragona-village", centroid: { lat: 36.8529, lng: -76.0339 }, status: "live", source: "VBPD Police Incident Reports · data-vbgov.opendata.arcgis.com" },

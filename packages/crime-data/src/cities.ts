@@ -39,11 +39,8 @@ import { fortWorthAdapter, getDiscoveredAreasFortWorth } from "./adapters/fort-w
 import { sacramentoAdapter, getDiscoveredAreasSacramento } from "./adapters/sacramento-arcgis.js";
 import { atlantaAdapter, getDiscoveredAreasAtlanta } from "./adapters/atlanta-arcgis.js";
 import { indianapolisAdapter, getDiscoveredAreasIndianapolis } from "./adapters/indianapolis-arcgis.js";
-import { raleighAdapter, getDiscoveredAreasRaleigh } from "./adapters/raleigh-arcgis.js";
-import { tucsonAdapter, getDiscoveredAreasTucson } from "./adapters/tucson-arcgis.js";
 import { honoluluAdapter, getDiscoveredAreasHonolulu } from "./adapters/honolulu-socrata.js";
 import { longBeachAdapter, getDiscoveredAreasLongBeach } from "./adapters/long-beach-arcgis.js";
-import { austinAdapter, getDiscoveredAreasAustin } from "./adapters/austin-socrata.js";
 import { phoenixAdapter, getDiscoveredAreasPhoenix } from "./adapters/phoenix-ckan.js";
 import { jacksonvilleAdapter, getDiscoveredAreasJacksonville } from "./adapters/jacksonville-arcgis.js";
 import { virginiaBeachAdapter, getDiscoveredAreasVirginiaBeach, getPrimaryAreasVirginiaBeach } from "./adapters/virginia-beach-arcgis.js";
@@ -352,21 +349,7 @@ export const CITIES: CityEntry[] = [
     discover: getDiscoveredAreasIndianapolis,
   },
   {
-    slug: "raleigh",
-    label: "Raleigh",
-    bbox: { south: 35.667, west: -78.792, north: 35.927, east: -78.510 },
-    adapter: raleighAdapter,
-    discover: getDiscoveredAreasRaleigh,
-  },
-  {
-    slug: "tucson",
-    label: "Tucson",
-    bbox: { south: 32.083, west: -111.114, north: 32.318, east: -110.738 },
-    adapter: tucsonAdapter,
-    discover: getDiscoveredAreasTucson,
-  },
-  {
-    // Honolulu — 37th city. HPD's open-data feed publishes a redacted
+    // Honolulu. HPD's open-data feed publishes a redacted
     // block-address + offense type but no neighborhood field; each incident
     // is geocoded offline to one of ~119 named Honolulu neighborhoods
     // (Waikiki, Kalihi, Ala Moana…) via the honolulu-socrata adapter's
@@ -388,17 +371,7 @@ export const CITIES: CityEntry[] = [
     discover: getDiscoveredAreasLongBeach,
   },
   {
-    // Austin, TX — 39th city. APD "Crime Reports" Socrata feed (data.austin
-    // texas.gov, 2.6M rows). No public lat/lng, so incidents bucket by APD
-    // sector (≈neighborhood grain); a handful of junk sector codes → "Unmapped".
-    slug: "austin",
-    label: "Austin",
-    bbox: { south: 30.10, west: -97.94, north: 30.52, east: -97.56 },
-    adapter: austinAdapter,
-    discover: getDiscoveredAreasAustin,
-  },
-  {
-    // Phoenix, AZ — 40th city. Re-added per request. The only official feed is
+    // Phoenix, AZ. Re-added per request. The only official feed is
     // an annual ARCHIVAL snapshot (phoenixopendata CKAN) frozen at 2025-12-31,
     // ZIP-level only (no lat/lng, ~13% missing-ZIP → "Unmapped"). The adapter
     // provenance surfaces "data through Dec 2025" so the UI is honest about it.
@@ -505,51 +478,27 @@ const SAN_DIEGO_SLUG_OVERRIDES: ReadonlySet<string> = new Set([
 /// Route an area slug to its city. Slugs are prefixed by adapter
 /// (la-*, sf-*, chi-*); bare slugs default to San Diego.
 export function cityForArea(slug: string): CityEntry {
-  if (SAN_DIEGO_SLUG_OVERRIDES.has(slug)) return CITIES[0];
-  if (slug.startsWith("la-")  || slug === "los-angeles")   return CITIES[1];
-  if (slug.startsWith("sf-")  || slug === "san-francisco") return CITIES[2];
-  if (slug.startsWith("chi-") || slug === "chicago")       return CITIES[3];
-  if (slug.startsWith("sea-") || slug === "seattle")       return CITIES[4];
-  if (slug.startsWith("ny-")  || slug === "new-york")      return CITIES[5];
-  if (slug.startsWith("cosp-") || slug === "colorado-springs") return CITIES[6];
-  if (slug.startsWith("det-") || slug === "detroit")       return CITIES[7];
-  if (slug.startsWith("dc-")  || slug === "washington-dc") return CITIES[8];
-  if (slug.startsWith("bos-") || slug === "boston")        return CITIES[9];
-  if (slug.startsWith("phl-") || slug === "philadelphia")  return CITIES[10];
-  if (slug.startsWith("oak-") || slug === "oakland")       return CITIES[11];
-  if (slug.startsWith("cin-")  || slug === "cincinnati")   return CITIES[12];
-  if (slug.startsWith("nola-") || slug === "new-orleans")  return CITIES[13];
-  if (slug.startsWith("br-")   || slug === "baton-rouge")  return CITIES[14];
-  if (slug.startsWith("cam-")  || slug === "cambridge")    return CITIES[15];
-  if (slug.startsWith("dal-")  || slug === "dallas")       return CITIES[16];
-  if (slug.startsWith("clt-")  || slug === "charlotte")    return CITIES[17];
-  if (slug.startsWith("balt-") || slug === "baltimore")    return CITIES[18];
-  if (slug.startsWith("mpls-") || slug === "minneapolis")  return CITIES[19];
-  if (slug.startsWith("cle-")  || slug === "cleveland")    return CITIES[20];
-  if (slug.startsWith("mke-")  || slug === "milwaukee")    return CITIES[21];
-  if (slug.startsWith("lv-")   || slug === "las-vegas")    return CITIES[22];
-  if (slug.startsWith("bzi-")  || slug === "boise")        return CITIES[23];
-  if (slug.startsWith("buf-")  || slug === "buffalo")      return CITIES[24];
-  if (slug.startsWith("nor-")  || slug === "norfolk")      return CITIES[25];
-  if (slug.startsWith("kc-")   || slug === "kansas-city")  return CITIES[26];
-  if (slug.startsWith("sp-")   || slug === "saint-paul")   return CITIES[27];
-  if (slug.startsWith("pgh-")  || slug === "pittsburgh")   return CITIES[28];
-  if (slug.startsWith("fw-")   || slug === "fort-worth")   return CITIES[29];
-  if (slug.startsWith("den-")  || slug === "denver")       return CITIES[30];
-  if (slug.startsWith("sac-")  || slug === "sacramento")   return CITIES[31];
-  if (slug.startsWith("atl-")  || slug === "atlanta")      return CITIES[32];
-  if (slug.startsWith("indy-") || slug === "indianapolis") return CITIES[33];
-  if (slug.startsWith("rdu-")  || slug === "raleigh")      return CITIES[34];
-  if (slug.startsWith("tuc-")  || slug === "tucson")       return CITIES[35];
-  if (slug.startsWith("hnl-")  || slug === "honolulu")     return CITIES[36];
-  if (slug.startsWith("lb-")   || slug === "long-beach")   return CITIES[37];
-  if (slug.startsWith("atx-")  || slug === "austin")       return CITIES[38];
-  if (slug.startsWith("phx-")  || slug === "phoenix")      return CITIES[39];
-  if (slug.startsWith("jax-")  || slug === "jacksonville") return CITIES[40];
-  if (slug.startsWith("vb-")   || slug === "virginia-beach") return CITIES[41];
-  if (slug.startsWith("gnv-")  || slug === "gainesville")  return CITIES[42];
-  if (slug.startsWith("tpa-")  || slug === "tampa")        return CITIES[43];
-  return CITIES[0];
+  const sd = cityBySlug("san-diego") ?? CITIES[0];
+  // SD uses UNPREFIXED, name-derived slugs, so SD neighborhoods whose name
+  // collides with another city's prefix ("la-jolla", "oak-park") are routed
+  // explicitly to San Diego first.
+  if (SAN_DIEGO_SLUG_OVERRIDES.has(slug)) return sd;
+  // Exact city slug ("boston", "los-angeles").
+  const exact = cityBySlug(slug);
+  if (exact) return exact;
+  // Area-slug prefix → city, resolved by SLUG via cityBySlug (NOT a hardcoded
+  // CITIES[n] index). AREA_SLUG_PREFIX is the single source of truth, so
+  // adding or removing a city never shifts an index and can never silently
+  // misroute another city's areas (the bug class that bit Denver + every
+  // prior add/remove). Prefixes are mutually non-overlapping.
+  for (const citySlug of Object.keys(AREA_SLUG_PREFIX)) {
+    const prefix = AREA_SLUG_PREFIX[citySlug];
+    if (prefix && slug.startsWith(prefix)) {
+      const c = cityBySlug(citySlug);
+      if (c) return c;
+    }
+  }
+  return sd; // unprefixed San Diego neighborhoods
 }
 
 export function cityBySlug(slug: string): CityEntry | null {
@@ -568,7 +517,7 @@ const AREA_SLUG_PREFIX: Record<string, string> = {
   "milwaukee": "mke-", "las-vegas": "lv-", "boise": "bzi-", "buffalo": "buf-", "norfolk": "nor-",
   "kansas-city": "kc-", "saint-paul": "sp-", "pittsburgh": "pgh-", "fort-worth": "fw-",
   "denver": "den-", "sacramento": "sac-", "atlanta": "atl-", "indianapolis": "indy-",
-  "raleigh": "rdu-", "tucson": "tuc-", "honolulu": "hnl-", "long-beach": "lb-", "austin": "atx-",
+  "honolulu": "hnl-", "long-beach": "lb-",
   "phoenix": "phx-", "jacksonville": "jax-", "virginia-beach": "vb-", "gainesville": "gnv-",
   "tampa": "tpa-",
 };
