@@ -597,6 +597,10 @@ export function normalizeAreaLabel(label: string): string {
   const trimmed = label.replace(/`/g, "'").replace(/\s+/g, " ").trim();
   // Already has lower-case → trust upstream casing, just tidy punctuation/spacing.
   if (/[a-z]/.test(trimmed)) return trimmed;
+  // Collapse a run of single capital letters separated by spaces into one
+  // acronym ("L S U" → "LSU"); only when the WHOLE label is initials, so
+  // "J F K Heights" is left alone (it has a lower-case word and returns above).
+  if (/^([A-Z] ){1,4}[A-Z]$/.test(trimmed)) return trimmed.replace(/ /g, "");
   const words = trimmed.split(" ");
   return words
     .map((word, wi) =>
