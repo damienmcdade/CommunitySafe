@@ -69,6 +69,9 @@ const BASE_FBI_BASELINES: Record<string, CityFbiBaseline> = {
   "virginia-beach": { violent: 116, property: 1699, year: 2023, ori: "VA1210000" },
   "gainesville": { violent: 749, property: 2927, year: 2023, ori: "FL0010100" },
   "tampa": { violent: 469, property: 1686, year: 2023, ori: "FL0290200" },
+  // Nashville (Metro Nashville PD, ORI TN0190100): FBI CDE 2023 — 8,909 violent
+  // + 31,821 property on the MNPD agency population → ~1,071 / ~3,825 per 100k.
+  "nashville": { violent: 1071, property: 3825, year: 2023, ori: "TN0190100" },
   "boston": { violent: 634, property: 1965, year: 2023, ori: "MA0130100" },
   "buffalo": { violent: 761, property: 4286, year: 2023, ori: "NY0140100" },
   "cambridge": { violent: 479, property: 2402, year: 2023, ori: "MA0091100" },

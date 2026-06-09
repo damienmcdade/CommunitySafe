@@ -46,6 +46,7 @@ import { jacksonvilleAdapter, getDiscoveredAreasJacksonville } from "./adapters/
 import { virginiaBeachAdapter, getDiscoveredAreasVirginiaBeach, getPrimaryAreasVirginiaBeach } from "./adapters/virginia-beach-arcgis.js";
 import { gainesvilleAdapter, getDiscoveredAreasGainesville } from "./adapters/gainesville-socrata.js";
 import { tampaAdapter, getDiscoveredAreasTampa } from "./adapters/tampa-arcgis.js";
+import { nashvilleAdapter, getDiscoveredAreasNashville } from "./adapters/nashville-arcgis.js";
 
 // City registry.
 //
@@ -423,6 +424,16 @@ export const CITIES: CityEntry[] = [
     adapter: tampaAdapter,
     discover: getDiscoveredAreasTampa,
   },
+  {
+    // Nashville, TN (Metro Nashville-Davidson) — MNPD Incidents ArcGIS
+    // FeatureServer with per-incident coords + NIBRS; geocoded to recognizable
+    // named neighborhoods (OSM boundaries, ODbL) via point-in-polygon.
+    slug: "nashville",
+    label: "Nashville",
+    bbox: { south: 35.97, west: -87.06, north: 36.41, east: -86.51 },
+    adapter: nashvilleAdapter,
+    discover: getDiscoveredAreasNashville,
+  },
 ];
 
 export function cityFromLatLng(point: { lat: number; lng: number }): CityEntry | null {
@@ -520,6 +531,7 @@ const AREA_SLUG_PREFIX: Record<string, string> = {
   "honolulu": "hnl-", "long-beach": "lb-",
   "phoenix": "phx-", "jacksonville": "jax-", "virginia-beach": "vb-", "gainesville": "gnv-",
   "tampa": "tpa-",
+  "nashville": "bna-",
 };
 
 const COMPASS = new Set(["n", "s", "e", "w", "nw", "ne", "sw", "se"]);

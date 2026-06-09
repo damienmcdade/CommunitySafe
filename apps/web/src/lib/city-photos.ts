@@ -451,4 +451,16 @@ export const PHOTOS: Record<string, string[]> = {
     "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Tampa_Skyline.jpg/1920px-Tampa_Skyline.jpg",
     "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Red_Bull_Flugtag_near_downtown_Tampa%2C_Florida_on_July_19%2C_2008_%28panorama%29.jpg/1920px-Red_Bull_Flugtag_near_downtown_Tampa%2C_Florida_on_July_19%2C_2008_%28panorama%29.jpg",
   ],
+  // Nashville, TN — 8× 1920×1080 Wikimedia Commons cityscapes (HTTP-verified),
+  // rotating on the same global CityBackdrop cadence as every other city.
+  "nashville": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/It_is_the_Batman_Building_in_Nashville%2C_Tennessee-_%28Also_the_AT%26T_building-%29_2014-04-22_19-55.jpg/1920px-It_is_the_Batman_Building_in_Nashville%2C_Tennessee-_%28Also_the_AT%26T_building-%29_2014-04-22_19-55.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Nashville%2C_TN_skyline.jpg/1920px-Nashville%2C_TN_skyline.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Nashville_From_Fort_Negley.jpg/1920px-Nashville_From_Fort_Negley.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Nashville_Skyline_at_Night_I-65.jpeg/1920px-Nashville_Skyline_at_Night_I-65.jpeg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Nashville_from_Shelby_Park_2024.jpg/1920px-Nashville_from_Shelby_Park_2024.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Nashville_pano_Opry_Broadway.jpg/1920px-Nashville_pano_Opry_Broadway.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Nashville_panorama.jpg/1920px-Nashville_panorama.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/Nashville_panorama_Kaldari_01.jpg/1920px-Nashville_panorama_Kaldari_01.jpg",
+  ],
 };

@@ -97,6 +97,7 @@ export const CITIES: CityInfo[] = [
   { slug: "virginia-beach", label: "Virginia Beach", state: "VA", stateLabel: "Virginia",     defaultArea: "vb-aragona-village", centroid: { lat: 36.8529, lng: -76.0339 }, status: "live", source: "VBPD Police Incident Reports · data-vbgov.opendata.arcgis.com" },
   { slug: "gainesville",   label: "Gainesville",   state: "FL", stateLabel: "Florida",        defaultArea: "gnv-duval",        centroid: { lat: 29.6516, lng: -82.3248 }, status: "live", source: "GPD Crime Responses · data.cityofgainesville.org (Socrata)" },
   { slug: "tampa",         label: "Tampa",         state: "FL", stateLabel: "Florida",        defaultArea: "tpa-old-seminole-heights", centroid: { lat: 27.9506, lng: -82.4572 }, status: "live", source: "TPD Crimes (last 365 days) · City of Tampa GIS (ArcGIS)" },
+  { slug: "nashville",     label: "Nashville",     state: "TN", stateLabel: "Tennessee",      defaultArea: "bna-east-nashville", centroid: { lat: 36.1627, lng: -86.7816 }, status: "live", source: "MNPD Incidents · Metro Nashville Open Data (ArcGIS); neighborhood boundaries © OpenStreetMap (ODbL)" },
 ];
 
 /// All US states with at least one CommunitySafe city, sorted alphabetically.

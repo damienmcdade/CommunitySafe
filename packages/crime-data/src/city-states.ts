@@ -54,6 +54,7 @@ export const CITY_STATES: Record<string, UsState> = {
   "virginia-beach":    { abbr: "VA", label: "Virginia" },
   "gainesville":       { abbr: "FL", label: "Florida" },
   "tampa":             { abbr: "FL", label: "Florida" },
+  "nashville":         { abbr: "TN", label: "Tennessee" },
   "kansas-city":       { abbr: "MO", label: "Missouri" },
   "atlanta":           { abbr: "GA", label: "Georgia" },
   "indianapolis":      { abbr: "IN", label: "Indiana" },

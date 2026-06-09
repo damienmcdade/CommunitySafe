@@ -120,6 +120,7 @@ export const CITY_TIMEZONES: Record<string, string> = {
   "kansas-city": "America/Chicago",
   "new-orleans": "America/Chicago",
   "baton-rouge": "America/Chicago",
+  "nashville": "America/Chicago",
   "dallas": "America/Chicago",
   "baltimore": "America/New_York",
   "new-york": "America/New_York",
