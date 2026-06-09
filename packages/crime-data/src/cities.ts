@@ -48,6 +48,8 @@ import { gainesvilleAdapter, getDiscoveredAreasGainesville } from "./adapters/ga
 import { tampaAdapter, getDiscoveredAreasTampa } from "./adapters/tampa-arcgis.js";
 import { nashvilleAdapter, getDiscoveredAreasNashville } from "./adapters/nashville-arcgis.js";
 import { houstonAdapter, getDiscoveredAreasHouston } from "./adapters/houston-arcgis.js";
+import { montgomeryCountyAdapter, getDiscoveredAreasMontgomeryCounty } from "./adapters/montgomery-county-socrata.js";
+import { princeGeorgesCountyAdapter, getDiscoveredAreasPrinceGeorgesCounty } from "./adapters/prince-georges-county-socrata.js";
 
 // City registry.
 //
@@ -445,6 +447,28 @@ export const CITIES: CityEntry[] = [
     adapter: houstonAdapter,
     discover: getDiscoveredAreasHouston,
   },
+  {
+    // Montgomery County, MD — Montgomery County PD "Crime" (Socrata icn6-v9z3);
+    // per-incident lat/lng + NIBRS top-level class, placed into the county's
+    // recognizable constituent communities (Silver Spring, Rockville, Bethesda,
+    // Gaithersburg, Germantown…) via point-in-polygon over Census place boundaries.
+    slug: "montgomery-county",
+    label: "Montgomery County",
+    bbox: { south: 38.93, west: -77.44, north: 39.31, east: -76.89 },
+    adapter: montgomeryCountyAdapter,
+    discover: getDiscoveredAreasMontgomeryCounty,
+  },
+  {
+    // Prince George's County, MD — PGPD reported crime (Socrata xjru-idbe);
+    // per-incident lat/lng + free-text offense type, placed into the county's
+    // recognizable constituent communities (Bowie, College Park, Hyattsville,
+    // Laurel, Greenbelt, Suitland…) via point-in-polygon over Census boundaries.
+    slug: "prince-georges-county",
+    label: "Prince George's County",
+    bbox: { south: 38.54, west: -77.08, north: 39.13, east: -76.67 },
+    adapter: princeGeorgesCountyAdapter,
+    discover: getDiscoveredAreasPrinceGeorgesCounty,
+  },
 ];
 
 export function cityFromLatLng(point: { lat: number; lng: number }): CityEntry | null {
@@ -544,6 +568,8 @@ const AREA_SLUG_PREFIX: Record<string, string> = {
   "tampa": "tpa-",
   "nashville": "bna-",
   "houston": "hou-",
+  "montgomery-county": "moco-",
+  "prince-georges-county": "pg-",
 };
 
 const COMPASS = new Set(["n", "s", "e", "w", "nw", "ne", "sw", "se"]);

@@ -99,6 +99,8 @@ export const CITIES: CityInfo[] = [
   { slug: "tampa",         label: "Tampa",         state: "FL", stateLabel: "Florida",        defaultArea: "tpa-old-seminole-heights", centroid: { lat: 27.9506, lng: -82.4572 }, status: "live", source: "TPD Crimes (last 365 days) · City of Tampa GIS (ArcGIS)" },
   { slug: "nashville",     label: "Nashville",     state: "TN", stateLabel: "Tennessee",      defaultArea: "bna-east-nashville", centroid: { lat: 36.1627, lng: -86.7816 }, status: "live", source: "MNPD Incidents · Metro Nashville Open Data (ArcGIS); neighborhood boundaries © OpenStreetMap (ODbL)" },
   { slug: "houston",       label: "Houston",       state: "TX", stateLabel: "Texas",          defaultArea: "hou-montrose", centroid: { lat: 29.7604, lng: -95.3698 }, status: "live", source: "HPD NIBRS Crime (City of Houston Open Data, data through 2024); neighborhood boundaries © OpenStreetMap (ODbL)" },
+  { slug: "montgomery-county", label: "Montgomery County", state: "MD", stateLabel: "Maryland", defaultArea: "moco-silver-spring", centroid: { lat: 39.1357, lng: -77.2014 }, status: "live", source: "Montgomery County PD Crime (Data Montgomery, Socrata); place boundaries © US Census Bureau TIGER/Line" },
+  { slug: "prince-georges-county", label: "Prince George's County", state: "MD", stateLabel: "Maryland", defaultArea: "pg-bowie", centroid: { lat: 38.8290, lng: -76.8755 }, status: "live", source: "Prince George's County PD Reported Crime (PG Open Data, Socrata); place boundaries © US Census Bureau TIGER/Line" },
 ];
 
 /// All US states with at least one CommunitySafe city, sorted alphabetically.

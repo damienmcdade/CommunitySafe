@@ -74,6 +74,17 @@ const BASE_FBI_BASELINES: Record<string, CityFbiBaseline> = {
   "nashville": { violent: 1071, property: 3825, year: 2023, ori: "TN0190100" },
   // Houston (HPD, ORI TX1010000): FBI CDE 2023 per-100k (approx; large agency).
   "houston": { violent: 1072, property: 4367, year: 2023, ori: "TX1010000" },
+  // Montgomery County, MD (MCPD, ORI MD0150000): derived from the agency's OWN
+  // 2023 NIBRS data (Data Montgomery icn6-v9z3) on UCR Part-1 definitions —
+  // violent (murder 09A + rape 11A + robbery 120 + agg assault 13A) = 2,067;
+  // property (burglary 220 + larceny 23x + MV theft 240 + arson 200) = 19,792 —
+  // over the 2020 county population (1,062,061) → ~195 / ~1,864 per 100k. Matches
+  // FBI CDE 2023 (property ~1,848) within rounding.
+  "montgomery-county": { violent: 195, property: 1864, year: 2023, ori: "MD0150000" },
+  // Prince George's County, MD (PGPD, ORI MD0160000): PGPD's published 2023 UCR
+  // totals — 4,163 violent + 17,674 property — over the 2020 county population
+  // (967,201) → ~430 / ~1,827 per 100k. Violent cross-checks FBI CDE 2023 (~447).
+  "prince-georges-county": { violent: 430, property: 1827, year: 2023, ori: "MD0160000" },
   "boston": { violent: 634, property: 1965, year: 2023, ori: "MA0130100" },
   "buffalo": { violent: 761, property: 4286, year: 2023, ori: "NY0140100" },
   "cambridge": { violent: 479, property: 2402, year: 2023, ori: "MA0091100" },

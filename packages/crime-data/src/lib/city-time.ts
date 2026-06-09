@@ -122,6 +122,8 @@ export const CITY_TIMEZONES: Record<string, string> = {
   "baton-rouge": "America/Chicago",
   "nashville": "America/Chicago",
   "houston": "America/Chicago",
+  "montgomery-county": "America/New_York",
+  "prince-georges-county": "America/New_York",
   "dallas": "America/Chicago",
   "baltimore": "America/New_York",
   "new-york": "America/New_York",

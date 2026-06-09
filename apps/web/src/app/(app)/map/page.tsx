@@ -50,6 +50,8 @@ const SOURCES: Record<string, string> = {
   "pittsburgh":    "Pittsburgh police crime reports, grouped into 90 official neighborhoods, from the WPRDC open-data site.",
   "nashville":     "Nashville police crime reports, placed into named neighborhoods, from the Metro Nashville open-data site. Neighborhood boundaries © OpenStreetMap contributors.",
   "houston":       "Houston police crime reports (data through 2024), placed into named neighborhoods, from the City of Houston open-data site. Neighborhood boundaries © OpenStreetMap contributors.",
+  "montgomery-county": "Montgomery County police crime reports, placed into the county's towns and communities (Silver Spring, Rockville, Bethesda…), from the Data Montgomery open-data site. Community boundaries © US Census Bureau.",
+  "prince-georges-county": "Prince George's County police crime reports, placed into the county's towns and communities (Bowie, College Park, Hyattsville…), from the county's open-data site. Community boundaries © US Census Bureau.",
 };
 
 export default function MapPage() {
