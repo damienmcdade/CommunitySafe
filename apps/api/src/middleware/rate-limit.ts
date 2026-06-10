@@ -1,5 +1,30 @@
-import rateLimit from "express-rate-limit";
+import rateLimit, { type Store } from "express-rate-limit";
+import { RedisStore, type RedisReply } from "rate-limit-redis";
 import type { Request } from "express";
+import { getRedis, isRedisEnabled } from "../lib/redis.js";
+
+// v111 — durable, cross-replica rate-limit counters. The limiters previously
+// used express-rate-limit's default in-process MemoryStore, so every cap was
+// per-instance: if Railway ever runs >1 replica, the effective limit multiplies
+// by replica count (a latent scaling hole flagged by the audit). When REDIS_URL
+// is set we back each limiter with the shared Redis (the same client used for
+// MFA-replay + the community bus); otherwise we return undefined so
+// express-rate-limit falls back to MemoryStore (local dev / Redis-less deploys).
+//
+// Each limiter gets a distinct key prefix so their counts never collide. Paired
+// with `passOnStoreError: true` on every limiter so a transient Redis blip
+// fails OPEN (request allowed) rather than 500-ing — availability over a brief
+// gap in throttling, matching the rest of the Redis-fail-soft design.
+function makeStore(prefix: string): Store | undefined {
+  if (!isRedisEnabled()) return undefined;
+  const client = getRedis();
+  if (!client) return undefined;
+  return new RedisStore({
+    prefix: `rl:${prefix}:`,
+    sendCommand: (command: string, ...args: string[]) =>
+      client.call(command, ...args) as Promise<RedisReply>,
+  });
+}
 
 // fix(security rate-limit-key): the limiters previously keyed on the default
 // `req.ip`, which `trust proxy: 1` resolves to Railway's EDGE-NODE IP (a small
@@ -25,6 +50,8 @@ export const authLimiter = rateLimit({
   standardHeaders: "draft-7",
   legacyHeaders: false,
   keyGenerator: clientIpKey,
+  store: makeStore("auth"),
+  passOnStoreError: true,
 });
 
 export const writeLimiter = rateLimit({
@@ -33,6 +60,8 @@ export const writeLimiter = rateLimit({
   standardHeaders: "draft-7",
   legacyHeaders: false,
   keyGenerator: clientIpKey,
+  store: makeStore("write"),
+  passOnStoreError: true,
 });
 
 // v92 — global per-IP DoS protection on every API route (DISA STIG
@@ -48,6 +77,8 @@ export const globalLimiter = rateLimit({
   standardHeaders: "draft-7",
   legacyHeaders: false,
   keyGenerator: clientIpKey,
+  store: makeStore("global"),
+  passOnStoreError: true,
   // Don't 429 on health checks (Railway probes every 30s) or diag.
   skip: (req) => req.path === "/health" || req.path === "/healthz" || req.path.startsWith("/diag/"),
 });
@@ -65,6 +96,8 @@ export const tokenLimiter = rateLimit({
   standardHeaders: "draft-7",
   legacyHeaders: false,
   keyGenerator: (req) => `token:${req.params.token ?? clientIpKey(req)}`,
+  store: makeStore("token"),
+  passOnStoreError: true,
 });
 
 // v96 — pen-test follow-up. Anonymous LLM endpoints (the AI brief +
@@ -81,4 +114,6 @@ export const aiReadLimiter = rateLimit({
   standardHeaders: "draft-7",
   legacyHeaders: false,
   keyGenerator: clientIpKey,
+  store: makeStore("airead"),
+  passOnStoreError: true,
 });
