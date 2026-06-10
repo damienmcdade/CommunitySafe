@@ -2,32 +2,39 @@ import type { NextRequest } from "next/server";
 import { communityEvents, ensureCommunitySubscriber } from "@/server/services/community/events";
 
 export const dynamic = "force-dynamic";
-// v64 — set explicit maxDuration. Without it the function inherits
-// the default and the SSE connection drops with a Vercel Runtime
-// Timeout Error in the logs. 300s (5 min) is well past the heartbeat
-// interval (25s) so clients can reconnect naturally.
 export const maxDuration = 300;
-// Vercel function streaming: keep the connection open for up to ~5 min.
-// In-process EventEmitter only sees events from the same instance; for
-// multi-instance scale, swap for Vercel Queues or Redis pub/sub.
+// fix(deploy-log scan — SSE 300s timeout error): the stream ran until the hard
+// 300s platform limit, which Vercel logs as a "Runtime Timeout Error" on EVERY
+// connection (noisy + a wasted full-budget invocation each cycle). We now
+// self-close gracefully BEFORE the limit (270s) and emit a "bye" so the
+// EventSource client reconnects cleanly — no platform timeout, no error log.
+// In-process EventEmitter only sees events from the same instance; the Redis
+// subscriber (when REDIS_URL is set) bridges events across instances.
+const STREAM_MAX_MS = 270_000;
 export async function GET(_req: NextRequest) {
-  // Start the per-instance Redis subscriber (idempotent; no-op without
-  // REDIS_URL) so events published on other instances re-emit to the local
-  // EventEmitter this stream listens on.
   ensureCommunitySubscriber();
   const stream = new ReadableStream({
     start(controller) {
       const enc = new TextEncoder();
-      const send = (data: unknown) => controller.enqueue(enc.encode(`data: ${JSON.stringify(data)}\n\n`));
+      const send = (data: unknown) => {
+        try { controller.enqueue(enc.encode(`data: ${JSON.stringify(data)}\n\n`)); } catch { /* closed */ }
+      };
       send({ type: "hello", at: new Date().toISOString() });
-      const heartbeat = setInterval(() => controller.enqueue(enc.encode(": ping\n\n")), 25_000);
+      const heartbeat = setInterval(() => {
+        try { controller.enqueue(enc.encode(": ping\n\n")); } catch { /* closed */ }
+      }, 25_000);
       const listener = (evt: unknown) => send(evt);
       communityEvents.on("event", listener);
+      let lifecap: ReturnType<typeof setTimeout> | null = null;
       const cleanup = () => {
         clearInterval(heartbeat);
+        if (lifecap) clearTimeout(lifecap);
         communityEvents.off("event", listener);
         try { controller.close(); } catch { /* already closed */ }
       };
+      // Self-terminate before Vercel's 300s hard limit so the function returns
+      // cleanly (no Runtime Timeout Error). The client's EventSource reconnects.
+      lifecap = setTimeout(() => { send({ type: "bye", reason: "reconnect" }); cleanup(); }, STREAM_MAX_MS);
       _req.signal.addEventListener("abort", cleanup);
     },
   });

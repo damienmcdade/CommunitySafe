@@ -229,6 +229,8 @@ interface Cache { fetchedAt: number; rows: Incident[]; areas: KnownArea[] }
 let cache: Cache | null = null;
 registerRowCache(() => { cache = null; }, "milwaukee-ckan");
 let lastDiscovered: { fetchedAt: number; areas: KnownArea[] } | null = null;
+// Dedupe the placement-summary log so the warm-worker doesn't spam it every call.
+let lastMilwaukeePlacementLog = "";
 
 // Milwaukee metro centroid — last-resort fallback when a neighborhood
 // name doesn't exist in the bundled polygon set (suburbs that the
@@ -302,8 +304,15 @@ async function fetchAndParse(): Promise<Cache> {
     });
     nbhCounts.set(nbh, (nbhCounts.get(nbh) ?? 0) + 1);
   }
+  // fix(deploy-log-spam): mapMilwaukeeRows runs on every adapter call, so the
+  // warm-worker logged this identical line thousands of times, drowning real
+  // errors. Dedupe — only log when the placement summary actually changes.
   if (placedByPoint + placedByZip > 0) {
-    console.log(`[milwaukee] placed ${placedByPoint} by point-in-polygon, ${placedByZip} by ZIP fallback, ${nbhCounts.size} neighborhoods`);
+    const sig = `${placedByPoint}/${placedByZip}/${nbhCounts.size}`;
+    if (sig !== lastMilwaukeePlacementLog) {
+      lastMilwaukeePlacementLog = sig;
+      console.log(`[milwaukee] placed ${placedByPoint} by point-in-polygon, ${placedByZip} by ZIP fallback, ${nbhCounts.size} neighborhoods`);
+    }
   }
 
   const areas: KnownArea[] = Array.from(nbhCounts.entries())
