@@ -45,8 +45,11 @@ interface BufRow {
 
 function mapToNibrs(row: BufRow): CrimeCategory {
   const p = (row.parent_incident_type ?? "").toUpperCase().trim();
+  // Robbery is NIBRS "Crime Against Property" but FBI UCR Part-1 VIOLENT — force
+  // it to PERSONS (taxonomy invariant shared across all adapters).
+  if (p === "ROBBERY") return CrimeCategory.PERSONS;
   if (p === "ASSAULT" || p === "SEXUAL OFFENSE" || p === "HOMICIDE") return CrimeCategory.PERSONS;
-  if (p === "THEFT" || p === "THEFT OF VEHICLE" || p === "BREAKING & ENTERING" || p === "ROBBERY") return CrimeCategory.PROPERTY;
+  if (p === "THEFT" || p === "THEFT OF VEHICLE" || p === "BREAKING & ENTERING") return CrimeCategory.PROPERTY;
   return CrimeCategory.SOCIETY;
 }
 

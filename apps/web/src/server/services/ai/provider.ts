@@ -101,10 +101,13 @@ export async function generateTextWithFallback(opts: GenOpts): Promise<GenResult
     } catch (err) {
       lastErr = err;
       const msg = (err as Error).message ?? "";
-      const retryable = /rate.?limit|quota|429|503|502|504|tokens per day|TPD|too many requests/i.test(msg);
-      if (!retryable) break;
-      // v96 — see apps/api/src/services/ai/provider.ts; provider-name
-      // leaked into stdout. Now opaque + truncated.
+      // v113 — ALWAYS fall through to the next configured provider on ANY
+      // error (mirrors apps/api/src/services/ai/provider.ts). The prior
+      // narrow-regex `break` bailed the whole chain on any non-rate-limit
+      // error (network blip, model decommissioned, SDK/content error),
+      // blanking the brief even with Gemini + gateway configured. Providers
+      // are independent, so trying the next tier is always correct. Provider
+      // name kept out of the log (information-symmetric) per the v96 audit.
       console.warn(`[ai] tier failed, trying next: ${msg.slice(0, 200)}`);
     }
   }

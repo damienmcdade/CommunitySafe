@@ -98,15 +98,16 @@ export async function generateTextWithFallback(opts: GenOpts): Promise<GenResult
     } catch (err) {
       lastErr = err;
       const msg = (err as Error).message ?? "";
-      // Only fall through on retryable errors. Auth / config failures
-      // would just fail again on the next provider, so bail fast.
-      const retryable = /rate.?limit|quota|429|503|502|504|tokens per day|TPD|too many requests/i.test(msg);
-      if (!retryable) break;
-      // v96 — was `${handle.name} failed`, audit flagged provider-name
-      // leak in stdout (could let an attacker triggering failures map
-      // the configured chain). Now opaque ordinal so ops still see
-      // which slot fell through but the failure surface stays
-      // information-symmetric.
+      // v113 — ALWAYS fall through to the next configured provider on ANY
+      // error. The prior `if (!retryable) break` bailed the whole chain when
+      // an error didn't match a narrow rate-limit regex (network blip, model
+      // decommissioned, SDK/parse error, content filter), so a single Groq
+      // hiccup blanked the brief fleet-wide even with Gemini + gateway
+      // configured. Providers are INDEPENDENT — a Groq auth/model failure
+      // says nothing about Gemini, so trying the next tier is always correct
+      // and cheap. Only give up (null) once every tier has failed.
+      // Provider name is kept out of the log (information-symmetric) per the
+      // v96 audit note.
       console.warn(`[ai] tier failed, trying next: ${msg.slice(0, 200)}`);
     }
   }

@@ -71,22 +71,60 @@ async function cacheGet(area: string): Promise<string | null> {
   return null;
 }
 
-async function cachePut(area: string, brief: string): Promise<void> {
+async function cachePutTtl(area: string, brief: string, ttlSeconds: number): Promise<void> {
   const k = scopedKey(area);
   const redis = getRedis();
   if (redis) {
     try {
-      await redis.set(CACHE_KEY_PREFIX + k, brief, "EX", CACHE_TTL_SECONDS);
+      await redis.set(CACHE_KEY_PREFIX + k, brief, "EX", ttlSeconds);
       return;
     } catch {
       // fall through
     }
   }
-  localCache.set(k, { fetchedAt: Date.now(), brief });
+  // For the local cache, age the entry so a shorter TTL expires sooner: store a
+  // fetchedAt offset into the past so (now - fetchedAt) crosses LOCAL_TTL_MS at
+  // the requested ttl rather than the 6h default.
+  const ageOffsetMs = Math.max(0, LOCAL_TTL_MS - ttlSeconds * 1000);
+  localCache.set(k, { fetchedAt: Date.now() - ageOffsetMs, brief });
+}
+
+async function cachePut(area: string, brief: string): Promise<void> {
+  return cachePutTtl(area, brief, CACHE_TTL_SECONDS);
 }
 
 const sanitize = (s: string, maxLen = 80): string =>
   s.replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim().slice(0, maxLen);
+
+// v113 — deterministic, non-LLM fallback brief. The AI provider chain
+// (Groq → Gemini → gateway) can return null fleet-wide on a free-tier
+// daily-token exhaustion or transient outage; area-brief previously
+// surfaced that as a BLANK "AI Summary" card. When we have real crime-mix
+// data we can always produce a calm, factual two-sentence brief from the
+// offense list itself — same safety rules as the LLM prompt (no
+// demographics, no people/vehicles/addresses, no confrontation guidance).
+// This guarantees the card is never empty when data exists; a live LLM
+// result still takes precedence and overwrites the cache on next call.
+function deterministicBrief(
+  areaLabel: string,
+  windowDays: number,
+  dominant: "PERSONS" | "PROPERTY" | "SOCIETY",
+  top: Array<{ offense: string; count: number }>,
+): string {
+  const names = top.slice(0, 3).map((o) => sanitize(o.offense, 48).toLowerCase()).filter(Boolean);
+  const offensePhrase =
+    names.length === 0 ? "a range of offenses"
+    : names.length === 1 ? names[0]
+    : names.length === 2 ? `${names[0]} and ${names[1]}`
+    : `${names[0]}, ${names[1]}, and ${names[2]}`;
+  const p1 = `In ${areaLabel}, the most-reported offenses over the most recent ~${windowDays} days were ${offensePhrase}.`;
+  const guidance: Record<typeof dominant, string> = {
+    PROPERTY: "Most activity here is property-related, so keeping valuables out of sight and securing vehicles and entry points are sensible precautions; call 911 only for an active emergency.",
+    PERSONS: "A notable share of reports involve person-directed offenses, so staying aware on transit and during late hours is worthwhile; call 911 for any active emergency and avoid confronting anyone.",
+    SOCIETY: "Many reports here are public-order offenses, so ordinary situational awareness applies; call 911 only for an active emergency.",
+  };
+  return `${p1} ${guidance[dominant]}`.slice(0, 600);
+}
 
 export async function generateAreaBrief(area: string): Promise<string | null> {
   if (!aiConfigured()) return null;
@@ -128,7 +166,15 @@ Write the two-paragraph brief now.
     prompt: userPrompt,
     temperature: 0.3,
   });
-  if (!result) return null;
+  // v113 — if the LLM chain is unavailable (free-tier exhaustion / outage),
+  // fall back to a deterministic factual brief built from the offense mix so
+  // the "AI Summary" card is never blank when data exists. Cache it with a
+  // shorter TTL so a recovered LLM can replace it sooner than the 6h default.
+  if (!result || !result.text.trim()) {
+    const fallback = deterministicBrief(humanizeArea(area), mix?.windowDays ?? 30, dominant, top);
+    await cachePutTtl(area, fallback, 30 * 60);
+    return fallback;
+  }
   let text = result.text.replace(/^#+\s*/gm, "").replace(/\*\*([^*]+)\*\*/g, "$1");
   if (text.length > 800) text = text.slice(0, 800);
   await cachePut(area, text);

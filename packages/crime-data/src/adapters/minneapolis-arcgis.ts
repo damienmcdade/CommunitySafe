@@ -51,6 +51,12 @@ interface MplsRow {
 }
 
 function mapToNibrs(row: MplsRow): CrimeCategory {
+  // Robbery is NIBRS "Crime Against Property" but FBI UCR Part-1 VIOLENT — force
+  // it to PERSONS before the crime-against passthrough (taxonomy invariant).
+  if ((row.NIBRS_Code ?? "").trim() === "120" ||
+      `${row.Offense ?? ""} ${row.Offense_Category ?? ""}`.toLowerCase().includes("robbery")) {
+    return CrimeCategory.PERSONS;
+  }
   const c = (row.NIBRS_Crime_Against ?? "").trim().toUpperCase();
   if (c === "PERSON" || c === "PERSONS") return CrimeCategory.PERSONS;
   if (c === "PROPERTY") return CrimeCategory.PROPERTY;

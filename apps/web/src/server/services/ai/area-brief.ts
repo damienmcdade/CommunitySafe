@@ -102,7 +102,27 @@ Write the two-paragraph brief now.
     prompt: userPrompt,
     temperature: 0.3,
   });
-  if (!result) return null;
+  // v113 — deterministic non-LLM fallback (mirrors area-brief.service.ts on
+  // Railway): when the provider chain is unavailable, synthesize a factual
+  // two-sentence brief from the offense mix so the AI Summary card is never
+  // blank when data exists. Cache it with a short TTL so a recovered LLM can
+  // replace it sooner than the 6h default.
+  if (!result || !result.text.trim()) {
+    const names = top.slice(0, 3).map((o) => sanitize(o.offense, 48).toLowerCase()).filter(Boolean);
+    const offensePhrase =
+      names.length === 0 ? "a range of offenses"
+      : names.length === 1 ? names[0]
+      : names.length === 2 ? `${names[0]} and ${names[1]}`
+      : `${names[0]}, ${names[1]}, and ${names[2]}`;
+    const guidance: Record<"PERSONS" | "PROPERTY" | "SOCIETY", string> = {
+      PROPERTY: "Most activity here is property-related, so keeping valuables out of sight and securing vehicles and entry points are sensible precautions; call 911 only for an active emergency.",
+      PERSONS: "A notable share of reports involve person-directed offenses, so staying aware on transit and during late hours is worthwhile; call 911 for any active emergency and avoid confronting anyone.",
+      SOCIETY: "Many reports here are public-order offenses, so ordinary situational awareness applies; call 911 only for an active emergency.",
+    };
+    const fallback = `In ${sanitize(humanizeArea(area))}, the most-reported offenses over the most recent ~${mix?.windowDays ?? 30} days were ${offensePhrase}. ${guidance[dominant]}`.slice(0, 600);
+    cache.set(scopedKey(area), { fetchedAt: Date.now() - (CACHE_TTL_MS - 30 * 60 * 1000), brief: fallback });
+    return fallback;
+  }
   let text = result.text.replace(/^#+\s*/gm, "").replace(/\*\*([^*]+)\*\*/g, "$1");
   if (text.length > 800) text = text.slice(0, 800);
 

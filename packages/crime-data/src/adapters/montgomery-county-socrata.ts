@@ -53,6 +53,11 @@ interface MocoRow {
 function classify(row: MocoRow): CrimeCategory | null {
   const c1 = (row.crimename1 ?? "").toUpperCase();
   if (!c1 || c1.includes("NOT A CRIME")) return null;
+  // Robbery is NIBRS "Crime Against Property" but FBI UCR Part-1 VIOLENT — force
+  // it to PERSONS (taxonomy invariant). crimename2/3 carry the specific offense.
+  if (`${row.crimename2 ?? ""} ${row.crimename3 ?? ""}`.toLowerCase().includes("robbery")) {
+    return CrimeCategory.PERSONS;
+  }
   if (c1.includes("PERSON")) return CrimeCategory.PERSONS;
   if (c1.includes("PROPERTY")) return CrimeCategory.PROPERTY;
   if (c1.includes("SOCIETY")) return CrimeCategory.SOCIETY;

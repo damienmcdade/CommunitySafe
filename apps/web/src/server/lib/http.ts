@@ -25,6 +25,14 @@ export function errorResponse(err: unknown): NextResponse {
   if (err instanceof SyntaxError) {
     return NextResponse.json({ error: "invalid_json", message: "Request body is not valid JSON." }, { status: 400 });
   }
+  // fix(audit mix/upticks-500): the shared crime-data package throws a plain
+  // Error("city_not_supported: <slug>") for an unknown city. When the local
+  // fallback path runs (proxy-to-api returned null), that surfaced as a 500.
+  // A nonexistent city slug is a client error → 404 (parity with the Railway
+  // /safezone route, which already maps this).
+  if (err instanceof Error && err.message.startsWith("city_not_supported")) {
+    return NextResponse.json({ error: "city_not_supported", message: err.message }, { status: 404 });
+  }
   console.error("[unhandled]", err);
   return NextResponse.json({ error: "internal_error" }, { status: 500 });
 }
