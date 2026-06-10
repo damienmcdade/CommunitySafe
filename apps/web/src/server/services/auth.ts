@@ -105,14 +105,26 @@ export async function register(email: string, password: string, displayName?: st
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
 
+// A constant cost-13 bcrypt hash compared against on the no-such-user (and
+// soft-deleted) paths so they spend the same ~bcrypt time as a real
+// wrong-password attempt — closing the login user-enumeration timing oracle
+// (an unknown email previously returned instantly, a known one after bcrypt).
+const TIMING_EQUALIZER_HASH = "$2a$13$/fZQeKQRR3OgVTYGfULqiOEcI6eghp8dEhzpvq08gUR4tIJgSoGVK";
+
 export async function login(email: string, password: string) {
   const normEmail = normalizeEmail(email);
   const user = await prisma.user.findUnique({ where: { email: normEmail } });
-  if (!user) throw new HttpError(401, "invalid_credentials");
+  if (!user) {
+    await bcrypt.compare(password, TIMING_EQUALIZER_HASH);
+    throw new HttpError(401, "invalid_credentials");
+  }
   if (user.permanentlyBanned) throw new HttpError(403, "banned");
   // Soft-deleted accounts present as invalid_credentials (parity w/ Express —
-  // don't leak deletion state to an attacker).
-  if (user.deletedAt) throw new HttpError(401, "invalid_credentials");
+  // don't leak deletion state to an attacker). Equalize timing too.
+  if (user.deletedAt) {
+    await bcrypt.compare(password, TIMING_EQUALIZER_HASH);
+    throw new HttpError(401, "invalid_credentials");
+  }
 
   if (user.lockedUntil && user.lockedUntil > new Date()) {
     const mins = Math.ceil((+user.lockedUntil - Date.now()) / 60_000);
