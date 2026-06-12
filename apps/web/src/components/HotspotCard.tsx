@@ -57,7 +57,22 @@ export function HotspotCard({
       Couldn&apos;t load hotspots for {cityLabel} right now.
     </section>
   );
-  if (!data || hot.length === 0) return null;
+  if (!data) return null;
+  // fix(audit card-empty-state): a city whose feed returned zero per-area
+  // incidents used to render NOTHING here — a quiet (or just-warmed) city read
+  // as a broken page. Show an explicit, non-alarming empty state instead so the
+  // feature is visibly working, the user just landed somewhere quiet.
+  if (hot.length === 0) return (
+    <section className="surface p-5">
+      <header>
+        <h3 className="font-display text-lg text-slate2-900">Current hotspots</h3>
+      </header>
+      <p className="mt-2 text-sm text-slate2-500">
+        No standout hotspots in {cityLabel} right now — recent activity is spread
+        evenly across neighborhoods, or the feed is still warming up. Check back later.
+      </p>
+    </section>
+  );
 
   return (
     <section className="surface p-5">
