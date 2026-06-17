@@ -10,6 +10,13 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Manual/programmatic trigger. The Boston snapshot refresh pushes with
+  # GITHUB_TOKEN, whose pushes do NOT fire the `push` trigger above (GitHub
+  # loop-prevention), so that commit never ran CI and never deployed to
+  # Railway — the recurring nightly DEPLOY SKEW. workflow_dispatch is the
+  # documented exception to that suppression, so refresh-boston-snapshot.yml
+  # dispatches this workflow to run the full gate + Railway deploy.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -82,7 +89,7 @@ jobs:
   deploy-railway:
     name: Deploy API to Railway
     needs: ci
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
