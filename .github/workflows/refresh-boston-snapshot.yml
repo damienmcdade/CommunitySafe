@@ -18,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write # to dispatch ci.yml after committing the snapshot
     steps:
       - uses: actions/checkout@v6
         with:
@@ -31,13 +32,30 @@ jobs:
         run: node tools/refresh-boston.mjs
 
       - name: Commit if changed
+        id: commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if git diff --quiet packages/crime-data/src/data/boston-snapshot.ts packages/crime-data/src/data/boston-snapshot.json; then
             echo "No changes — BPD CSV unchanged since last refresh."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git add packages/crime-data/src/data/boston-snapshot.ts packages/crime-data/src/data/boston-snapshot.json
           git commit -m "chore(boston): refresh bundled snapshot $(date -u +%Y-%m-%d)"
           git push
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      # The push above used GITHUB_TOKEN, so it will NOT trigger ci.yml's
+      # `push` event (GitHub loop-prevention) — which is exactly why the API
+      # kept drifting one snapshot behind Vercel (boston-snapshot.* lives in
+      # the shared crime-data package, so the API serves stale Boston data
+      # until Railway redeploys on the next normal push). Dispatch ci.yml
+      # explicitly so the snapshot commit gets the full typecheck/lint/test
+      # gate AND the Railway deploy. workflow_dispatch is the documented
+      # exception to GITHUB_TOKEN trigger suppression, so this DOES create a run.
+      - name: Trigger CI + Railway deploy for the snapshot commit
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run ci.yml --ref main
