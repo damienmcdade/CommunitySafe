@@ -51,6 +51,10 @@ export const CITY_POPULATION: Record<string, number> = {
   "oakland":         430_553,
   "cincinnati":      311_097,
   "dayton":          137_644,  // 2020 US Census — City of Dayton, OH
+  "rochester":       211_328,  // 2020 US Census — City of Rochester, NY
+  "raleigh":         467_665,  // 2020 US Census — City of Raleigh, NC
+  "grand-rapids":    198_917,  // 2020 US Census — City of Grand Rapids, MI
+  "arlington":       394_266,  // 2020 US Census — City of Arlington, TX
   "new-orleans":     364_136,
   "baton-rouge":     217_665,
   "cambridge":       118_488,

@@ -141,6 +141,10 @@ export const CITY_TIMEZONES: Record<string, string> = {
   "honolulu": "Pacific/Honolulu",
   "long-beach": "America/Los_Angeles",
   "dayton": "America/New_York",
+  "rochester": "America/New_York",
+  "raleigh": "America/New_York",
+  "grand-rapids": "America/Detroit",
+  "arlington": "America/Chicago",
 };
 
 const _hourFmtCache = new Map<string, Intl.DateTimeFormat>();

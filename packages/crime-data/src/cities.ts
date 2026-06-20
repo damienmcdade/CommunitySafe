@@ -42,6 +42,10 @@ import { indianapolisAdapter, getDiscoveredAreasIndianapolis } from "./adapters/
 import { honoluluAdapter, getDiscoveredAreasHonolulu } from "./adapters/honolulu-socrata.js";
 import { longBeachAdapter, getDiscoveredAreasLongBeach } from "./adapters/long-beach-arcgis.js";
 import { daytonAdapter, getDiscoveredAreasDayton } from "./adapters/dayton-arcgis.js";
+import { rochesterAdapter, getDiscoveredAreasRochester } from "./adapters/rochester-arcgis.js";
+import { raleighAdapter, getDiscoveredAreasRaleigh } from "./adapters/raleigh-arcgis.js";
+import { grandRapidsAdapter, getDiscoveredAreasGrandRapids } from "./adapters/grand-rapids-arcgis.js";
+import { arlingtonAdapter, getDiscoveredAreasArlington } from "./adapters/arlington-arcgis.js";
 import { phoenixAdapter, getDiscoveredAreasPhoenix } from "./adapters/phoenix-ckan.js";
 import { jacksonvilleAdapter, getDiscoveredAreasJacksonville } from "./adapters/jacksonville-arcgis.js";
 import { virginiaBeachAdapter, getDiscoveredAreasVirginiaBeach, getPrimaryAreasVirginiaBeach } from "./adapters/virginia-beach-arcgis.js";
@@ -481,6 +485,42 @@ export const CITIES: CityEntry[] = [
     adapter: daytonAdapter,
     discover: getDiscoveredAreasDayton,
   },
+  {
+    // Rochester, NY — RPD Part I Crime ArcGIS FeatureServer; incident-level rows
+    // grouped by the 4 RPD patrol Sections (Clinton/Genesee/Goodman/Lake).
+    slug: "rochester",
+    label: "Rochester",
+    bbox: { south: 43.05, west: -77.74, north: 43.24, east: -77.49 },
+    adapter: rochesterAdapter,
+    discover: getDiscoveredAreasRochester,
+  },
+  {
+    // Raleigh, NC — RPD Police Incidents ArcGIS FeatureServer; per-incident
+    // lat/lng (null-island filtered) grouped by the 6 RPD police districts.
+    slug: "raleigh",
+    label: "Raleigh",
+    bbox: { south: 35.69, west: -78.78, north: 35.94, east: -78.49 },
+    adapter: raleighAdapter,
+    discover: getDiscoveredAreasRaleigh,
+  },
+  {
+    // Grand Rapids, MI — GRPD geocoded incidents ArcGIS FeatureServer; grouped
+    // by the 5 GRPD service areas (Central/East/North/South/West).
+    slug: "grand-rapids",
+    label: "Grand Rapids",
+    bbox: { south: 42.88, west: -85.75, north: 43.02, east: -85.58 },
+    adapter: grandRapidsAdapter,
+    discover: getDiscoveredAreasGrandRapids,
+  },
+  {
+    // Arlington, TX — APD PoliceExternal MapServer; per-incident point geometry
+    // grouped by the 4 APD police districts (North/East/South/West).
+    slug: "arlington",
+    label: "Arlington",
+    bbox: { south: 32.6, west: -97.23, north: 32.82, east: -97.0 },
+    adapter: arlingtonAdapter,
+    discover: getDiscoveredAreasArlington,
+  },
 ];
 
 export function cityFromLatLng(point: { lat: number; lng: number }): CityEntry | null {
@@ -583,6 +623,10 @@ const AREA_SLUG_PREFIX: Record<string, string> = {
   "montgomery-county": "moco-",
   "prince-georges-county": "pg-",
   "dayton": "day-",
+  "rochester": "roc-",
+  "raleigh": "ral-",
+  "grand-rapids": "grr-",
+  "arlington": "arl-",
 };
 
 const COMPASS = new Set(["n", "s", "e", "w", "nw", "ne", "sw", "se"]);

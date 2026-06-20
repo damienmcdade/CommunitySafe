@@ -63,4 +63,8 @@ export const OFFICIAL_ALERTS_CITY_META: Record<string, OfficialAlertsCityMeta> =
   "sacramento":        { slug: "sacramento",        label: "Sacramento",        state: "CA", centroid: { lat: 38.58, lng: -121.49 } },
   "saint-paul":        { slug: "saint-paul",        label: "Saint Paul",        state: "MN", centroid: { lat: 44.95, lng: -93.09 } },
   "dayton":            { slug: "dayton",            label: "Dayton",            state: "OH", centroid: { lat: 39.76, lng: -84.19 } },
+  "rochester":         { slug: "rochester",         label: "Rochester",         state: "NY", centroid: { lat: 43.16, lng: -77.61 } },
+  "raleigh":           { slug: "raleigh",           label: "Raleigh",           state: "NC", centroid: { lat: 35.78, lng: -78.64 } },
+  "grand-rapids":      { slug: "grand-rapids",      label: "Grand Rapids",      state: "MI", centroid: { lat: 42.96, lng: -85.67 } },
+  "arlington":         { slug: "arlington",         label: "Arlington",         state: "TX", centroid: { lat: 32.74, lng: -97.11 } },
 };
