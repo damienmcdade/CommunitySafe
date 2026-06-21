@@ -161,7 +161,7 @@ export function BlockScoreWidget({ score, loading, unavailable, contextLabel }: 
             Score legend: <strong>100</strong> = quietest (well below your city&apos;s baseline) ·
             {" "}<strong>50</strong> = roughly matches the baseline ·
             {" "}<strong>0</strong> = most activity (well above the baseline).
-            Areas with no recent reports recently show as
+            Areas with no recent reports show as
             &ldquo;data unavailable&rdquo; instead of a score.
           </p>
 
