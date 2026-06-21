@@ -75,6 +75,13 @@ const BASE_FBI_BASELINES: Record<string, CityFbiBaseline> = {
   "raleigh": { violent: 533, property: 2623, year: 2023, ori: "NC0920100" },
   "grand-rapids": { violent: 883, property: 3079, year: 2023, ori: "MI4143600" },
   "riverside": { violent: 551, property: 3410, year: 2023, ori: "CA0331300" },
+  "salt-lake-city": { violent: 931, property: 5703, year: 2023, ori: "UT0180300" },
+  "hartford": { violent: 545, property: 2708, year: 2023, ori: "CT0006400" },
+  "wichita": { violent: 1172, property: 4831, year: 2023, ori: "KS0870300" },
+  // Tucson: FBI CDE 2023 is incomplete (9/12 months — NIBRS transition gap), so
+  // this is a triangulated estimate (AZ DPS + FBI Table 8). ORI AZ0100300 is
+  // Tucson PD (NOT South Tucson AZ0100100).
+  "tucson": { violent: 602, property: 3500, year: 2023, ori: "AZ0100300" },
   "corpus-christi": { violent: 875, property: 3216, year: 2023, ori: "TX1780200" },
   // Savannah: FBI CDE 2023 NIBRS series is empty (GA transition gap — only
   // Jan/Feb reported, both 0), so this is an aggregator estimate, NOT FBI-

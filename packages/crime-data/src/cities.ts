@@ -48,6 +48,10 @@ import { grandRapidsAdapter, getDiscoveredAreasGrandRapids } from "./adapters/gr
 import { riversideAdapter, getDiscoveredAreasRiverside } from "./adapters/riverside-arcgis.js";
 import { savannahAdapter, getDiscoveredAreasSavannah } from "./adapters/savannah-arcgis.js";
 import { corpusChristiAdapter, getDiscoveredAreasCorpusChristi } from "./adapters/corpus-christi-arcgis.js";
+import { saltLakeCityAdapter, getDiscoveredAreasSaltLakeCity } from "./adapters/salt-lake-city-arcgis.js";
+import { hartfordAdapter, getDiscoveredAreasHartford } from "./adapters/hartford-arcgis.js";
+import { wichitaAdapter, getDiscoveredAreasWichita } from "./adapters/wichita-arcgis.js";
+import { tucsonAdapter, getDiscoveredAreasTucson } from "./adapters/tucson-arcgis.js";
 import { phoenixAdapter, getDiscoveredAreasPhoenix } from "./adapters/phoenix-ckan.js";
 import { jacksonvilleAdapter, getDiscoveredAreasJacksonville } from "./adapters/jacksonville-arcgis.js";
 import { virginiaBeachAdapter, getDiscoveredAreasVirginiaBeach, getPrimaryAreasVirginiaBeach } from "./adapters/virginia-beach-arcgis.js";
@@ -541,6 +545,45 @@ export const CITIES: CityEntry[] = [
     adapter: corpusChristiAdapter,
     discover: getDiscoveredAreasCorpusChristi,
   },
+  {
+    // Salt Lake City, UT — SLCPD PublicCrime ArcGIS; per-incident point with the
+    // community-council name in-feed (com_council) — 48 named councils (Sugar
+    // House, Rose Park, Greater Avenues, Glendale, Liberty Wells…).
+    slug: "salt-lake-city",
+    label: "Salt Lake City",
+    bbox: { south: 40.70, west: -112.10, north: 40.86, east: -111.78 },
+    adapter: saltLakeCityAdapter,
+    discover: getDiscoveredAreasSaltLakeCity,
+  },
+  {
+    // Hartford, CT — HPD incidents ArcGIS; point geometry geocoded via point-in-
+    // polygon into the 17 official Hartford neighborhoods (Asylum Hill, Frog
+    // Hollow, West End, Barry Square…).
+    slug: "hartford",
+    label: "Hartford",
+    bbox: { south: 41.71, west: -72.72, north: 41.81, east: -72.64 },
+    adapter: hartfordAdapter,
+    discover: getDiscoveredAreasHartford,
+  },
+  {
+    // Wichita, KS — WPD crime ArcGIS; point geometry geocoded into the city's
+    // named neighborhood associations (Delano, Riverside, College Hill…).
+    slug: "wichita",
+    label: "Wichita",
+    bbox: { south: 37.58, west: -97.50, north: 37.79, east: -97.18 },
+    adapter: wichitaAdapter,
+    discover: getDiscoveredAreasWichita,
+  },
+  {
+    // Tucson, AZ — TPD incidents ArcGIS; point geometry geocoded into the city's
+    // 154 named neighborhoods (Sam Hughes, Armory Park, Rincon Heights, Barrio
+    // Anita…). AZ is traffic-wired → road conditions included.
+    slug: "tucson",
+    label: "Tucson",
+    bbox: { south: 32.06, west: -111.10, north: 32.32, east: -110.71 },
+    adapter: tucsonAdapter,
+    discover: getDiscoveredAreasTucson,
+  },
 ];
 
 export function cityFromLatLng(point: { lat: number; lng: number }): CityEntry | null {
@@ -649,6 +692,10 @@ const AREA_SLUG_PREFIX: Record<string, string> = {
   "riverside": "riv-",
   "savannah": "sav-",
   "corpus-christi": "cc-",
+  "salt-lake-city": "slc-",
+  "hartford": "htfd-",
+  "wichita": "ict-",
+  "tucson": "tuc-",
 };
 
 const COMPASS = new Set(["n", "s", "e", "w", "nw", "ne", "sw", "se"]);

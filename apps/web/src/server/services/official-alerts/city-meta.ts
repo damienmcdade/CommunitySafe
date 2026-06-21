@@ -67,6 +67,10 @@ export const OFFICIAL_ALERTS_CITY_META: Record<string, OfficialAlertsCityMeta> =
   "raleigh":           { slug: "raleigh",           label: "Raleigh",           state: "NC", centroid: { lat: 35.78, lng: -78.64 } },
   "grand-rapids":      { slug: "grand-rapids",      label: "Grand Rapids",      state: "MI", centroid: { lat: 42.96, lng: -85.67 } },
   "riverside":         { slug: "riverside",         label: "Riverside",         state: "CA", centroid: { lat: 33.95, lng: -117.40 } },
+  "salt-lake-city":    { slug: "salt-lake-city",    label: "Salt Lake City",    state: "UT", centroid: { lat: 40.76, lng: -111.89 } },
+  "hartford":          { slug: "hartford",          label: "Hartford",          state: "CT", centroid: { lat: 41.76, lng: -72.67 } },
+  "wichita":           { slug: "wichita",           label: "Wichita",           state: "KS", centroid: { lat: 37.69, lng: -97.34 } },
+  "tucson":            { slug: "tucson",            label: "Tucson",            state: "AZ", centroid: { lat: 32.22, lng: -110.97 } },
   "savannah":          { slug: "savannah",          label: "Savannah",          state: "GA", centroid: { lat: 32.08, lng: -81.09 } },
   "corpus-christi":    { slug: "corpus-christi",    label: "Corpus Christi",    state: "TX", centroid: { lat: 27.80, lng: -97.40 } },
 };

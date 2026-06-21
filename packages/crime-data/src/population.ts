@@ -55,6 +55,10 @@ export const CITY_POPULATION: Record<string, number> = {
   "raleigh":         467_665,  // 2020 US Census — City of Raleigh, NC
   "grand-rapids":    198_917,  // 2020 US Census — City of Grand Rapids, MI
   "riverside":       314_998,  // 2020 US Census — City of Riverside, CA
+  "salt-lake-city":  199_723,  // 2020 US Census — Salt Lake City, UT
+  "hartford":        121_054,  // 2020 US Census — Hartford, CT
+  "wichita":         397_532,  // 2020 US Census — Wichita, KS
+  "tucson":          542_629,  // 2020 US Census — Tucson, AZ
   "savannah":        147_780,  // 2020 US Census — City of Savannah, GA
   "corpus-christi":  317_863,  // 2020 US Census — City of Corpus Christi, TX
   "new-orleans":     364_136,

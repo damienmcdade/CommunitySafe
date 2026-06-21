@@ -145,6 +145,10 @@ export const CITY_TIMEZONES: Record<string, string> = {
   "raleigh": "America/New_York",
   "grand-rapids": "America/Detroit",
   "riverside": "America/Los_Angeles",
+  "salt-lake-city": "America/Denver",
+  "hartford": "America/New_York",
+  "wichita": "America/Chicago",
+  "tucson": "America/Phoenix",
   "savannah": "America/New_York",
   "corpus-christi": "America/Chicago",
 };
