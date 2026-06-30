@@ -10,12 +10,16 @@ function pinSslVerifyFull(url: string): string {
   return /sslmode=/i.test(url) ? url.replace(/sslmode=[^&\s]*/i, "sslmode=verify-full") : url;
 }
 
-// fix(deploy logs): tune the Neon pg pool to avoid the ETIMEDOUT-on-stale-
-// connection failure seen in the workers. Smaller max than the API because each
-// Vercel (Fluid Compute) instance holds its own pool and Neon caps total
-// connections; fail fast + recycle idle conns + TCP keepalive.
+// fix(db-1): Vercel DATABASE_URL still points to exhausted Neon free tier.
+// DATABASE_PUBLIC_URL = Railway Postgres public TCP proxy (Production + Preview).
+// Prefer it; fall back to DATABASE_URL for local dev.
+const connStr = process.env.DATABASE_PUBLIC_URL ?? process.env.DATABASE_URL ?? "";
+
+// fix(deploy logs): tune the pg pool — Smaller max than the API because each
+// Vercel (Fluid Compute) instance holds its own pool; fail fast + recycle
+// idle conns + TCP keepalive.
 const adapter = new PrismaPg({
-  connectionString: pinSslVerifyFull(process.env.DATABASE_URL ?? ""),
+  connectionString: pinSslVerifyFull(connStr),
   connectionTimeoutMillis: 10_000,
   idleTimeoutMillis: 30_000,
   max: 5,
