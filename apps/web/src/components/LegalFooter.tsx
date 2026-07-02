@@ -20,6 +20,7 @@ export function LegalFooter() {
         <Link href="/community" className="text-bay-700 hover:underline">Community</Link>
       </nav>
       <nav aria-label="Legal" className="flex flex-wrap justify-center gap-x-3 gap-y-1">
+        <Link href="/support" className="text-bay-700 hover:underline">Support</Link>
         <Link href="/about" className="text-bay-700 hover:underline">About</Link>
         <Link href="/methodology" className="text-bay-700 hover:underline">Methodology</Link>
         <Link href="/privacy" className="text-bay-700 hover:underline">Privacy</Link>
