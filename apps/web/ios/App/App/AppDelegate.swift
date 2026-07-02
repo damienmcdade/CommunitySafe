@@ -15,9 +15,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             sharedDefaults.set("san-francisco", forKey: "preferred_city")
         }
 
-        // Register for remote (push) notifications.
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
-            guard granted else { return }
+        // Re-register for remote (push) notifications ONLY if the user has
+        // already granted permission (keeps the APNS token fresh across
+        // launches). The permission prompt itself is never shown at launch —
+        // the web layer requests it in context, from the Saved Places
+        // notification toggle, via @capacitor/push-notifications.
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            guard settings.authorizationStatus == .authorized
+                || settings.authorizationStatus == .provisional else { return }
             DispatchQueue.main.async {
                 application.registerForRemoteNotifications()
             }

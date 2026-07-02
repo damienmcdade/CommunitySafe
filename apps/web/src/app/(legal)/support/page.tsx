@@ -111,8 +111,9 @@ export default function SupportPage() {
             <p>
               Every post has a <strong>Report</strong> action. Reports are
               reviewed against the{" "}
-              <Link href="/community-guidelines" className="text-bay-700 underline">Community guidelines</Link>;
-              you can also block an author directly from the post.
+              <Link href="/community-guidelines" className="text-bay-700 underline">Community guidelines</Link>,
+              and posts are pre-screened before they publish. For urgent
+              moderation concerns, email us with a link to the post.
             </p>
           </div>
           <div>
