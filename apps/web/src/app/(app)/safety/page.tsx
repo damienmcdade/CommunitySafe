@@ -470,6 +470,7 @@ interface SosResult {
   expiresAt: string;
   mapUrl: string | null;
   contactsNotified: number;
+  contactsAttempted: number;
   receipts: { contactLabel: string; channel: string; status: string }[];
 }
 
@@ -526,17 +527,20 @@ function SosPanel() {
         </a>
       </div>
       <p className="mt-1 text-sm text-slate2-600">
-        One tap alerts <strong>every confirmed trusted contact</strong> right now with an urgent
-        message, a live-location link, and a map pin of where you are. This does <strong>not</strong> call
-        911 — use it to reach the people who care about you fast.
+        One tap creates a <strong>live-location link</strong> and a map pin of where you are, and
+        alerts your confirmed trusted contacts where a messaging channel is available. Either way the
+        live-location link is created so you can <strong>share it directly</strong>. This does{" "}
+        <strong>not</strong> call 911 — use it to reach the people who care about you fast.
       </p>
 
       {!signedIn ? (
-        <p className="mt-3 text-sm text-slate2-500">Sign in to use SOS — it notifies your trusted contacts.</p>
+        <p className="mt-3 text-sm text-slate2-500">Sign in to use SOS — it shares your live location with your trusted contacts.</p>
       ) : result ? (
         <div className="mt-4 rounded-xl bg-sage-50 border border-sage-300 p-4" role="status" aria-live="assertive">
           <p className="text-sm font-medium text-sage-800">
-            SOS sent — {result.contactsNotified} contact{result.contactsNotified === 1 ? "" : "s"} alerted.
+            {result.contactsNotified > 0
+              ? `SOS sent — ${result.contactsNotified} of ${result.contactsAttempted} contact${result.contactsAttempted === 1 ? "" : "s"} notified. Share the live link below too.`
+              : `SOS ready — live-location link created. Share it with your ${result.contactsAttempted} contact${result.contactsAttempted === 1 ? "" : "s"} now using the button below.`}
           </p>
           <ul className="mt-2 text-xs text-slate2-600 space-y-0.5">
             {result.receipts.map((r, i) => (
@@ -583,7 +587,7 @@ function SosPanel() {
             style={{ background: armed ? "#991B1B" : "#DC2626" }}
             aria-live="polite"
           >
-            {busy ? "Sending SOS…" : armed ? `Tap again to confirm — alerts ${confirmed.length} contact${confirmed.length === 1 ? "" : "s"}` : "Send SOS"}
+            {busy ? "Sending SOS…" : armed ? `Tap again to confirm — creates your live link + notifies ${confirmed.length} contact${confirmed.length === 1 ? "" : "s"}` : "Send SOS"}
           </button>
           {armed && !busy && (
             <button onClick={() => setArmed(false)} className="mt-2 w-full text-xs text-slate2-500 hover:underline">

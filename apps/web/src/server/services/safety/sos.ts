@@ -22,7 +22,10 @@ export interface SosResult {
   shareUrl: string;
   expiresAt: Date;
   mapUrl: string | null;
+  /** Contacts an automated message was actually DELIVERED to (≥1 "sent" receipt). */
   contactsNotified: number;
+  /** Confirmed contacts we attempted to reach. */
+  contactsAttempted: number;
   receipts: DeliveryReceipt[];
 }
 
@@ -72,11 +75,21 @@ export async function triggerSos(
   );
   const receipts = settled.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
 
+  // Honesty: only count a contact as "notified" when an automated message was
+  // actually DELIVERED (a "sent" receipt). When no delivery channel is
+  // configured every receipt is "failed", so this is 0 and the UI foregrounds
+  // the live-location link (the artifact that always works) instead of
+  // claiming contacts were alerted when they weren't.
+  const contactsNotified = new Set(
+    receipts.filter((r) => r.status === "sent").map((r) => r.contactLabel),
+  ).size;
+
   return {
     shareUrl: share.shareUrl,
     expiresAt: share.expiresAt,
     mapUrl,
-    contactsNotified: contacts.length,
+    contactsNotified,
+    contactsAttempted: contacts.length,
     receipts,
   };
 }
