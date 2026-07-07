@@ -102,6 +102,26 @@ export async function nativeWatchPosition(
 
 export type ShareResult = "shared" | "copied" | "failed";
 
+/// The native shell's WKWebView silently drops blob/anchor downloads (no
+/// WKDownload handling in the Capacitor bridge), so file-style exports must
+/// go through the native share sheet instead — the user can Save to Files,
+/// AirDrop, or mail the payload from there. Returns false only on a real
+/// failure; a user-cancelled sheet counts as handled (true).
+export async function nativeShareTextExport(opts: {
+  title: string;
+  text: string;
+}): Promise<boolean> {
+  try {
+    const { Share } = await import("@capacitor/share");
+    await Share.share({ title: opts.title, text: opts.text, dialogTitle: opts.title });
+    return true;
+  } catch (err) {
+    // Capacitor rejects with "Share canceled" when the user dismisses the
+    // sheet — that's a completed interaction, not an error.
+    return /cancel/i.test((err as Error)?.message ?? "");
+  }
+}
+
 export async function shareOrCopy(opts: {
   title?: string;
   text?: string;

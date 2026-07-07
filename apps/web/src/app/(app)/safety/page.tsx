@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, useAnonymousAuth, useApi, getStoredToken } from "@/lib/api-client";
 import { requestLocation } from "@/lib/geolocation";
-import { isNativeApp, nativeWatchPosition, shareOrCopy, hapticImpact, hapticNotify } from "@/lib/native";
+import { isNativeApp, nativeWatchPosition, shareOrCopy, nativeShareTextExport, hapticImpact, hapticNotify } from "@/lib/native";
 import { SafetyTipsPanel } from "@/components/SafetyTipsPanel";
 import { TrustedContactsManager } from "@/components/TrustedContactsManager";
 import { SavedPlacesPanel } from "@/components/SavedPlacesPanel";
@@ -233,13 +233,23 @@ function AccountPanel() {
         headers: legacy ? { Authorization: `Bearer ${legacy}` } : undefined,
       });
       if (!res.ok) throw new Error(`http_${res.status}`);
+      // fix(audit legal-brand-1/ui-brand-split): user-facing download must carry
+      // the public brand (CommunitySafe), not the internal "travelsafe" name.
+      const filename = `communitysafe-account-${new Date().toISOString().slice(0, 10)}.json`;
+      // The native shell's WKWebView silently drops blob/anchor downloads —
+      // this button would do nothing in the iOS/Android app. Route the payload
+      // through the native share sheet (Save to Files / AirDrop) there.
+      if (isNativeApp()) {
+        const text = await res.text();
+        const handled = await nativeShareTextExport({ title: filename, text });
+        if (!handled) throw new Error("share_unavailable");
+        return;
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      // fix(audit legal-brand-1/ui-brand-split): user-facing download must carry
-      // the public brand (CommunitySafe), not the internal "travelsafe" name.
-      a.download = `communitysafe-account-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
