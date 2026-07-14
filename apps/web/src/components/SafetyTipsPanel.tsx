@@ -30,8 +30,10 @@ export function SafetyTipsPanel({ areaSlug, jurisdictionSlug }: { areaSlug?: str
   // a Detroit user opening the panel with no neighborhood selected
   // would silently see San Diego tips (the audit fallback).
   const { city } = useCity();
+  // Also pass city with neighborhood: an unprefixed area slug otherwise
+  // falls through cityForArea() to the San Diego default server-side.
   const path = areaSlug
-    ? `/safety/tips?neighborhood=${areaSlug}`
+    ? `/safety/tips?neighborhood=${areaSlug}&city=${city.slug}`
     : jurisdictionSlug
     ? `/safety/tips?jurisdiction=${jurisdictionSlug}`
     : `/safety/tips?jurisdiction=${city.slug}`;
