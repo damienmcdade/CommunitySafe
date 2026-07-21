@@ -1,5 +1,5 @@
 import { env } from "../env.js";
-import { readJson, fetchWithRetry } from "../lib/http.js";
+import { readJson, fetchWithRetry, socrataHeaders } from "../lib/http.js";
 import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../types.js";
 import { findArea } from "../neighborhoods.js";
 
@@ -113,7 +113,12 @@ function bucketRisk(rate: number | null, bands: number[]): 1 | 2 | 3 | 4 | 5 {
 async function sodaGet(query: Record<string, string>): Promise<SodaRow[]> {
   const url = new URL(`${env.SANDAG_SOCRATA_BASE}/resource/${env.SANDAG_CRIME_RATES_RESOURCE_ID}.json`);
   for (const [k, v] of Object.entries(query)) url.searchParams.set(k, v);
-  const headers: Record<string, string> = { Accept: "application/json" };
+  // v111 — route through socrataHeaders so this adapter picks up the shared
+  // SOCRATA_APP_TOKEN (and User-Agent) like every fetchSocrata-based adapter.
+  // Tyler/Socrata 403s anonymous datacenter-IP traffic; this was the only
+  // Socrata adapter still building headers by hand (SANDAG-only token, no
+  // generic fallback). The legacy SANDAG-specific var still wins if set.
+  const headers = socrataHeaders(url);
   if (env.SANDAG_SOCRATA_APP_TOKEN) headers["X-App-Token"] = env.SANDAG_SOCRATA_APP_TOKEN;
   try {
     const res = await fetchWithRetry(url, { headers, signal: AbortSignal.timeout(45_000) });
