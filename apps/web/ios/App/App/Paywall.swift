@@ -7,6 +7,9 @@ import WidgetKit
 @MainActor
 final class PremiumManager: ObservableObject {
     static let productID = "app.communitysafe.premium_monthly"
+    static let yearlyProductID = "app.communitysafe.premium_yearly"
+
+    enum Plan { case monthly, yearly }
 
     // Mirrored into the shared App Group so the widget can gate its
     // content on the subscription too.
@@ -14,11 +17,36 @@ final class PremiumManager: ObservableObject {
         didSet { Self.syncWidgetEntitlement(isPremium) }
     }
     @Published private(set) var isLoading = true
-    @Published var product: Product?
+    @Published var product: Product?                     // monthly
+    @Published private(set) var yearlyProduct: Product?  // annual (nil until approved/available)
+    /// Annual is pre-selected — the anchor that makes the yearly price read as
+    /// the obvious value. Falls back to monthly when yearly isn't offered.
+    @Published var selectedPlan: Plan = .yearly
     // Non-nil only when the intro offer is a free trial AND this Apple Account
     // is still eligible for it — advertising a trial the user can't get is
-    // itself a 3.1.2 violation.
-    @Published private(set) var trialText: String?
+    // itself a 3.1.2 violation. Cached per plan so switching plans stays honest.
+    @Published private(set) var monthlyTrialText: String?
+    @Published private(set) var yearlyTrialText: String?
+
+    /// The product the CTA will buy.
+    var selectedProduct: Product? {
+        selectedPlan == .yearly ? (yearlyProduct ?? product) : product
+    }
+
+    /// Trial text for the currently selected plan.
+    var trialText: String? {
+        (selectedPlan == .yearly && yearlyProduct != nil) ? yearlyTrialText : monthlyTrialText
+    }
+
+    /// "SAVE 37%" badge value: how much the annual plan saves vs 12 months of
+    /// monthly, computed from the live store prices so a reprice never lies.
+    var yearlySavingsPercent: Int? {
+        guard let m = product?.price, let y = yearlyProduct?.price, m > 0 else { return nil }
+        let full = m * 12
+        guard full > y else { return nil }
+        let pct = (full - y) / full * 100
+        return Int((pct as NSDecimalNumber).doubleValue.rounded())
+    }
 
     private var updateTask: Task<Void, Never>?
 
@@ -35,16 +63,23 @@ final class PremiumManager: ObservableObject {
         isLoading = true
         defer { isLoading = false }
 
-        if let p = try? await Product.products(for: [Self.productID]).first {
+        let products = (try? await Product.products(for: [Self.productID, Self.yearlyProductID])) ?? []
+        if let p = products.first(where: { $0.id == Self.productID }) {
             product = p
-            trialText = await Self.trialText(for: p)
+            monthlyTrialText = await Self.trialText(for: p)
         }
+        if let y = products.first(where: { $0.id == Self.yearlyProductID }) {
+            yearlyProduct = y
+            yearlyTrialText = await Self.trialText(for: y)
+        }
+        // Yearly not live (yet, or pulled) → the paywall quietly offers monthly only.
+        if yearlyProduct == nil { selectedPlan = .monthly }
 
         await checkEntitlement()
     }
 
     func purchase() async throws {
-        guard let product else { return }
+        guard let product = selectedProduct else { return }
         let result = try await product.purchase()
         switch result {
         case .success(let verification):
@@ -87,15 +122,19 @@ final class PremiumManager: ObservableObject {
         var ownActive = false
         var ownOriginalID: String?
         var ownExpires: Date?
+        var ownProductID = Self.productID
         for await result in Transaction.currentEntitlements {
             // Accept unverified entitlements too — device verification fails
             // spuriously in the sandbox for genuine transactions (see purchase()).
             let tx = result.unsafePayloadValue
-            if tx.productID == Self.productID {
+            if tx.productID == Self.productID || tx.productID == Self.yearlyProductID {
                 ownActive = tx.revocationDate == nil
                 ownOriginalID = String(tx.originalID)
                 ownExpires = tx.expirationDate
-                break
+                ownProductID = tx.productID
+                // Keep scanning if this one is revoked — the other plan may
+                // still hold an active entitlement.
+                if ownActive { break }
             }
         }
         // Report our own subscription so the standalone widget app can honor it
@@ -103,13 +142,13 @@ final class PremiumManager: ObservableObject {
         // over a subscription the family already has in the widget app so they
         // never pay twice for the same service. Both are best-effort/fail-soft.
         await CrossAppEntitlement.report(
-            productID: Self.productID, source: "main",
+            productID: ownProductID, source: "main",
             active: ownActive, originalID: ownOriginalID, expires: ownExpires)
         if ownActive {
             isPremium = true
             return
         }
-        isPremium = await CrossAppEntitlement.siblingActive(excludingProductID: Self.productID)
+        isPremium = await CrossAppEntitlement.siblingActive(excludingProductID: ownProductID)
     }
 
     private static func syncWidgetEntitlement(_ active: Bool) {
@@ -125,7 +164,7 @@ final class PremiumManager: ObservableObject {
             // Finish unverified transactions too — leaving them unfinished makes
             // StoreKit redeliver them forever.
             let tx = result.unsafePayloadValue
-            if tx.productID == Self.productID {
+            if tx.productID == Self.productID || tx.productID == Self.yearlyProductID {
                 isPremium = tx.revocationDate == nil
             }
             await tx.finish()
@@ -204,7 +243,51 @@ struct PaywallView: View {
     let green = Color(red: 0.3, green: 0.75, blue: 0.4)
 
     var displayPrice: String {
-        premium.product?.displayPrice ?? "$20.00"
+        premium.selectedProduct?.displayPrice ?? "$20.00"
+    }
+
+    /// "month"/"year" for the selected plan — keeps the CTA and legal copy honest.
+    var unitText: String {
+        (premium.selectedPlan == .yearly && premium.yearlyProduct != nil) ? "year" : "month"
+    }
+
+    /// One selectable plan row: price-forward, with an optional value badge.
+    @ViewBuilder
+    private func planCard(title: String, price: String, caption: String,
+                          badge: String?, selected: Bool, onTap: @escaping () -> Void) -> some View {
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 22))
+                    .foregroundStyle(selected ? blue : Color.secondary.opacity(0.5))
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 8) {
+                        Text(title).font(.headline).foregroundStyle(.primary)
+                        if let badge {
+                            Text(badge)
+                                .font(.system(size: 10, weight: .heavy))
+                                .padding(.horizontal, 7).padding(.vertical, 3)
+                                .background(blue, in: Capsule())
+                                .foregroundStyle(.white)
+                        }
+                    }
+                    Text(caption).font(.caption2).foregroundStyle(.secondary)
+                }
+                Spacer()
+                // 3.1.2(c): the billed amount is the boldest element in the card.
+                Text(price)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(selected ? blue : .primary)
+            }
+            .padding(.horizontal, 16).padding(.vertical, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(.secondarySystemBackground).opacity(selected ? 1 : 0.6))
+                    .overlay(RoundedRectangle(cornerRadius: 16)
+                        .stroke(selected ? blue : Color(.separator), lineWidth: selected ? 1.5 : 1))
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     var body: some View {
@@ -246,23 +329,50 @@ struct PaywallView: View {
 
                     // Price block. Guideline 3.1.2(c): the billed amount must be
                     // the most clear and conspicuous pricing element — larger,
-                    // bolder, and above any free-trial mention.
-                    VStack(spacing: 6) {
-                        HStack(alignment: .firstTextBaseline, spacing: 5) {
-                            Text(displayPrice)
-                                .font(.system(size: 46, weight: .black, design: .rounded))
-                                .foregroundStyle(.primary)
-                            Text("per month")
-                                .font(.title3.weight(.semibold))
-                                .foregroundStyle(.primary)
+                    // bolder, and above any free-trial mention. Annual anchored
+                    // first with the save badge; collapses to the classic single
+                    // monthly block when the yearly product isn't live yet.
+                    if let yearly = premium.yearlyProduct {
+                        VStack(spacing: 10) {
+                            planCard(
+                                title: "Annual",
+                                price: "\(yearly.displayPrice)/year",
+                                caption: "Auto-renews yearly. Cancel anytime.",
+                                badge: premium.yearlySavingsPercent.map { "BEST VALUE · SAVE \($0)%" },
+                                selected: premium.selectedPlan == .yearly
+                            ) { premium.selectedPlan = .yearly }
+                            planCard(
+                                title: "Monthly",
+                                price: premium.product.map { "\($0.displayPrice)/month" } ?? "—",
+                                caption: "Auto-renews monthly. Cancel anytime.",
+                                badge: nil,
+                                selected: premium.selectedPlan == .monthly
+                            ) { premium.selectedPlan = .monthly }
+                            if let trialText = premium.trialText {
+                                Text("Includes a \(trialText), then \(displayPrice)/\(unitText)")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
-                        Text("Auto-renews monthly. Cancel anytime.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                        if let trialText = premium.trialText {
-                            Text("Includes a \(trialText), then \(displayPrice)/month")
+                        .padding(.horizontal)
+                    } else {
+                        VStack(spacing: 6) {
+                            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                                Text(displayPrice)
+                                    .font(.system(size: 46, weight: .black, design: .rounded))
+                                    .foregroundStyle(.primary)
+                                Text("per month")
+                                    .font(.title3.weight(.semibold))
+                                    .foregroundStyle(.primary)
+                            }
+                            Text("Auto-renews monthly. Cancel anytime.")
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
+                            if let trialText = premium.trialText {
+                                Text("Includes a \(trialText), then \(displayPrice)/month")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
 
@@ -286,7 +396,7 @@ struct PaywallView: View {
                                 } else {
                                     // The CTA states the billed amount (3.1.2(c));
                                     // it must not lead with the free trial.
-                                    Text("Subscribe for \(displayPrice)/month")
+                                    Text("Subscribe for \(displayPrice)/\(unitText)")
                                         .fontWeight(.black)
                                 }
                             }
@@ -307,7 +417,7 @@ struct PaywallView: View {
                     .padding(.horizontal)
 
                     // Apple-required auto-renewal disclosure (3.1.2).
-                    Text("Payment of \(displayPrice) per month is charged to your Apple Account at confirmation of purchase\(premium.trialText != nil ? ", after the free trial ends" : ""). The subscription auto-renews at \(displayPrice)/month unless cancelled at least 24 hours before the end of the current period. Manage or cancel anytime in your Apple Account settings.")
+                    Text("Payment of \(displayPrice) per \(unitText) is charged to your Apple Account at confirmation of purchase\(premium.trialText != nil ? ", after the free trial ends" : ""). The subscription auto-renews at \(displayPrice)/\(unitText) unless cancelled at least 24 hours before the end of the current period. Manage or cancel anytime in your Apple Account settings.")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                         .multilineTextAlignment(.center)
