@@ -309,7 +309,7 @@ struct PaywallView: View {
                         Text("CommunitySafe Premium")
                             .font(.title)
                             .fontWeight(.black)
-                        Text("Real-time neighborhood safety\nintelligence for 57 US cities.")
+                        Text("Neighborhood safety intelligence\nfor 57 US cities.")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
@@ -318,7 +318,7 @@ struct PaywallView: View {
 
                     // Features
                     VStack(spacing: 14) {
-                        FeatureRow(icon: "map.fill", color: green, title: "Neighborhood Safety Grades", detail: "A–F scores for 4,402 neighborhoods, live police data")
+                        FeatureRow(icon: "map.fill", color: green, title: "Neighborhood Safety Grades", detail: "A–F scores for 4,402 neighborhoods from official police data")
                         FeatureRow(icon: "sparkles", color: blue, title: "AI Area Briefs", detail: "Natural-language crime pattern analysis")
                         FeatureRow(icon: "clock.fill", color: .orange, title: "Time-of-Day Safety Map", detail: "Hour-by-hour crime distribution")
                         FeatureRow(icon: "figure.walk", color: .purple, title: "Route Safety Planner", detail: "Compare routes by crime exposure")
