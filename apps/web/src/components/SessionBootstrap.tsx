@@ -1,7 +1,7 @@
 "use client";
 import { useEffect } from "react";
 import { ensureAnonymousAuth } from "@/lib/api-client";
-import { initNativeShell, requestPushPermission, isNativeApp } from "@/lib/native";
+import { initNativeShell } from "@/lib/native";
 
 /// Mounts once at the root. Silently issues a per-device anonymous session on
 /// first visit so the user has full access to every feature (check-in timer,
@@ -11,19 +11,11 @@ import { initNativeShell, requestPushPermission, isNativeApp } from "@/lib/nativ
 export function SessionBootstrap() {
   useEffect(() => {
     void ensureAnonymousAuth();
-    void initNativeShell().then(() => {
-      // Request push notification permission on first launch (after 3-second delay
-      // so the user has seen the app before the permission dialog appears)
-      if (isNativeApp()) {
-        const alreadyAsked = localStorage.getItem("cs_push_asked");
-        if (!alreadyAsked) {
-          setTimeout(() => {
-            localStorage.setItem("cs_push_asked", "1");
-            void requestPushPermission();
-          }, 3000);
-        }
-      }
-    });
+    // Push permission is deliberately NOT requested at launch (ASO onboarding
+    // pass 2026-07-28): the ask now happens when the user saves their alert
+    // preferences — the moment the permission's value is obvious. See
+    // app/onboarding/alert-preferences/page.tsx.
+    void initNativeShell();
   }, []);
   return null;
 }

@@ -21,9 +21,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         maybeRequestReview()
 
-        // Register for remote (push) notifications.
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
-            guard granted else { return }
+        // NOTE (ASO onboarding pass 2026-07-28): the push-permission prompt is no
+        // longer requested at launch. The web layer asks at the moment the user
+        // sets up alert preferences — after they've seen value — and its grant
+        // path performs remote-notification registration via the Capacitor
+        // plugin. If permission was granted in a previous session, re-register
+        // silently so the token stays fresh.
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            guard settings.authorizationStatus == .authorized else { return }
             DispatchQueue.main.async {
                 application.registerForRemoteNotifications()
             }

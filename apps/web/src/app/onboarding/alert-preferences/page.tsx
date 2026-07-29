@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
+import { isNativeApp, requestPushPermission } from "@/lib/native";
 
 type Cat = "PERSONS" | "PROPERTY" | "SOCIETY";
 type Freq = "DIGEST_DAILY" | "REAL_TIME";
@@ -37,6 +38,12 @@ export default function AlertPreferencesPage() {
           notificationDailyCap: cap,
         }),
       });
+      // The user just chose which alerts they want — this is the moment the
+      // push permission makes sense (moved here from app launch).
+      if (isNativeApp() && !localStorage.getItem("cs_push_asked")) {
+        localStorage.setItem("cs_push_asked", "1");
+        await requestPushPermission().catch(() => {});
+      }
       router.push("/onboarding/trusted-contacts");
     } catch (err) {
       setError((err as Error).message);
