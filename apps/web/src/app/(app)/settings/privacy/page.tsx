@@ -5,6 +5,7 @@ import { useDocumentTitle } from "@/lib/use-document-title";
 import { useTheme, type Theme } from "@/lib/use-theme";
 import { MfaSettings } from "@/components/MfaSettings";
 import { logout } from "@/lib/api-client";
+import { isNativeApp } from "@/lib/native";
 
 // Local-state inventory the page can clear on demand. Every key
 // that survives a tab/page navigation lives in this list — if a new
@@ -224,8 +225,10 @@ function AdConsentControls() {
   const adsenseConfigured = Boolean(process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID);
   const [choice, setChoice] = useState<ConsentChoice>(null);
   const [loaded, setLoaded] = useState(false);
+  const [native, setNative] = useState(false);
 
   useEffect(() => {
+    setNative(isNativeApp());
     try {
       const v = window.localStorage.getItem(CONSENT_KEY);
       setChoice(v === "accept" || v === "reject" ? v : null);
@@ -244,6 +247,24 @@ function AdConsentControls() {
   // Nothing to consent to on ad-free deploys with no prior choice — keep the
   // dashboard uncluttered rather than show a control that does nothing.
   if (!loaded) return null;
+  // Inside the native iOS/Android shell no ad scripts ever load and no
+  // advertising cookies are set (ConsentedAdSense hard-gates on native), so
+  // advertising-consent controls would be describing behavior the app doesn't
+  // have. State that plainly instead — Guideline 5.1.2(i): a cookie prompt in
+  // an app that doesn't track reads as untracked-consent to App Review.
+  if (native) {
+    return (
+      <section className="surface p-6 space-y-3">
+        <h2 className="font-display text-xl text-slate2-900">Advertising &amp; tracking</h2>
+        <p className="text-sm text-slate2-700">
+          The CommunitySafe app contains no advertising and does not track you. No ad
+          scripts load, no advertising or tracking cookies are set, and nothing about
+          you is shared with ad networks or data brokers. Advertising consent applies
+          to the communitysafe.app website only, where it is managed in the browser.
+        </p>
+      </section>
+    );
+  }
   if (!adsenseConfigured && choice === null) return null;
 
   const labels: Record<"accept" | "reject", string> = {

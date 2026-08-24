@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { isNativeApp } from "@/lib/native";
 
 // v92 — minimal CCPA + GDPR / ePrivacy cookie banner. Only renders when
 // NEXT_PUBLIC_ADSENSE_CLIENT_ID is configured (i.e., the deploy has
@@ -27,6 +28,12 @@ function readChoice(): Choice {
 export function CookieConsentBanner() {
   const [show, setShow] = useState(false);
   useEffect(() => {
+    // Never show the cookie prompt inside the native iOS/Android shell.
+    // Ads (and their cookies) never load in-app (see ConsentedAdSense), so
+    // there is nothing to consent to there — and App Review reads an
+    // advertising-cookie prompt as tracking that requires an ATT request
+    // (Guideline 5.1.2(i)). Web browsers are unaffected.
+    if (isNativeApp()) return;
     if (readChoice() === null) setShow(true);
   }, []);
   if (!show) return null;

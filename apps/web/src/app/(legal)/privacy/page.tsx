@@ -91,7 +91,7 @@ export default function PrivacyPage() {
 
       <section className="surface p-6 space-y-3 text-sm text-slate2-700 leading-relaxed">
         <h2 className="font-display text-xl text-slate2-900">Advertising</h2>
-        <p>CommunitySafe shows ads served by <strong>Google AdSense</strong> to cover hosting costs, and this section describes what that involves. Ad scripts load only after you accept cookies via the consent banner; if you decline, no AdSense script and no advertising cookies load. AdSense is a Google product; its data practices are governed by{" "}
+        <p>CommunitySafe shows ads on its <strong>website</strong> served by <strong>Google AdSense</strong> to cover hosting costs, and this section describes what that involves. <strong>The CommunitySafe iOS and Android apps contain no advertising and do not track you:</strong> ad scripts never load inside the apps, no advertising or tracking cookies are set there, and no data is linked with third-party data for advertising or shared with data brokers. Everything below applies to the website only. On the website, ad scripts load only after you accept cookies via the consent banner; if you decline, no AdSense script and no advertising cookies load. AdSense is a Google product; its data practices are governed by{" "}
           <a href="https://policies.google.com/technologies/ads" target="_blank" rel="noreferrer" className="text-bay-700 hover:underline">Google&apos;s ad-policy disclosures</a>.</p>
         <p>What CommunitySafe sends to AdSense:</p>
         <ul className="list-disc pl-5 space-y-1">

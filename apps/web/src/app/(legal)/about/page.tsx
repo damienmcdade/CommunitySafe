@@ -95,9 +95,11 @@ export default function AboutPage() {
           CommunitySafe is free to browse without an account. Optional Personal
           Safety features (Check-In timer, Live Share, Trusted Contacts) also
           carry no fee. Operating costs (cloud hosting, AI provider, push
-          delivery) are covered by the operator. If contextual advertising is
-          ever enabled it will be disclosed on this page and a cookie banner
-          will appear before the first ad loads.
+          delivery) are covered by the operator, helped by advertising on the
+          communitysafe.app website — where a cookie banner appears before any
+          ad loads. The iOS and Android apps contain no advertising and do not
+          track you: no ad scripts load and no advertising cookies are set
+          inside the apps.
         </p>
       </section>
 
