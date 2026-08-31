@@ -21,12 +21,31 @@ import { writeLimiter } from "../middleware/rate-limit.js";
 // change (the fields reported here are exactly what that API returns).
 export const entitlementRouter = Router();
 
+/**
+ * Longest grant this endpoint will honour from an UNVERIFIED client report.
+ *
+ * The body is not signed by Apple, so `expiresDate` is attacker-controlled: a
+ * single curl with your own device id previously bought premium until the year
+ * 3000, permanently, with no jailbreak. Clamping to just over one monthly
+ * period means a forged grant self-heals within a renewal cycle, while a real
+ * subscriber is unaffected — the app re-reports on every launch, so a genuine
+ * expiry is always refreshed well before the clamp bites.
+ *
+ * This is a stopgap. The real fix is deriving expiry from Apple's
+ * `GET /inApps/v1/transactions/{originalTransactionId}` and never trusting the
+ * body at all; the reported fields are deliberately shaped to match that API.
+ */
+const MAX_UNVERIFIED_GRANT_MS = 33 * 24 * 60 * 60 * 1000;
+
 const reportBody = z.object({
   deviceId: z.string().uuid(),
   productId: z.string().min(1).max(191),
   originalTransactionId: z.string().min(1).max(191),
   source: z.enum(["widget", "main"]),
-  expiresDate: z.number().int().positive(), // epoch milliseconds
+  // Upper bound keeps `new Date()` inside the valid range — past 8.64e15 it
+  // yields an Invalid Date, which Prisma rejects, turning a malformed request
+  // into a 500 plus one Sentry event per call.
+  expiresDate: z.number().int().positive().max(4102444800000), // ≤ year 2100
   active: z.boolean().optional(), // false → lapsed/revoked: expire the row now
 });
 
@@ -37,7 +56,12 @@ const reportBody = z.object({
 entitlementRouter.post("/report", writeLimiter, async (req, res, next) => {
   try {
     const b = reportBody.parse(req.body);
-    const expiresAt = b.active === false ? new Date(0) : new Date(b.expiresDate);
+    // Never honour a longer grant than a client could legitimately need before
+    // its next report — see MAX_UNVERIFIED_GRANT_MS.
+    const expiresAt =
+      b.active === false
+        ? new Date(0)
+        : new Date(Math.min(b.expiresDate, Date.now() + MAX_UNVERIFIED_GRANT_MS));
     await prisma.deviceEntitlement.upsert({
       where: {
         deviceId_originalTransactionId: {

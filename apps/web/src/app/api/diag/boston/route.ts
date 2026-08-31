@@ -30,10 +30,15 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     snapshot: {
       available: true,
-      generatedAt: bostonSnapshot.generated_at,
+      generatedAt: bostonSnapshot.generated_at ?? null,
       count: bostonSnapshot.count,
       newest: bostonSnapshot.newest,
       oldest: bostonSnapshot.oldest,
+      // The number that actually matters for this diagnostic: how far behind
+      // the bundled data is. The snapshot's build time said nothing about it.
+      dataAgeDays: bostonSnapshot.newest
+        ? Math.floor((Date.now() - Date.parse(bostonSnapshot.newest)) / 86_400_000)
+        : null,
     },
     rowsFromGetRows: Array.isArray(rows) ? { length: rows.length, firstArea: rows[0]?.area, firstLat: rows[0]?.lat, firstLng: rows[0]?.lng } : rows,
     areasFromDiscover: Array.isArray(areas) ? { length: areas.length, samples: areas.slice(0, 3) } : areas,

@@ -175,7 +175,12 @@ function areaForBoston(lat: number, lon: number, district: string | undefined): 
 const PROVENANCE: DataProvenance = {
   source: "Boston Police Department Crime Incident Reports (City of Boston Open Data, CKAN)",
   datasetUrl: "https://data.boston.gov/dataset/crime-incident-reports-august-2015-to-date-source-new-system",
-  recency: `Bundled snapshot from BPD CSV (generated ${snapshot.generated_at})`,
+  // Report the age of the DATA, not the age of the file. "generated" was the
+  // snapshot's build time, which kept moving weekly while the newest incident
+  // in it stayed frozen in April — so provenance read as fresh when it wasn't.
+  recency: snapshot.newest
+    ? `Bundled snapshot from BPD CSV — latest incident ${snapshot.newest.slice(0, 10)}`
+    : "Bundled snapshot from BPD CSV",
   granularity: "neighborhood",
   disclaimer:
     "Incidents are reported by the Boston Police Department and geocoded to one of " +

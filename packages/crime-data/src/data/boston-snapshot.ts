@@ -11,7 +11,7 @@ export interface BostonSnapshotRow {
 }
 
 export interface BostonSnapshot {
-  generated_at: string;
+  generated_at?: string;
   source: string;
   count: number;
   newest: string | null;

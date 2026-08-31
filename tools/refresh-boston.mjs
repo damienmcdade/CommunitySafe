@@ -104,11 +104,39 @@ for await (const line of rl) {
 rows.sort((a, b) => b.ts - a.ts);
 const top = rows.slice(0, ROWS_TO_KEEP).map(({ ts: _ts, ...rest }) => rest);
 
+const newest = top[0]?.OCCURRED_ON_DATE ?? null;
+
+// FAIL LOUDLY ON A FROZEN FEED.
+//
+// CSV_URL pins a CKAN *temp* export (tmpcyl1hw5w.csv). That S3 object stopped
+// being updated in April 2026, but it still returns 200 — so this script ran
+// green every week and committed byte-identical data for four months while
+// production served crime grades from a snapshot a third of a year old,
+// labelled "high confidence". A refresh job that cannot fail is not a refresh
+// job. If the feed is stale, the workflow must go red so a human looks at it.
+const MAX_SNAPSHOT_AGE_DAYS = 45;
+if (!newest) {
+  console.error("Refusing to write: snapshot has no dated rows.");
+  process.exit(1);
+}
+const ageDays = Math.floor((Date.now() - Date.parse(newest)) / 86_400_000);
+if (ageDays > MAX_SNAPSHOT_AGE_DAYS) {
+  console.error(
+    `Refusing to write: newest Boston incident is ${ageDays} days old (max ${MAX_SNAPSHOT_AGE_DAYS}).\n` +
+    `The pinned CKAN export has almost certainly been rotated. Re-resolve the\n` +
+    `current resource URL via the CKAN package_show API and update CSV_URL.`,
+  );
+  process.exit(1);
+}
+
 const snapshot = {
-  generated_at: new Date().toISOString(),
+  // NOTE: deliberately NOT stamped with the run time. A wall-clock
+  // `generated_at` changed on every run, which defeated the workflow's own
+  // "did anything actually change?" guard and produced eight consecutive
+  // weekly commits of identical data. The snapshot's identity is its content.
   source: "https://data.boston.gov/dataset/crime-incident-reports-august-2015-to-date-source-new-system",
   count: top.length,
-  newest: top[0]?.OCCURRED_ON_DATE ?? null,
+  newest,
   oldest: top[top.length - 1]?.OCCURRED_ON_DATE ?? null,
   rows: top,
 };
@@ -129,7 +157,8 @@ export interface BostonSnapshotRow {
 }
 
 export interface BostonSnapshot {
-  generated_at: string;
+  /** Deprecated: no longer emitted. Its wall-clock value defeated the change guard. */
+  generated_at?: string;
   source: string;
   count: number;
   newest: string | null;

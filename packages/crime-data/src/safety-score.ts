@@ -683,6 +683,20 @@ const LOW_CRIME_VERIFIED: ReadonlySet<string> = new Set(["boise"]);
 /// `note` is a UI-ready sentence the score card can render verbatim when
 /// confidence < "high". Returning a structured note (rather than building
 /// it client-side) keeps the API the single source of truth.
+/// A feed this far behind is reported as "low" confidence outright.
+const STALE_LOW_DAYS = 75;
+/// Below that, a feed this far behind can never be better than "medium".
+const STALE_MEDIUM_DAYS = 35;
+
+/// Days between the newest incident in the window and today, or null when the
+/// caller has no date to offer (in which case staleness is simply not applied).
+function dataAgeDays(newestIncidentIso?: string | null): number | null {
+  if (!newestIncidentIso) return null;
+  const t = Date.parse(newestIncidentIso.slice(0, 10));
+  if (Number.isNaN(t)) return null;
+  return Math.max(0, Math.floor((Date.now() - t) / 86_400_000));
+}
+
 function computeDataConfidence(
   windowDays: number,
   totalIncidents: number,
@@ -700,7 +714,21 @@ function computeDataConfidence(
   // them. Honest, not a relaxed bar: it only applies to a small allowlist of
   // cities confirmed to publish a full incident feed (see LOW_CRIME_VERIFIED).
   lowCrimeVerified = false,
+  // v117 — ISO date of the NEWEST incident in the window. Window LENGTH and
+  // window AGE are different things: Boston shipped a 133-day window with
+  // thousands of incidents whose newest row was 4 months old, and scored
+  // "high" because nothing here looked at recency. A stale grade presented
+  // confidently is worse than an honestly hedged one in a safety product.
+  newestIncidentIso?: string | null,
 ): { dataConfidence: SafetyScoreResponse["dataConfidence"]; dataConfidenceNote?: string } {
+  const staleness = dataAgeDays(newestIncidentIso);
+  if (staleness != null && staleness >= STALE_LOW_DAYS) {
+    return {
+      dataConfidence: "low",
+      dataConfidenceNote:
+        `The city's latest published reports are about ${Math.round(staleness / 30)} months old, so this grade reflects that period rather than right now.`,
+    };
+  }
   if (windowDays === 0 || totalIncidents === 0) {
     return {
       dataConfidence: "low",
@@ -767,12 +795,17 @@ function computeDataConfidence(
     totalIncidents >= MIN_VOLUME_FOR_HIGH &&
     (windowDays >= 90 || (windowDays >= 42 && totalIncidents >= STABLE_VOLUME));
   const undercount = !lowCrimeVerified && pop > 200_000 && ratio < 0.5;
-  if (!windowStable || undercount) {
+  // A feed that is merely behind (rather than badly stale) can still be a sound
+  // comparison, but it is not "right now" — cap it at provisional and say so.
+  const somewhatStale = staleness != null && staleness >= STALE_MEDIUM_DAYS;
+  if (!windowStable || undercount || somewhatStale) {
     return {
       dataConfidence: "medium",
       dataConfidenceNote: undercount
         ? `The reported per-capita rate is lower than expected for a city this size, so the grade is read as provisional until the upstream feed fills in. `
-        : `Based on a ~${windowDays}-day data window with ${totalIncidents.toLocaleString()} incidents — read the grade as provisional; a longer window will tighten the comparison.`,
+        : somewhatStale
+          ? `The city's latest published reports are about ${staleness} days old, so this grade lags current conditions.`
+          : `Based on a ~${windowDays}-day data window with ${totalIncidents.toLocaleString()} incidents — read the grade as provisional; a longer window will tighten the comparison.`,
     };
   }
   return { dataConfidence: "high" };
@@ -1327,7 +1360,14 @@ async function computeCitywideSafetyScore(citySlug: string): Promise<SafetyScore
   // Charlotte, Nashville, Minneapolis, Las Vegas, Tucson — ORI
   // lookup pending), fall back to the legacy vs-national grader.
   const cityLabel = `${city.label} (citywide)`;
-  let confidence = computeDataConfidence(windowDays, persons + property, pop, personsLocal100k + propertyLocal100k, LOW_CRIME_VERIFIED.has(city.slug));
+  let confidence = computeDataConfidence(
+    windowDays,
+    persons + property,
+    pop,
+    personsLocal100k + propertyLocal100k,
+    LOW_CRIME_VERIFIED.has(city.slug),
+    latest > 0 ? new Date(latest).toISOString() : null,
+  );
   const fbiBaseline = CITY_FBI_BASELINES[city.slug];
   // v102 — citywide grade is now ABSOLUTE (city's FBI rate vs national,
   // violent-weighted) so cities discriminate (San Diego A vs Detroit E),
@@ -1810,7 +1850,14 @@ async function computeSafetyScore(areaSlug: string, areaLabel: string): Promise<
   // Computed before the grade so gradeWithNullGuard can demote a
   // no-data area to "N/A" instead of the misleading C the raw math
   // would yield.
-  const confidence = computeDataConfidence(windowDays, persons + property, popDenominator, persons100k + property100k);
+  const confidence = computeDataConfidence(
+    windowDays,
+    persons + property,
+    popDenominator,
+    persons100k + property100k,
+    false,
+    latest > 0 ? new Date(latest).toISOString() : null,
+  );
 
   // Per-area grade compares to the CITY rate, not the national rate.
   // See gradeFromCityDeltas comment for the rationale.
