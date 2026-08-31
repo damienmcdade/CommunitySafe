@@ -4,6 +4,25 @@ import SwiftUI
 import UIKit
 import WidgetKit
 
+// Verification policy: anything that GRANTS Premium (the currentEntitlements
+// sweep, the purchase success branch, the Transaction.updates flip) requires a
+// `.verified` payload — a forged JWS must never unlock Premium or the widget.
+// `.finish()` bookkeeping stays permissive: Apple already charged for those,
+// and refusing to finish one just makes StoreKit redeliver it forever.
+
+/// Sandbox receipts fail device verification for genuine transactions during
+/// App Review, so accept unverified there — never in production.
+private var allowsUnverifiedTransactions: Bool {
+    #if DEBUG
+    return true
+    #else
+    // `appStoreReceiptURL` is a deprecated StoreKit 1 API, but it still returns
+    // the correct path on iOS 16+/Catalyst and is the only SYNCHRONOUS sandbox
+    // signal available — expect a deprecation warning here.
+    return Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt"
+    #endif
+}
+
 @MainActor
 final class PremiumManager: ObservableObject {
     static let productID = "app.communitysafe.premium_monthly"
@@ -83,12 +102,27 @@ final class PremiumManager: ObservableObject {
         let result = try await product.purchase()
         switch result {
         case .success(let verification):
-            // Apple has processed the payment at this point — always unlock.
-            // `.unverified` occurs spuriously in the App Store sandbox (which
-            // App Review uses) for real paid transactions; silently ignoring it
-            // would take the customer's money and leave them on the paywall.
-            await verification.unsafePayloadValue.finish()
-            isPremium = true
+            // Apple has processed the payment at this point, so ALWAYS finish
+            // (an unfinished transaction redelivers forever). Premium itself is
+            // GRANTED only from a signed payload — a forged purchase result
+            // must not unlock the app or the widget. `.unverified` occurs
+            // spuriously in the App Store sandbox (which App Review uses) for
+            // real paid transactions, so it is honored there; in production we
+            // fall back to re-reading the entitlement rather than taking the
+            // customer's money and leaving them on the paywall.
+            switch verification {
+            case .verified(let tx):
+                await tx.finish()
+                isPremium = true
+            case .unverified(let tx, let error):
+                await tx.finish()
+                if allowsUnverifiedTransactions {
+                    isPremium = true
+                } else {
+                    print("[CommunitySafe] Unverified purchase payload: \(error)")
+                    await checkEntitlement()
+                }
+            }
         case .pending, .userCancelled:
             break
         @unknown default:
@@ -124,9 +158,21 @@ final class PremiumManager: ObservableObject {
         var ownExpires: Date?
         var ownProductID = Self.productID
         for await result in Transaction.currentEntitlements {
-            // Accept unverified entitlements too — device verification fails
-            // spuriously in the sandbox for genuine transactions (see purchase()).
-            let tx = result.unsafePayloadValue
+            // Entitlement-GRANTING read: an unsigned payload here would unlock
+            // Premium (and the widget) for free, so it must verify. Unverified
+            // is accepted only in the sandbox, where device verification fails
+            // spuriously for genuine transactions (see purchase()).
+            let tx: StoreKit.Transaction
+            switch result {
+            case .verified(let t):
+                tx = t
+            case .unverified(let t, let error):
+                guard allowsUnverifiedTransactions else {
+                    print("[CommunitySafe] Ignoring unverified entitlement for \(t.productID): \(error)")
+                    continue
+                }
+                tx = t
+            }
             if tx.productID == Self.productID || tx.productID == Self.yearlyProductID {
                 ownActive = tx.revocationDate == nil
                 ownOriginalID = String(tx.originalID)
@@ -161,11 +207,30 @@ final class PremiumManager: ObservableObject {
 
     private func observeTransactions() async {
         for await result in Transaction.updates {
-            // Finish unverified transactions too — leaving them unfinished makes
-            // StoreKit redeliver them forever.
-            let tx = result.unsafePayloadValue
+            // Two jobs, opposite policies: flipping `isPremium` on GRANTS
+            // access, so it needs a signed payload; finishing stays permissive —
+            // leaving a transaction unfinished makes StoreKit redeliver it forever.
+            let tx: StoreKit.Transaction
+            let mayGrant: Bool
+            switch result {
+            case .verified(let t):
+                tx = t
+                mayGrant = true
+            case .unverified(let t, let error):
+                tx = t
+                mayGrant = allowsUnverifiedTransactions
+                if !mayGrant {
+                    print("[CommunitySafe] Unverified transaction update for \(t.productID): \(error)")
+                }
+            }
             if tx.productID == Self.productID || tx.productID == Self.yearlyProductID {
-                isPremium = tx.revocationDate == nil
+                if tx.revocationDate != nil {
+                    // A revocation only ever REMOVES access, so honor it
+                    // regardless of whether the payload verified.
+                    isPremium = false
+                } else if mayGrant {
+                    isPremium = true
+                }
             }
             await tx.finish()
         }
