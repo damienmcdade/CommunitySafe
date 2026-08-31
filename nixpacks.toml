@@ -45,7 +45,14 @@ dependsOn = ["install"]
 # crime-data doesn't use the prisma client (local CrimeCategory enum), so it
 # needs no generate.
 cmds = [
-  "npm run build --workspace packages/crime-data",
+  # v118 — `rm -rf dist` before building crime-data, for the same reason the
+  # prisma step above is invoked directly: this phase is a cached Docker layer
+  # and a stale `dist/` silently survives into the running container. A change
+  # to packages/crime-data/src shipped as a "successful" deploy while the API
+  # kept executing the previously-compiled output — the data-staleness fix was
+  # live in git and absent in production. Removing dist makes the compile
+  # unconditional rather than trusting the cache.
+  "rm -rf packages/crime-data/dist && npm run build --workspace packages/crime-data",
   "npm run build:api",
 ]
 
