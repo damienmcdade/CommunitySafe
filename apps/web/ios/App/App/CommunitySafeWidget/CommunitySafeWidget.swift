@@ -38,14 +38,21 @@ private let premiumProductID = "app.communitysafe.premium_monthly"
 
 /// Is the CommunitySafe Premium subscription active? The widget extension shares
 /// the app's App Store transaction context, so StoreKit answers this directly —
-/// no App Group needed. FAIL-OPEN: if StoreKit can't give a definitive answer
-/// (throws, or a transaction fails device verification), treat as subscribed so a
-/// paying customer is never locked out of a feature they bought. We only report
-/// `false` after a clean pass over the entitlements finds no active premium.
+/// no App Group needed.
+///
+/// This used to fail OPEN on an empty result, reasoning that "the iterator
+/// yielded nothing" might be a load hiccup. That reasoning was wrong in the one
+/// case that matters: `currentEntitlements` yields nothing for a NON-SUBSCRIBER.
+/// That is its normal, expected output, not an error — it is an AsyncSequence
+/// that completes empty rather than throwing. So `return !sawEntitlements`
+/// granted Premium to every person who had not paid, which is the entire
+/// customer base minus subscribers.
+///
+/// It now fails CLOSED. A genuine subscriber's widget reads the same on-device
+/// transaction store the app does, so a real entitlement is found here; there is
+/// no ambiguity left to hedge against.
 func isPremiumActive() async -> Bool {
-    var sawEntitlements = false
     for await result in StoreKit.Transaction.currentEntitlements {
-        sawEntitlements = true
         // Accept `.unverified` too — device verification fails spuriously in the
         // sandbox (App Review) for genuine transactions; the entitlement is real.
         let tx: StoreKit.Transaction
@@ -57,9 +64,9 @@ func isPremiumActive() async -> Bool {
             return true
         }
     }
-    // No premium entitlement found. If the iterator yielded nothing at all it may
-    // be a load hiccup rather than a genuine non-subscriber — fail open.
-    return !sawEntitlements
+    // No active premium entitlement — including the empty case, which is simply
+    // what a non-subscriber looks like.
+    return false
 }
 
 // MARK: - API Fetch
