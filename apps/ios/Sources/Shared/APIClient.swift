@@ -83,9 +83,15 @@ actor APIClient {
     // MARK: - Core request
 
     private func get<T: Codable & Sendable>(_ path: String, query: [String: String], cacheKey: String) async throws -> Fresh<T> {
-        var comps = URLComponents(url: Self.baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
+        guard var comps = URLComponents(url: Self.baseURL.appendingPathComponent(path),
+                                        resolvingAgainstBaseURL: false) else {
+            throw APIError.decoding("Couldn't build a request for \(path).")
+        }
         comps.queryItems = query.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) }
-        var request = URLRequest(url: comps.url!)
+        guard let url = comps.url else {
+            throw APIError.decoding("Couldn't build a request for \(path).")
+        }
+        var request = URLRequest(url: url)
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
 

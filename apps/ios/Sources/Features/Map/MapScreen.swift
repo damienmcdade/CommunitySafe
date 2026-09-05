@@ -77,7 +77,14 @@ struct MapScreen: View {
                     .accessibilityLabel("Show individual reports")
                 }
             }
-            .task(id: state.city.slug) { await frameCity(); await loadGrades() }
+            .task(id: state.city.slug) {
+            // Drop the previous city's grades: they can never match this
+            // city's slugs, and keeping them grew the dictionary for the life
+            // of the process as the user browsed.
+            areaGrades.removeAll()
+            await frameCity()
+            await loadGrades()
+        }
             .onChange(of: state.areas.count) { _, _ in Task { await loadGrades() } }
         }
     }

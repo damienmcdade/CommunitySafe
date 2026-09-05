@@ -112,8 +112,18 @@ extension LocationManager: CLLocationManagerDelegate {
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         let status = manager.authorizationStatus
         Task { @MainActor in
+            let previous = self.authorization
             self.authorization = status
             if status == .denied || status == .restricted { self.resolveFixes(with: nil) }
+
+            // Registering a region requires Always, and the Saved Places flow
+            // necessarily saves the place BEFORE the Always prompt is answered
+            // — so the first place a user adds got no geofence at all and its
+            // arrival alerts silently never fired. Re-register everything the
+            // moment the grant lands.
+            if status == .authorizedAlways, previous != .authorizedAlways {
+                PlacesStore.shared.resyncMonitoring()
+            }
         }
     }
 

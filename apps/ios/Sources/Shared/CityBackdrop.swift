@@ -114,41 +114,51 @@ struct CityBackdrop: View {
         let photos = CityPhotos.photos(for: citySlug)
         guard !photos.isEmpty else { return }
 
-        // Show anything already cached immediately — no network, no wait.
-        var available: [UIImage] = []
-        for url in photos {
-            if let cached = await PhotoCache.shared.cached(url) { available.append(cached) }
-        }
-        if let first = available.first {
-            withAnimation(.easeOut(duration: 0.4)) { image = first }
+        // Which of this city's photos are already on disk. Only the URLs are
+        // collected here: decoding all eight up front and holding them in an
+        // array meant eight full-screen bitmaps resident at once, which
+        // defeated the cache's own memory limit.
+        var readyURLs: [URL] = []
+        for url in photos where await PhotoCache.shared.isCached(url) {
+            readyURLs.append(url)
         }
 
-        // Fetch exactly one new photo per appearance, so the cache fills in
-        // gradually instead of pulling a city's whole set at once.
-        if available.count < photos.count {
-            let next = photos[available.count % photos.count]
+        // Show the first cached one immediately — no network, no wait.
+        if let first = readyURLs.first, let img = await PhotoCache.shared.image(first) {
+            withAnimation(.easeOut(duration: 0.4)) { image = img }
+        }
+
+        // Fetch exactly one new photo per appearance, so a city's set fills in
+        // gradually instead of pulling all of it at once.
+        if readyURLs.count < photos.count {
+            let next = photos[readyURLs.count % photos.count]
             if let fetched = await PhotoCache.shared.image(next) {
-                available.append(fetched)
+                readyURLs.append(next)
                 if image == nil {
                     withAnimation(.easeOut(duration: 0.5)) { image = fetched }
                 }
             }
         }
 
-        guard available.count > 1, !reduceMotion, !photoIsSuppressed else { return }
-        rotation = Task { await rotate(through: available) }
+        guard readyURLs.count > 1, !reduceMotion, !photoIsSuppressed else { return }
+        rotation = Task { await rotate(through: readyURLs) }
     }
 
-    private func rotate(through photos: [UIImage]) async {
+    /// Rotates by URL, loading each frame from the cache as it is needed, so
+    /// only the outgoing and incoming images are ever resident.
+    private func rotate(through urls: [URL]) async {
         while !Task.isCancelled {
             try? await Task.sleep(nanoseconds: UInt64(Self.rotateInterval * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            let next = (index + 1) % urls.count
+            guard let img = await PhotoCache.shared.image(urls[next]) else { continue }
             guard !Task.isCancelled else { return }
             await MainActor.run {
                 // Keep the outgoing photo underneath so the cross-fade never
                 // flashes the background through a transparent frame.
                 previous = image
-                index = (index + 1) % photos.count
-                withAnimation(.easeInOut(duration: 1.2)) { image = photos[index] }
+                index = next
+                withAnimation(.easeInOut(duration: 1.2)) { image = img }
             }
         }
     }

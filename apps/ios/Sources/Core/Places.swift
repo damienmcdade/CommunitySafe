@@ -142,6 +142,17 @@ final class PlaceAlerts {
     }
 }
 
+enum NotificationPermission {
+    /// Asks for notification permission at the moment it becomes useful.
+    /// Safe to call repeatedly — the system prompts only once and later calls
+    /// just report the existing answer.
+    @discardableResult
+    static func request() async -> Bool {
+        (try? await UNUserNotificationCenter.current()
+            .requestAuthorization(options: [.alert, .sound, .badge])) ?? false
+    }
+}
+
 enum NotificationCategory {
     static let placeAlert = "PLACE_ALERT"
     static let checkIn = "CHECK_IN"

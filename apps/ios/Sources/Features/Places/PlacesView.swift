@@ -173,8 +173,14 @@ struct PlaceDetailView: View {
             Section("Alerts") {
                 Toggle("Notify me when I arrive", isOn: $place.notifyOnArrival)
                     .disabled(!PremiumGate.canUseArrivalAlerts(isPremium: premium.isPremium))
+                    .onChange(of: place.notifyOnArrival) { _, on in
+                        if on { Task { await NotificationPermission.request() } }
+                    }
                 Toggle("Notify me when I leave", isOn: $place.notifyOnDeparture)
                     .disabled(!PremiumGate.canUseArrivalAlerts(isPremium: premium.isPremium))
+                    .onChange(of: place.notifyOnDeparture) { _, on in
+                        if on { Task { await NotificationPermission.request() } }
+                    }
                 if !premium.isPremium {
                     Text("Arrival and departure alerts are part of Premium.")
                         .font(.caption)
@@ -328,8 +334,15 @@ struct AddPlaceView: View {
             }
         }
         places.add(place)
+        // Arrival alerts are delivered as local notifications, so ask for that
+        // permission here too. Only the check-in flow used to ask, which meant
+        // a user who only saved places never got a single alert.
+        await NotificationPermission.request()
         // Arrival alerts are the point of the feature, so escalate to Always
-        // right after the user saves their first one.
+        // right after the user saves their first one. The place is stored
+        // first and its region is registered by LocationManager once the grant
+        // arrives (see locationManagerDidChangeAuthorization) — registering
+        // here would be a no-op, because Always isn't granted yet.
         location.requestAlways()
         dismiss()
     }

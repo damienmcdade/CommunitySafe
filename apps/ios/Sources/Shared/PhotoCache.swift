@@ -1,4 +1,5 @@
 import CoreGraphics
+import CryptoKit
 import Foundation
 import ImageIO
 import OSLog
@@ -27,12 +28,19 @@ actor PhotoCache {
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
+    /// Flat, collision-resistant, and — critically — STABLE ACROSS LAUNCHES.
+    ///
+    /// This used `String.hashValue`, which Swift seeds randomly per process. The
+    /// filename therefore changed on every cold start: no cached photo was ever
+    /// found again, every launch re-downloaded, and every previous write was
+    /// orphaned in the container forever. SHA-256 of the URL is deterministic.
+    nonisolated static func cacheFileName(for url: URL) -> String {
+        let digest = SHA256.hash(data: Data(url.absoluteString.utf8))
+        return digest.map { String(format: "%02x", $0) }.joined()
+    }
+
     private func fileURL(for url: URL) -> URL {
-        // The remote path contains slashes and percent-escapes; hash to a flat
-        // stable name so nothing can escape the cache directory.
-        let name = String(format: "%02x", abs(url.absoluteString.hashValue))
-            + "-" + (url.lastPathComponent.suffix(24).addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? "img")
-        return directory.appendingPathComponent(name)
+        directory.appendingPathComponent(Self.cacheFileName(for: url))
     }
 
     /// Cached image, if we already have it on disk or in memory. Never hits the
@@ -44,6 +52,14 @@ actor PhotoCache {
               let image = Self.downsample(data) else { return nil }
         store(image, for: url)
         return image
+    }
+
+    /// Whether a photo is already available without touching the network.
+    /// Deliberately does not decode — callers use this to decide what is
+    /// eligible for rotation.
+    func isCached(_ url: URL) -> Bool {
+        if memory[url] != nil { return true }
+        return FileManager.default.fileExists(atPath: fileURL(for: url).path)
     }
 
     /// Fetches and caches, coalescing concurrent requests for the same URL.
@@ -59,9 +75,7 @@ actor PhotoCache {
             guard let (data, response) = try? await URLSession.shared.data(for: request),
                   let http = response as? HTTPURLResponse, http.statusCode == 200,
                   let image = Self.downsample(data) else { return nil }
-            let name = String(format: "%02x", abs(url.absoluteString.hashValue))
-                + "-" + (url.lastPathComponent.suffix(24).addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? "img")
-            try? data.write(to: directory.appendingPathComponent(name), options: .atomic)
+            try? data.write(to: directory.appendingPathComponent(Self.cacheFileName(for: url)), options: .atomic)
             return image
         }
         inFlight[url] = task

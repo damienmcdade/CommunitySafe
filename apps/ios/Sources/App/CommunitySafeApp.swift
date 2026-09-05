@@ -69,6 +69,14 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         UNUserNotificationCenter.current().delegate = NotificationCoordinator.shared
         NotificationCoordinator.shared.registerCategories()
 
+        // iOS relaunches the app in the background when a monitored region is
+        // crossed, and the delegate callback is only delivered if a
+        // CLLocationManager exists to receive it. Touch the shared manager (and
+        // the store holding the regions) here so a background relaunch wires
+        // itself up without waiting for any UI to be constructed.
+        _ = LocationManager.shared
+        _ = PlacesStore.shared
+
         // Re-register for push only if the user previously granted it. The ask
         // itself happens in context, never at launch.
         UNUserNotificationCenter.current().getNotificationSettings { settings in

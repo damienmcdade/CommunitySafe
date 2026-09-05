@@ -34,7 +34,9 @@ struct SafetyView: View {
             }
             .cityBackdrop()
             .navigationTitle("Check-in")
-            .onReceive(ticker) { now = $0 }
+            // Only advance the clock while something is actually counting
+            // down; this used to tick every second for the life of the app.
+            .onReceive(ticker) { if checkIn.isRunning { now = $0 } }
             .sheet(isPresented: $showingContacts) {
                 NavigationStack { ContactsView() }
             }
@@ -278,8 +280,7 @@ struct SafetyView: View {
     private func start() async {
         // Ask for notification permission at the moment it becomes useful —
         // the user has just chosen to be alerted — rather than at launch.
-        _ = try? await UNUserNotificationCenter.current()
-            .requestAuthorization(options: [.alert, .sound, .badge])
+        await NotificationPermission.request()
         await checkIn.start(
             destination: destination.trimmingCharacters(in: .whitespaces),
             minutes: minutes,

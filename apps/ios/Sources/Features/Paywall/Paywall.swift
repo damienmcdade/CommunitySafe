@@ -1,4 +1,5 @@
 import Combine
+import OSLog
 import StoreKit
 import SwiftUI
 import UIKit
@@ -22,6 +23,8 @@ private var allowsUnverifiedTransactions: Bool {
     return Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt"
     #endif
 }
+
+private let storeLog = Logger(subsystem: "app.communitysafe", category: "storekit")
 
 @MainActor
 final class PremiumManager: ObservableObject {
@@ -133,7 +136,7 @@ final class PremiumManager: ObservableObject {
                 if allowsUnverifiedTransactions {
                     isPremium = true
                 } else {
-                    print("[CommunitySafe] Unverified purchase payload: \(error)")
+                    storeLog.error("unverified purchase payload: \(error.localizedDescription, privacy: .public)")
                     await checkEntitlement()
                 }
             }
@@ -182,7 +185,7 @@ final class PremiumManager: ObservableObject {
                 tx = t
             case .unverified(let t, let error):
                 guard allowsUnverifiedTransactions else {
-                    print("[CommunitySafe] Ignoring unverified entitlement for \(t.productID): \(error)")
+                    storeLog.error("ignoring unverified entitlement for \(t.productID, privacy: .public): \(error.localizedDescription, privacy: .public)")
                     continue
                 }
                 tx = t
@@ -234,7 +237,7 @@ final class PremiumManager: ObservableObject {
                 tx = t
                 mayGrant = allowsUnverifiedTransactions
                 if !mayGrant {
-                    print("[CommunitySafe] Unverified transaction update for \(t.productID): \(error)")
+                    storeLog.error("unverified transaction update for \(t.productID, privacy: .public): \(error.localizedDescription, privacy: .public)")
                 }
             }
             if tx.productID == Self.productID || tx.productID == Self.yearlyProductID {
