@@ -37,7 +37,7 @@ struct NowView: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 32)
             }
-            .background(Color(.systemGroupedBackground))
+            .cityBackdrop()
             .navigationTitle("Now")
             .refreshable { await state.refresh() }
             .toolbar {

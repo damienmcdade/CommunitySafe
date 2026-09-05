@@ -33,6 +33,7 @@ struct PlacesView: View {
                         Button("Add a place") { showingAdd = true }
                             .buttonStyle(.borderedProminent)
                     }
+                    .listRowBackground(Color.clear)
                 } else {
                     Section {
                         ForEach(places.places) { place in
@@ -69,6 +70,7 @@ struct PlacesView: View {
                     }
                 }
             }
+            .cityBackdrop()
             .navigationTitle("Places")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

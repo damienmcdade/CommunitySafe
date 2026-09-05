@@ -15,6 +15,7 @@ struct SettingsView: View {
     @State private var showingDeleteConfirm = false
     @State private var notificationStatus: UNAuthorizationStatus = .notDetermined
     @State private var isClearingCache = false
+    @State private var photoBytes: Int64 = 0
 
     private static let termsURL = URL(string: "https://www.communitysafe.app/terms")!
     private static let privacyURL = URL(string: "https://www.communitysafe.app/privacy")!
@@ -41,7 +42,10 @@ struct SettingsView: View {
                 PaywallView().environmentObject(premium)
             }
 
-            .task { notificationStatus = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus }
+            .task {
+                notificationStatus = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+                photoBytes = await PhotoCache.shared.diskUsage()
+            }
         }
     }
 
@@ -138,10 +142,16 @@ struct SettingsView: View {
             if let updated = state.lastUpdated {
                 LabeledContent("Last updated") { Text(updated.relativeDescription).foregroundStyle(.secondary) }
             }
+            LabeledContent("City photos stored") {
+                Text(photoBytes > 0 ? ByteCountFormatter.string(fromByteCount: photoBytes, countStyle: .file) : "None")
+                    .foregroundStyle(.secondary)
+            }
             Button(isClearingCache ? "Clearing…" : "Clear offline cache") {
                 Task {
                     isClearingCache = true
                     await OfflineStore.shared.clear()
+                    await PhotoCache.shared.clear()
+                    photoBytes = 0
                     await state.refresh()
                     isClearingCache = false
                 }
@@ -150,13 +160,14 @@ struct SettingsView: View {
         } header: {
             Text("Data")
         } footer: {
-            Text("CommunitySafe keeps the last grade it downloaded so the app still works with no signal. Clearing removes those saved copies.")
+            Text("CommunitySafe keeps the last grade it downloaded so the app still works with no signal, plus the city backdrop photos it has shown. Clearing removes both.")
         }
     }
 
     private var aboutSection: some View {
         Section {
             Link("How grades are calculated", destination: Self.methodologyURL)
+            NavigationLink("Photo credits") { PhotoCreditsView() }
             Link("Privacy Policy", destination: Self.privacyURL)
             Link("Terms of Use", destination: Self.termsURL)
             Link("Support", destination: Self.supportURL)

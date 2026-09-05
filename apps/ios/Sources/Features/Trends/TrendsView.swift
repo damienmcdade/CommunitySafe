@@ -44,7 +44,7 @@ struct TrendsView: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 32)
             }
-            .background(Color(.systemGroupedBackground))
+            .cityBackdrop()
             .navigationTitle("Trends")
             .refreshable { await state.refresh() }
         }

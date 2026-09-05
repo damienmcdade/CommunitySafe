@@ -36,9 +36,17 @@ struct CardModifier: ViewModifier {
         content
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
+            // Material rather than a solid fill: the city photograph behind
+            // the app reads through, and the blur keeps text legible over any
+            // image. The hairline border stops cards from dissolving into a
+            // busy backdrop.
             .background(
                 RoundedRectangle(cornerRadius: Theme.cardCorner, style: .continuous)
-                    .fill(Color(.secondarySystemGroupedBackground))
+                    .fill(.regularMaterial)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.cardCorner, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
             )
     }
 }

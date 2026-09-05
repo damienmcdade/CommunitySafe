@@ -32,7 +32,7 @@ struct SafetyView: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 32)
             }
-            .background(Color(.systemGroupedBackground))
+            .cityBackdrop()
             .navigationTitle("Check-in")
             .onReceive(ticker) { now = $0 }
             .sheet(isPresented: $showingContacts) {
