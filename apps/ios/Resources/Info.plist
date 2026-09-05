@@ -43,7 +43,7 @@
 			<string>app.communitysafe</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>communitysafe</string>
+				<string>communitysafeapp</string>
 			</array>
 		</dict>
 	</array>

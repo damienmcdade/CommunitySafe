@@ -61,7 +61,7 @@ struct CheckInLiveActivity: Widget {
                 Image(systemName: "shield.lefthalf.filled")
                     .foregroundStyle(context.state.isOverdue ? .red : .primary)
             }
-            .widgetURL(URL(string: "communitysafe://checkin"))
+            .widgetURL(URL(string: "communitysafeapp://checkin"))
         }
     }
 

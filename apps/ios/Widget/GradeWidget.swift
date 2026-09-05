@@ -248,7 +248,7 @@ struct GradeWidget: Widget {
         ) { entry in
             GradeWidgetView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
-                .widgetURL(URL(string: "communitysafe://area"))
+                .widgetURL(URL(string: "communitysafeapp://area"))
         }
         .configurationDisplayName("Safety Grade")
         .description("The current CommunitySafe grade for your area.")

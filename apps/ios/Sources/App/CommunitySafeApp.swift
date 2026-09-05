@@ -31,6 +31,16 @@ struct CommunitySafeApp: App {
                     await session.prepare()
                     await contacts.load()
                     #if DEBUG
+                    if let citySlug = UserDefaults.standard.string(forKey: "uiTestCity"),
+                       let city = CityRegistry.city(slug: citySlug) {
+                        state.city = city
+                        if let areaSlug = UserDefaults.standard.string(forKey: "uiTestArea"),
+                           let fresh = try? await APIClient.shared.areas(city: citySlug),
+                           let match = fresh.value.areas.first(where: { $0.slug == areaSlug }) {
+                            state.area = match
+                        }
+                        await state.refresh()
+                    }
                     // Test hook: `-uiTestStartCheckIn <destination>` starts a
                     // check-in on launch so the Live Activity can be exercised
                     // from an automated run. Debug builds only.
@@ -126,11 +136,15 @@ final class NotificationCoordinator: NSObject, UNUserNotificationCenterDelegate 
     }
 }
 
-/// Routes `communitysafe://` URLs from widgets and notifications.
+/// Routes `communitysafeapp://` URLs from widgets and notifications.
+///
+/// Not `communitysafe://`: the separately shipped "CommunitySafe: Area
+/// Grades" app already registers that scheme, and iOS picks arbitrarily
+/// between two apps claiming the same one.
 enum DeepLink {
     @MainActor
     static func handle(_ url: URL, state: AppState) {
-        guard url.scheme == "communitysafe" else { return }
+        guard url.scheme == "communitysafeapp" else { return }
         let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
         let items = components?.queryItems ?? []
 

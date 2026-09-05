@@ -5,7 +5,24 @@ struct RootView: View {
     @EnvironmentObject private var checkIn: CheckInManager
     @State private var selectedTab = Tab.now
 
-    enum Tab: Hashable { case now, map, trends, safety, places }
+    enum Tab: Hashable, CaseIterable {
+        case now, map, trends, safety, places
+
+        #if DEBUG
+        /// Test hook: `-uiTestTab map` opens straight to a tab, so App Store
+        /// screenshots can be captured deterministically. Debug builds only.
+        static func named(_ name: String) -> Tab? {
+            switch name.lowercased() {
+            case "now": return .now
+            case "map": return .map
+            case "trends": return .trends
+            case "safety", "checkin", "check-in": return .safety
+            case "places": return .places
+            default: return nil
+            }
+        }
+        #endif
+    }
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -30,5 +47,13 @@ struct RootView: View {
                 .tabItem { Label("Places", systemImage: "mappin.and.ellipse") }
                 .tag(Tab.places)
         }
+        #if DEBUG
+        .task {
+            if let name = UserDefaults.standard.string(forKey: "uiTestTab"),
+               let tab = Tab.named(name) {
+                selectedTab = tab
+            }
+        }
+        #endif
     }
 }
