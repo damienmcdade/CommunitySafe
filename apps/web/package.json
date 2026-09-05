@@ -10,11 +10,9 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "mobile:sync": "npx cap sync",
-    "mobile:ios": "npx cap sync ios && npx cap open ios",
     "mobile:android": "npx cap sync android && npx cap open android",
     "mobile:android:aab": "cd android && JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/Home ./gradlew bundleRelease",
-    "mobile:android:apk": "cd android && JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/Home ./gradlew assembleRelease",
-    "mobile:ios:build": "xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO"
+    "mobile:android:apk": "cd android && JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/Home ./gradlew assembleRelease"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.80",

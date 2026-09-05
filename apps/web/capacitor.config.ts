@@ -1,9 +1,12 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
-// Static-bundle iOS shell for CommunitySafe. The web app builds to
-// `out/` via `output: "export"` when MOBILE_BUILD=1 is set (see
-// next.config.ts), then `npx cap sync` copies it into the iOS
-// project's www/ directory.
+// Capacitor shell for the ANDROID build of CommunitySafe.
+//
+// iOS is no longer a Capacitor app: it is a native SwiftUI application at
+// `apps/ios` that talks to the same APIs directly. Apple rejected the iOS
+// WebView wrapper under Guideline 4.2 (Minimum Functionality) on
+// 2026-08-24, and the native rewrite is the remedy. Do not reintroduce an
+// iOS Capacitor target here.
 //
 // All /api/* calls and AI features hit the LIVE Railway API
 // (https://communitysafe-api-production.up.railway.app) — the

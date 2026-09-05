@@ -1,0 +1,7 @@
+# XcodeGen output is regenerated from project.yml; build artefacts are not
+# source. The .xcodeproj itself IS committed so the app can be built without
+# installing XcodeGen.
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
