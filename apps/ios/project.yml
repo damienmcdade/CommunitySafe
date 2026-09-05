@@ -61,6 +61,10 @@ targets:
       - path: Sources/Intents
       - path: Widget
       - path: Resources/Assets.xcassets
+      # Must be bundled as exactly "PrivacyInfo.xcprivacy", so it lives in its
+      # own directory rather than being renamed alongside the app's.
+      - path: Resources/Widget/PrivacyInfo.xcprivacy
+        buildPhase: resources
     settings:
       base:
         # Was `app.communitysafe.widget`, which collides with the SEPARATE
