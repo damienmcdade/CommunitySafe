@@ -3,58 +3,52 @@ import SwiftUI
 struct RootView: View {
     @EnvironmentObject private var state: AppState
     @EnvironmentObject private var checkIn: CheckInManager
-    @State private var selectedTab = Tab.now
     #if DEBUG
     @State private var showingPaywallForTest = false
     #endif
 
-    enum Tab: Hashable, CaseIterable {
-        case now, map, trends, safety, places
-
-        #if DEBUG
-        /// Test hook: `-uiTestTab map` opens straight to a tab, so App Store
-        /// screenshots can be captured deterministically. Debug builds only.
-        static func named(_ name: String) -> Tab? {
-            switch name.lowercased() {
-            case "now": return .now
-            case "map": return .map
-            case "trends": return .trends
-            case "safety", "checkin", "check-in": return .safety
-            case "places": return .places
-            default: return nil
-            }
-        }
-        #endif
-    }
-
     var body: some View {
-        TabView(selection: $selectedTab) {
+        TabView(selection: $state.selectedTab) {
             NowView()
                 .tabItem { Label("Now", systemImage: "shield.lefthalf.filled") }
-                .tag(Tab.now)
+                .tag(AppTab.now)
 
             MapScreen()
                 .tabItem { Label("Map", systemImage: "map") }
-                .tag(Tab.map)
+                .tag(AppTab.map)
 
             TrendsView()
                 .tabItem { Label("Trends", systemImage: "chart.xyaxis.line") }
-                .tag(Tab.trends)
+                .tag(AppTab.trends)
 
             SafetyView()
                 .tabItem { Label("Check-in", systemImage: "figure.walk.motion") }
-                .tag(Tab.safety)
+                .tag(AppTab.safety)
                 .badge(checkIn.isRunning ? "1" : nil)
 
             PlacesView()
                 .tabItem { Label("Places", systemImage: "mappin.and.ellipse") }
-                .tag(Tab.places)
+                .tag(AppTab.places)
         }
         #if DEBUG
         .task {
+            // `-uiTestDemo YES` walks the tabs on a timer so an App Store
+            // preview can be recorded as one continuous take. Debug only.
+            if UserDefaults.standard.bool(forKey: "uiTestDemo") {
+                let script: [(AppTab, UInt64)] = [
+                    (.now, 7), (.map, 7), (.trends, 7), (.safety, 5), (.places, 4),
+                ]
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 6_000_000_000)
+                    for (tab, seconds) in script {
+                        withAnimation(.easeInOut(duration: 0.35)) { state.selectedTab = tab }
+                        try? await Task.sleep(nanoseconds: seconds * 1_000_000_000)
+                    }
+                }
+            }
             if let name = UserDefaults.standard.string(forKey: "uiTestTab"),
-               let tab = Tab.named(name) {
-                selectedTab = tab
+               let tab = AppTab(routeName: name) {
+                state.selectedTab = tab
             }
             showingPaywallForTest = UserDefaults.standard.bool(forKey: "uiTestPaywall")
         }

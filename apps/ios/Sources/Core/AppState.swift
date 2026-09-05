@@ -7,6 +7,24 @@ import WidgetKit
 /// Central view model. Owns the selected city/area and the three payloads the
 /// UI renders (score, trend, recent reports), plus the loading and offline
 /// state that goes with them.
+/// The app's top-level destinations.
+enum AppTab: String, Hashable, CaseIterable {
+    case now, map, trends, safety, places
+
+    /// Accepts the hosts used by widget and Live Activity deep links
+    /// (`communitysafeapp://checkin`) as well as the plain tab names.
+    init?(routeName: String) {
+        switch routeName.lowercased() {
+        case "now", "grade", "area": self = .now
+        case "map": self = .map
+        case "trends": self = .trends
+        case "safety", "checkin", "check-in": self = .safety
+        case "places": self = .places
+        default: return nil
+        }
+    }
+}
+
 @MainActor
 final class AppState: ObservableObject {
     static let shared = AppState()
@@ -38,6 +56,10 @@ final class AppState: ObservableObject {
     @Published private(set) var trend: TrendReport?
     @Published private(set) var reports: [IncidentReport] = []
     @Published private(set) var areas: [Area] = []
+
+    /// Which tab is showing. Owned here rather than by the view so a widget
+    /// or Live Activity deep link can route to it.
+    @Published var selectedTab: AppTab = .now
 
     // Status
     @Published private(set) var isLoading = false

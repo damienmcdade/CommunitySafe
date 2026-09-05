@@ -151,15 +151,29 @@ struct MapScreen: View {
     /// each area independently and firing all of them at once on a cold city
     /// makes the server shed load, so this walks a small window at a time.
     private func loadGrades() async {
-        let targets = state.areas.prefix(40).map(\.slug).filter { areaGrades[$0] == nil }
+        var targets = state.areas.prefix(40).map(\.slug).filter { areaGrades[$0] == nil }
         guard !targets.isEmpty else { return }
         isLoadingGrades = true
         defer { isLoadingGrades = false }
 
+        // Serve everything already cached and recent first, so revisiting the
+        // map paints instantly (and works offline) instead of re-fetching every
+        // neighbourhood. Grades derive from feeds that refresh daily at best.
+        var stillMissing: [String] = []
+        for slug in targets {
+            if let cached = await APIClient.shared.cachedAreaScore(area: slug, maxAge: 6 * 60 * 60) {
+                areaGrades[slug] = cached.letter
+            } else {
+                stillMissing.append(slug)
+            }
+        }
+        targets = stillMissing
+        guard !targets.isEmpty else { return }
+
         await withTaskGroup(of: (String, Grade)?.self) { group in
             var iterator = targets.makeIterator()
             var inFlight = 0
-            let maxConcurrent = 4
+            let maxConcurrent = 6
 
             func addNext() {
                 guard let slug = iterator.next() else { return }
@@ -185,19 +199,35 @@ struct AreaPin: View {
     let grade: Grade
     let isSelected: Bool
 
+    private var size: CGFloat { isSelected ? 34 : 26 }
+
     var body: some View {
         ZStack {
-            Circle()
-                .fill(Theme.color(for: grade))
-                .frame(width: isSelected ? 34 : 26, height: isSelected ? 34 : 26)
-            Circle()
-                .strokeBorder(.white, lineWidth: isSelected ? 3 : 2)
-                .frame(width: isSelected ? 34 : 26, height: isSelected ? 34 : 26)
-            Text(grade == .unknown ? "·" : grade.rawValue)
-                .font(.system(size: isSelected ? 15 : 12, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+            if grade == .unknown {
+                // Not yet scored. A filled dark circle here read as a grade —
+                // and as a bug — on a map that is still loading, so a pending
+                // neighborhood is a small hollow marker that recedes instead.
+                Circle()
+                    .fill(.regularMaterial)
+                    .frame(width: size * 0.6, height: size * 0.6)
+                Circle()
+                    .strokeBorder(Color.secondary.opacity(0.5), lineWidth: 1.5)
+                    .frame(width: size * 0.6, height: size * 0.6)
+            } else {
+                Circle()
+                    .fill(Theme.color(for: grade))
+                    .frame(width: size, height: size)
+                Circle()
+                    .strokeBorder(.white, lineWidth: isSelected ? 3 : 2)
+                    .frame(width: size, height: size)
+                Text(grade.rawValue)
+                    .font(.system(size: isSelected ? 15 : 12, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+            }
         }
-        .shadow(radius: 2, y: 1)
+        .shadow(radius: grade == .unknown ? 0 : 2, y: grade == .unknown ? 0 : 1)
         .animation(.snappy, value: isSelected)
+        .animation(.easeOut(duration: 0.25), value: grade)
+        .accessibilityLabel(grade == .unknown ? "Neighborhood, grade loading" : "Grade \(grade.rawValue)")
     }
 }

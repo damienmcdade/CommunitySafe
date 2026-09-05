@@ -148,6 +148,15 @@ enum DeepLink {
         let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
         let items = components?.queryItems ?? []
 
+        // The host is the destination: the widget links to
+        // `communitysafeapp://area` and the Live Activity to
+        // `communitysafeapp://checkin`. Without this, tapping either opened
+        // the app on whatever tab it happened to be on.
+        let route = url.host ?? components?.path.trimmingCharacters(in: CharacterSet(charactersIn: "/")) ?? ""
+        if let tab = AppTab(routeName: route) {
+            state.selectedTab = tab
+        }
+
         if let citySlug = items.first(where: { $0.name == "city" })?.value,
            let city = CityRegistry.city(slug: citySlug) {
             state.city = city

@@ -130,6 +130,20 @@ actor APIClient {
         try await get("safezone/safety-score", query: ["area": area], cacheKey: "score-area-\(area)")
     }
 
+    /// Cache-only read of a neighbourhood grade, used by the map.
+    ///
+    /// The map needs a grade for every neighbourhood in the city at once. Going
+    /// to the network for all of them on every visit meant ~40 round-trips to
+    /// redraw pins whose underlying feeds update daily at best — slow for the
+    /// user, and needless load on the scoring service. This serves anything
+    /// recent enough and lets the caller fetch only the genuine misses.
+    func cachedAreaScore(area: String, maxAge: TimeInterval) async -> SafetyScore? {
+        guard let cached: CachedEnvelope<SafetyScore> = await OfflineStore.shared.read(
+            SafetyScore.self, key: "score-area-\(area)"
+        ) else { return nil }
+        return cached.age <= maxAge ? cached.value : nil
+    }
+
     func citywideTrend(city: String) async throws -> Fresh<TrendReport> {
         try await get("safezone/trend", query: ["city": city], cacheKey: "trend-city-\(city)")
     }
