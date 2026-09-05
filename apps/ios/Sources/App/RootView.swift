@@ -36,10 +36,10 @@ struct RootView: View {
             // preview can be recorded as one continuous take. Debug only.
             if UserDefaults.standard.bool(forKey: "uiTestDemo") {
                 let script: [(AppTab, UInt64)] = [
-                    (.now, 7), (.map, 7), (.trends, 7), (.safety, 5), (.places, 4),
+                    (.now, 6), (.map, 6), (.trends, 6), (.safety, 5), (.places, 5),
                 ]
                 Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 6_000_000_000)
+                    try? await Task.sleep(nanoseconds: 4_000_000_000)
                     for (tab, seconds) in script {
                         withAnimation(.easeInOut(duration: 0.35)) { state.selectedTab = tab }
                         try? await Task.sleep(nanoseconds: seconds * 1_000_000_000)
