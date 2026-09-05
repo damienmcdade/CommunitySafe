@@ -4,6 +4,9 @@ struct RootView: View {
     @EnvironmentObject private var state: AppState
     @EnvironmentObject private var checkIn: CheckInManager
     @State private var selectedTab = Tab.now
+    #if DEBUG
+    @State private var showingPaywallForTest = false
+    #endif
 
     enum Tab: Hashable, CaseIterable {
         case now, map, trends, safety, places
@@ -53,7 +56,9 @@ struct RootView: View {
                let tab = Tab.named(name) {
                 selectedTab = tab
             }
+            showingPaywallForTest = UserDefaults.standard.bool(forKey: "uiTestPaywall")
         }
+        .sheet(isPresented: $showingPaywallForTest) { PaywallView() }
         #endif
     }
 }

@@ -333,7 +333,7 @@ struct PaywallView: View {
                         Text("CommunitySafe Premium")
                             .font(.title)
                             .fontWeight(.black)
-                        Text("Neighborhood safety intelligence\nfor 57 US cities.")
+                        Text("Watch every place that matters to you.")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
@@ -342,12 +342,14 @@ struct PaywallView: View {
 
                     // Features
                     VStack(spacing: 14) {
-                        FeatureRow(icon: "map.fill", color: green, title: "Neighborhood Safety Grades", detail: "A–F scores for 4,402 neighborhoods from official police data")
-                        FeatureRow(icon: "sparkles", color: blue, title: "AI Area Briefs", detail: "Natural-language crime pattern analysis")
-                        FeatureRow(icon: "clock.fill", color: .orange, title: "Time-of-Day Safety Map", detail: "Hour-by-hour crime distribution")
-                        FeatureRow(icon: "figure.walk", color: .purple, title: "Route Safety Planner", detail: "Compare routes by crime exposure")
-                        FeatureRow(icon: "location.fill.viewfinder", color: .red, title: "Live Location Sharing + SOS", detail: "Share with trusted contacts, one-tap SOS")
-                        FeatureRow(icon: "bell.badge.fill", color: blue, title: "Crime Alerts + Widget", detail: "Push alerts and home screen safety grades")
+                        // These must describe what Premium ACTUALLY unlocks in
+                        // this binary. The previous list advertised AI area
+                        // briefs, a route planner and live location sharing +
+                        // SOS, none of which exist in the app.
+                        FeatureRow(icon: "mappin.and.ellipse", color: blue, title: "Up to \(PlacesStore.maxPlaces) saved places", detail: "Home, work, school, family — the free plan includes \(PremiumGate.freePlaceLimit)")
+                        FeatureRow(icon: "bell.badge.fill", color: .orange, title: "Arrival & departure alerts", detail: "Get told when you reach or leave a saved place, with that area's current grade")
+                        FeatureRow(icon: "moon.zzz.fill", color: .purple, title: "Works in the background", detail: "Alerts arrive even when CommunitySafe isn't open")
+                        FeatureRow(icon: "checkmark.seal.fill", color: green, title: "Everything else stays free", detail: "Grades, the map, trends and safety check-ins never need Premium")
                     }
                     .padding(.horizontal)
 
