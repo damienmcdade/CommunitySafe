@@ -730,10 +730,18 @@ function computeDataConfidence(
     };
   }
   if (windowDays === 0 || totalIncidents === 0) {
+    // fix(prod sweep 2026-09-21): this used to say the feed "may be briefly
+    // unavailable". Two cities have been in this state for weeks, not
+    // briefly — Pittsburgh's WPRDC resource was replaced with a spreadsheet
+    // pivot and Savannah's SAGIS layer went behind a token — so the old
+    // wording quietly promised a recovery we cannot promise. Say what is
+    // actually true: there is no usable data, so there is no grade. We do
+    // not track how long a feed has been down, so the copy claims nothing
+    // about duration in either direction.
     return {
       dataConfidence: "low",
       dataConfidenceNote:
-        "No recent reports right now. The city's data feed may be briefly unavailable, so this grade is only approximate.",
+        "No usable reports are coming back from this city's published feed, so no grade can be calculated right now.",
     };
   }
   if (windowDays < 30) {
