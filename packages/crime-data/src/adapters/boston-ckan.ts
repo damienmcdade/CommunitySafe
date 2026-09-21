@@ -1,5 +1,5 @@
 import { CrimeCategory } from "../crime-category.js";
-import { readJson, fetchWithRetry } from "../lib/http.js";
+import { readJson, fetchWithRetry, USER_AGENT } from "../lib/http.js";
 import { env } from "../env.js";
 import type { AreaStats, CrimeDataAdapter, DataProvenance, Incident } from "../types.js";
 import { registerRowCache } from "../cache-registry.js";
@@ -58,7 +58,55 @@ registerRowCache(() => { cache = null; }, "boston-ckan");
 // 45MB / 307k lines / 3s fetch on Railway; we keep the most-recent
 // 30k rows in cache. Longer TTL (30min) because BPD publishes
 // daily, not real-time.
-const CSV_URL = "https://data.boston.gov/dataset/6220d948-eae2-4e4b-8723-2dc8e67722a3/resource/b973d8cb-eeb2-4e7e-99da-c92938efc9c0/download/tmpcyl1hw5w.csv";
+// fix(prod sweep 2026-09-21): this used to be a hardcoded CSV export and that
+// export had gone stale. Boston publishes each refresh as a NEW temp object
+// (tmpXXXXXXXX.csv) and leaves the superseded one serving 200 forever with
+// frozen contents — so nothing errored, the CSV path stayed "healthy", and
+// Railway (which prefers this path, since it works by IP where the CKAN API
+// 0-records from Vercel) served Boston from a 153-day-old April export.
+// Resolve the current resource from CKAN package_show instead, cached, with
+// the old URL kept only as a fallback. Same rotation that broke
+// tools/refresh-boston.mjs; fixed the same way so they cannot diverge.
+const CKAN_PACKAGE_SHOW =
+  "https://data.boston.gov/api/3/action/package_show?id=6220d948-eae2-4e4b-8723-2dc8e67722a3";
+const CSV_URL_FALLBACK = "https://data.boston.gov/dataset/6220d948-eae2-4e4b-8723-2dc8e67722a3/resource/b973d8cb-eeb2-4e7e-99da-c92938efc9c0/download/tmpcyl1hw5w.csv";
+// Resource rotation is a once-a-refresh event, so resolving hourly is plenty
+// and keeps package_show off the hot path.
+const CSV_URL_TTL_MS = 60 * 60 * 1000;
+let csvUrlCache: { at: number; url: string } | null = null;
+
+async function resolveCsvUrl(): Promise<string> {
+  if (csvUrlCache && Date.now() - csvUrlCache.at < CSV_URL_TTL_MS) return csvUrlCache.url;
+  try {
+    const res = await fetchWithRetry(CKAN_PACKAGE_SHOW, {
+      redirect: "follow",
+      headers: { "User-Agent": USER_AGENT, Accept: "application/json" },
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!res.ok) throw new Error(`package_show ${res.status}`);
+    const body = (await res.json()) as {
+      success?: boolean;
+      result?: { resources?: Array<{ format?: string; url?: string; last_modified?: string; created?: string }> };
+    };
+    const csvs = (body.result?.resources ?? []).filter(
+      (r) => String(r.format ?? "").toUpperCase() === "CSV" && typeof r.url === "string",
+    );
+    if (csvs.length === 0) throw new Error("no CSV resource listed");
+    // Boston keeps superseded exports listed, so pick the newest rather than
+    // the first.
+    const stamp = (r: { last_modified?: string; created?: string }) =>
+      Date.parse(r.last_modified ?? r.created ?? "") || 0;
+    csvs.sort((a, b) => stamp(b) - stamp(a));
+    const url = csvs[0].url as string;
+    csvUrlCache = { at: Date.now(), url };
+    return url;
+  } catch (err) {
+    console.warn(`[boston] CKAN package_show failed (${(err as Error).message}); using the pinned CSV URL`);
+    // Cache the fallback too, so a portal outage doesn't re-probe every call.
+    csvUrlCache = { at: Date.now(), url: CSV_URL_FALLBACK };
+    return CSV_URL_FALLBACK;
+  }
+}
 const CSV_ROWS_TO_KEEP = 30_000;
 const CSV_CACHE_TTL_MS = 30 * 60 * 1000;
 
@@ -308,9 +356,10 @@ function splitCSVRow(line: string): string[] {
 }
 
 async function fetchBostonFromCSV(): Promise<Incident[]> {
-  const res = await fetchWithRetry(CSV_URL, {
+  const csvUrl = await resolveCsvUrl();
+  const res = await fetchWithRetry(csvUrl, {
     redirect: "follow",
-    headers: { "User-Agent": "CommunitySafe/1.0 (https://github.com/damienmcdade/TravelSafe)" },
+    headers: { "User-Agent": USER_AGENT },
     signal: AbortSignal.timeout(45_000),
   });
   if (!res.ok) throw new Error(`Boston CSV ${res.status}`);
