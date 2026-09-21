@@ -6,6 +6,7 @@ import type { KnownArea } from "../neighborhoods.js";
 import { USER_AGENT, readJson, fetchWithRetry } from "../lib/http.js";
 import { titleCaseOffense } from "../lib/titlecase-offense.js";
 import { raleighPolygons } from "../data/raleigh-neighborhoods.js";
+import { fetchPagesTolerant } from "../lib/paged.js";
 
 // Raleigh, NC — Raleigh Police Department "Police Incidents" ArcGIS
 // FeatureServer. Incident-level rows with real WGS84 lat/lng fields
@@ -208,16 +209,9 @@ async function fetchRaleigh(): Promise<Incident[]> {
     .toISOString()
     .slice(0, 19)
     .replace("T", " ");
-  const results: RaleighFeature[][] = new Array(PAGES);
-  let cursor = 0;
-  const workers = Array.from({ length: 4 }, async () => {
-    while (true) {
-      const i = cursor++;
-      if (i >= PAGES) return;
-      results[i] = await fetchPage(i * PAGE_SIZE, sinceTs).catch(() => [] as RaleighFeature[]);
-    }
-  });
-  await Promise.all(workers);
+  const results = await fetchPagesTolerant<RaleighFeature>(
+    "raleigh", PAGES, 4, (page) => fetchPage(page * PAGE_SIZE, sinceTs),
+  );
   const feats = results.flat();
   return feats
     .filter((f) => {

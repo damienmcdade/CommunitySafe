@@ -5,6 +5,7 @@ import { riskLevelFromAreaCounts } from "../risk-bands.js";
 import type { KnownArea } from "../neighborhoods.js";
 import { USER_AGENT, readJson, fetchWithRetry } from "../lib/http.js";
 import { indianapolisPolygons } from "../data/indianapolis-neighborhoods.js";
+import { fetchPagesTolerant } from "../lib/paged.js";
 
 // Indianapolis — IMPD Public Data MapServer layer 1 (Incidents_Public).
 // ArcGIS MapServer hosted at gis.indy.gov. Rows carry NIBRSClassDesc and
@@ -162,16 +163,9 @@ function mapIndyRows(rows: IndyRow[]): Incident[] {
 // Fetch the half-open page range [startPage, endPage) with bounded concurrency.
 async function fetchIndyRange(startPage: number, endPage: number): Promise<Incident[]> {
   const count = endPage - startPage;
-  const results: IndyRow[][] = new Array(count);
-  let cursor = 0;
-  const workers = Array.from({ length: 4 }, async () => {
-    while (true) {
-      const i = cursor++;
-      if (i >= count) return;
-      results[i] = await fetchPage((startPage + i) * PAGE_SIZE).catch(() => [] as IndyRow[]);
-    }
-  });
-  await Promise.all(workers);
+  const results = await fetchPagesTolerant<IndyRow>(
+    "indianapolis", count, 4, (page) => fetchPage((startPage + page) * PAGE_SIZE),
+  );
   return mapIndyRows(results.flat());
 }
 

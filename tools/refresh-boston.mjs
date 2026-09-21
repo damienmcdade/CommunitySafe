@@ -29,7 +29,64 @@ const OUT_JSON = resolve(REPO_ROOT, "packages/crime-data/src/data/boston-snapsho
 const OUT_PATH = resolve(REPO_ROOT, "packages/crime-data/src/data/boston-snapshot.ts");
 const TMP_CSV = resolve(REPO_ROOT, ".cache/boston-full.csv");
 const ROWS_TO_KEEP = 5000;
-const CSV_URL = "https://data.boston.gov/dataset/6220d948-eae2-4e4b-8723-2dc8e67722a3/resource/b973d8cb-eeb2-4e7e-99da-c92938efc9c0/download/tmpcyl1hw5w.csv";
+// The CKAN *package* is stable; the CSV resource under it is not. Boston
+// publishes each refresh as a new temp export (tmpXXXXXXXX.csv) and the old
+// object keeps returning 200 forever with frozen contents — which is exactly
+// how this job committed four months of identical data before the freshness
+// guard below was added, and how it then failed three runs straight in
+// Sept 2026 once the pinned export finally fell 153 days behind.
+//
+// So: resolve the current resource at run time via CKAN package_show, and
+// pick the freshest CSV rather than trusting any one URL. PINNED_CSV_URL is
+// kept only as a last-resort fallback; the freshness guard still has the
+// final say, so a stale fallback fails the job rather than shipping.
+const CKAN_PACKAGE_ID = "6220d948-eae2-4e4b-8723-2dc8e67722a3";
+const CKAN_PACKAGE_SHOW = `https://data.boston.gov/api/3/action/package_show?id=${CKAN_PACKAGE_ID}`;
+const PINNED_CSV_URL = "https://data.boston.gov/dataset/6220d948-eae2-4e4b-8723-2dc8e67722a3/resource/b973d8cb-eeb2-4e7e-99da-c92938efc9c0/download/tmpcyl1hw5w.csv";
+
+const UA = "CommunitySafe-refresh/1.0 (https://github.com/damienmcdade/TravelSafe)";
+
+/// Ask CKAN which CSV currently backs the crime-incidents package.
+/// Returns null (rather than throwing) so a portal hiccup falls back to the
+/// pinned URL and lets the freshness guard decide whether that is acceptable.
+async function resolveCsvUrl() {
+  try {
+    const res = await fetch(CKAN_PACKAGE_SHOW, {
+      redirect: "follow",
+      headers: { "User-Agent": UA, Accept: "application/json" },
+    });
+    if (!res.ok) {
+      console.warn(`CKAN package_show returned HTTP ${res.status}; falling back to the pinned URL.`);
+      return null;
+    }
+    const body = await res.json();
+    if (!body?.success || !Array.isArray(body?.result?.resources)) {
+      console.warn("CKAN package_show payload had no resources; falling back to the pinned URL.");
+      return null;
+    }
+    const csvs = body.result.resources.filter(
+      (r) => String(r?.format ?? "").toUpperCase() === "CSV" && typeof r?.url === "string",
+    );
+    if (csvs.length === 0) {
+      console.warn("CKAN package_show listed no CSV resource; falling back to the pinned URL.");
+      return null;
+    }
+    // Newest by last_modified (falling back to created) — Boston keeps the
+    // superseded exports listed, so "first CSV" is not good enough.
+    const stamp = (r) => Date.parse(r.last_modified ?? r.created ?? 0) || 0;
+    csvs.sort((a, b) => stamp(b) - stamp(a));
+    const pick = csvs[0];
+    console.log(`CKAN resolved CSV: ${pick.name ?? "(unnamed)"} · modified ${String(pick.last_modified ?? pick.created).slice(0, 10)}`);
+    return pick.url;
+  } catch (err) {
+    console.warn(`CKAN package_show failed (${err.message}); falling back to the pinned URL.`);
+    return null;
+  }
+}
+
+const resolved = await resolveCsvUrl();
+const CSV_URL = resolved ?? PINNED_CSV_URL;
+if (!resolved) console.warn(`Using PINNED_CSV_URL — if the data is stale the guard below will fail this run.`);
 
 mkdirSync(dirname(TMP_CSV), { recursive: true });
 mkdirSync(dirname(OUT_PATH), { recursive: true });
@@ -38,7 +95,7 @@ console.log(`Downloading Boston CSV …`);
 const start = Date.now();
 const res = await fetch(CSV_URL, {
   redirect: "follow",
-  headers: { "User-Agent": "CommunitySafe-refresh/1.0 (https://github.com/damienmcdade/TravelSafe)" },
+  headers: { "User-Agent": UA },
 });
 if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
 await pipeline(Readable.fromWeb(res.body), createWriteStream(TMP_CSV));
@@ -123,8 +180,12 @@ const ageDays = Math.floor((Date.now() - Date.parse(newest)) / 86_400_000);
 if (ageDays > MAX_SNAPSHOT_AGE_DAYS) {
   console.error(
     `Refusing to write: newest Boston incident is ${ageDays} days old (max ${MAX_SNAPSHOT_AGE_DAYS}).\n` +
-    `The pinned CKAN export has almost certainly been rotated. Re-resolve the\n` +
-    `current resource URL via the CKAN package_show API and update CSV_URL.`,
+    `Resolved CSV: ${CSV_URL}\n` +
+    (resolved
+      ? `This URL came from CKAN package_show, so BPD itself is publishing late —\n` +
+        `check https://data.boston.gov/dataset/crime-incident-reports-august-2015-to-date-source-new-system`
+      : `CKAN package_show could not be reached, so this run used the stale pinned\n` +
+        `fallback. Re-run once the portal is up before investigating BPD.`),
   );
   process.exit(1);
 }

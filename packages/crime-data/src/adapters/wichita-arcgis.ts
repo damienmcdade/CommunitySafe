@@ -6,6 +6,7 @@ import type { KnownArea } from "../neighborhoods.js";
 import { USER_AGENT, readJson, fetchWithRetry } from "../lib/http.js";
 import { titleCaseOffense } from "../lib/titlecase-offense.js";
 import { wichitaPolygons } from "../data/wichita-neighborhoods.js";
+import { fetchPagesTolerant } from "../lib/paged.js";
 
 // Wichita, KS — Wichita Police Department "Wichita Crimes 90 Days" ArcGIS
 // MapServer. Incident-level rows on a rolling ~90-day window (~29k rows) with
@@ -187,16 +188,9 @@ function validCoord(lat: number | undefined, lng: number | undefined): boolean {
 }
 
 async function fetchWichita(): Promise<Incident[]> {
-  const results: WichitaFeature[][] = new Array(PAGES);
-  let cursor = 0;
-  const workers = Array.from({ length: 4 }, async () => {
-    while (true) {
-      const i = cursor++;
-      if (i >= PAGES) return;
-      results[i] = await fetchPage(i * PAGE_SIZE).catch(() => [] as WichitaFeature[]);
-    }
-  });
-  await Promise.all(workers);
+  const results = await fetchPagesTolerant<WichitaFeature>(
+    "wichita", PAGES, 4, (page) => fetchPage(page * PAGE_SIZE),
+  );
   const feats = results.flat();
   return feats
     .filter((f) => typeof f.attributes.STARTDATETIME === "number")

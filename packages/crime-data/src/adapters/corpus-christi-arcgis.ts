@@ -6,6 +6,7 @@ import type { KnownArea } from "../neighborhoods.js";
 import { USER_AGENT, readJson, fetchWithRetry } from "../lib/http.js";
 import { titleCaseOffense } from "../lib/titlecase-offense.js";
 import { corpusChristiPolygons } from "../data/corpus-christi-neighborhoods.js";
+import { fetchPagesTolerant } from "../lib/paged.js";
 
 // Corpus Christi, TX — Corpus Christi Police Department crime-dashboard
 // service (on-prem CCPD MapServer). Incident-level point rows with an
@@ -160,16 +161,9 @@ async function fetchCorpusChristi(): Promise<Incident[]> {
     .toISOString()
     .slice(0, 19)
     .replace("T", " ");
-  const results: CcFeature[][] = new Array(PAGES);
-  let cursor = 0;
-  const workers = Array.from({ length: 4 }, async () => {
-    while (true) {
-      const i = cursor++;
-      if (i >= PAGES) return;
-      results[i] = await fetchPage(i * PAGE_SIZE, sinceTs).catch(() => [] as CcFeature[]);
-    }
-  });
-  await Promise.all(workers);
+  const results = await fetchPagesTolerant<CcFeature>(
+    "corpus-christi", PAGES, 4, (page) => fetchPage(page * PAGE_SIZE, sinceTs),
+  );
   const feats = results.flat();
   return feats
     .filter((f) => typeof f.attributes.offense_date === "number")

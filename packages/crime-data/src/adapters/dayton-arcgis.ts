@@ -6,6 +6,7 @@ import type { KnownArea } from "../neighborhoods.js";
 import { USER_AGENT, readJson, fetchWithRetry } from "../lib/http.js";
 import { titleCaseOffense } from "../lib/titlecase-offense.js";
 import { cityLocalToUtcIso } from "../lib/city-time.js";
+import { fetchPagesTolerant } from "../lib/paged.js";
 
 // Dayton, OH — Dayton Police Department "Crimes Greater 2016" ArcGIS
 // FeatureServer. Incident-level NIBRS rows with point geometry already in
@@ -159,16 +160,9 @@ async function fetchDayton(): Promise<Incident[]> {
     .toISOString()
     .slice(0, 19)
     .replace("T", " ");
-  const results: DaytonFeature[][] = new Array(PAGES);
-  let cursor = 0;
-  const workers = Array.from({ length: 4 }, async () => {
-    while (true) {
-      const i = cursor++;
-      if (i >= PAGES) return;
-      results[i] = await fetchPage(i * PAGE_SIZE, sinceTs).catch(() => [] as DaytonFeature[]);
-    }
-  });
-  await Promise.all(workers);
+  const results = await fetchPagesTolerant<DaytonFeature>(
+    "dayton", PAGES, 4, (page) => fetchPage(page * PAGE_SIZE, sinceTs),
+  );
   const feats = results.flat();
   return feats
     .filter((f) => typeof f.attributes.Commit_Date === "number" && (f.attributes.Nhood ?? "").trim())

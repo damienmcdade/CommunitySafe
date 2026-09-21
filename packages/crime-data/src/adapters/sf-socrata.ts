@@ -7,10 +7,18 @@ import { fetchSocrata } from "../lib/http.js";
 import { cityLocalToUtcIso } from "../lib/city-time.js";
 
 // City of San Francisco — Police Department Incident Reports 2018 to Present.
-// Socrata dataset wg3w-h783 on data.sfgov.org. Documented + current.
+// Socrata dataset wg3w-h783 on data.sf.gov. Documented + current.
 // Doc: https://dev.socrata.com/foundry/data.sfgov.org/wg3w-h783
+//
+// fix(prod sweep 2026-09-21): the host was `data.sfgov.org`, which SF has
+// migrated to `data.sf.gov`. The old host still answers trivial queries but
+// returns a bare nginx **403** for this adapter's real request (the
+// $select + $where + $order + $limit=50000 pull) — reproduced 3/3 against
+// the old host and 200 3/3 against the new one. Production had been serving
+// San Francisco from a lapsed cache for weeks, which the warm worker logged
+// only as a repeating `[sf] fetch failed: SFPD 403`.
 
-const BASE = "https://data.sfgov.org/resource/wg3w-h783.json";
+const BASE = "https://data.sf.gov/resource/wg3w-h783.json";
 // 5-minute cache: half the client's 10-minute refresh window so a 10-minute
 // client refresh always lands on a fresh upstream pull (matched TTLs were
 // causing repeated stale-looking responses).

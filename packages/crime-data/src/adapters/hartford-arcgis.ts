@@ -7,6 +7,7 @@ import { USER_AGENT, readJson, fetchWithRetry } from "../lib/http.js";
 import { titleCaseOffense } from "../lib/titlecase-offense.js";
 import { cityLocalToUtcIso } from "../lib/city-time.js";
 import { hartfordPolygons } from "../data/hartford-neighborhoods.js";
+import { fetchPagesTolerant } from "../lib/paged.js";
 
 // Hartford, CT — Hartford Police "Police Incidents Current Year to 10 Days
 // before the Current Date" ArcGIS FeatureServer (OpenData_PublicSafety/21).
@@ -187,16 +188,9 @@ async function fetchHartford(): Promise<Incident[]> {
     .toISOString()
     .slice(0, 19)
     .replace("T", " ");
-  const results: HartfordFeature[][] = new Array(PAGES);
-  let cursor = 0;
-  const workers = Array.from({ length: 4 }, async () => {
-    while (true) {
-      const i = cursor++;
-      if (i >= PAGES) return;
-      results[i] = await fetchPage(i * PAGE_SIZE, sinceTs).catch(() => [] as HartfordFeature[]);
-    }
-  });
-  await Promise.all(workers);
+  const results = await fetchPagesTolerant<HartfordFeature>(
+    "hartford", PAGES, 4, (page) => fetchPage(page * PAGE_SIZE, sinceTs),
+  );
   const feats = results.flat();
   return feats
     .filter((f) => typeof f.attributes.Date === "number")

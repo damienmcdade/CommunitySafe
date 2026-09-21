@@ -129,20 +129,52 @@ async function warmCity(slug: string) {
     // non-zero windowDays. Otherwise the prior Redis entry stays
     // (it might be stale but it's not BROKEN) and the route can
     // fall through to in-process compute.
-    const v = scoreResult.value as { rows?: Array<{ count?: number }>; windowDays?: number; dataConfidence?: string };
+    const v = scoreResult.value as {
+      rows?: Array<{ count?: number }>;
+      windowDays?: number;
+      dataConfidence?: string;
+      asOf?: string | null;
+    };
     const rows = (v.rows ?? []) as Array<{ count?: number }>;
     const totalCounted = rows.reduce((s, r) => s + (r.count ?? 0), 0);
     const wd = (v as { windowDays?: number }).windowDays ?? 0;
-    // fix(audit cold-score-latch): also require HIGH confidence before caching a
-    // citywide score for 30 min. A provisional (low/medium) score is the cold-tier
-    // partial that improves once the adapter warms; caching it latches the wrong
-    // grade. Skipping the write lets the next warm cycle (now full-depth) cache the
-    // HIGH result. (All 45 jurisdictions are HIGH in steady state.)
-    // The warm worker only ever writes citywide scores (REDIS_KEY_PREFIX
-    // "citywide:", warmCity → getCitywideSafetyScore), so the gate is simply:
-    // only cache a HIGH-confidence citywide score.
-    const confidenceOk = v.dataConfidence === "high";
-    if (totalCounted > 0 && wd > 0 && confidenceOk) {
+    // fix(audit cold-score-latch): don't cache the cold-tier PARTIAL score for
+    // 30 min — a provisional result that improves once the adapter warms would
+    // latch the wrong grade. That fix originally required `dataConfidence ===
+    // "high"`, on the stated assumption that "all 45 jurisdictions are HIGH in
+    // steady state".
+    //
+    // fix(prod sweep 2026-09-21): that assumption is no longer true, and the
+    // blanket check had become the single biggest source of cold-start latency.
+    // Seven cities are now PERMANENTLY low/medium because their upstream feed
+    // is genuinely behind (Houston ~629d, Phoenix ~263d, Boston ~153d,
+    // New York / Salt Lake City ~82d, Pittsburgh / Grand Rapids ~51d). They
+    // could therefore never satisfy the gate, were never written to L2, and
+    // every cold request paid the full upstream compute — measured at 29.5 s
+    // for new-york, which is what intermittently tripped the 502s that the
+    // sync-drift workflow kept catching.
+    //
+    // The distinction that actually matters is STABLE vs TRANSIENT, not the
+    // confidence letter:
+    //   • stale upstream  → stable. Warming cannot improve it, the score is
+    //                       correct for the period it covers, and it is
+    //                       already labelled low/medium with an honest note.
+    //                       Cache it; serving it in 10 ms beats 29 s.
+    //   • empty feed, sub-30-day window, or the partial-pull undercount
+    //                     → transient. Still must not be cached.
+    // `asOf` is the newest incident in the window, so staleness measured here
+    // is the same signal safety-score.ts uses (STALE_MEDIUM_DAYS = 35).
+    const STALE_MEDIUM_DAYS = 35;
+    const asOfMs = v.asOf ? Date.parse(v.asOf) : NaN;
+    const stalenessDays = Number.isFinite(asOfMs)
+      ? Math.floor((Date.now() - asOfMs) / 86_400_000)
+      : null;
+    const staleUpstream = stalenessDays !== null && stalenessDays >= STALE_MEDIUM_DAYS;
+    // A sub-30-day window is the signature of a partial cold pull (it is also
+    // what safety-score.ts treats as low), so it is excluded either way.
+    const windowUsable = wd >= 30;
+    const cacheable = v.dataConfidence === "high" || staleUpstream;
+    if (totalCounted > 0 && wd > 0 && windowUsable && cacheable) {
       const redis = getRedis();
       if (redis) {
         try {
@@ -154,7 +186,15 @@ async function warmCity(slug: string) {
         }
       }
     } else if (process.env.NODE_ENV === "production") {
-      console.log(`[warm-worker] skipping redis write for ${slug} (degenerate result: totalCounted=${totalCounted} windowDays=${wd})`);
+      // Say WHICH gate rejected the write. The previous line called every
+      // skip a "degenerate result" and printed only totalCounted/windowDays —
+      // so new-york logged `totalCounted=92597 windowDays=126`, which looks
+      // perfectly healthy, and the real reason (confidence) stayed invisible.
+      const why =
+        totalCounted === 0 || wd === 0 ? "empty result"
+        : !windowUsable ? `window too short (${wd}d — likely a partial cold pull)`
+        : `confidence=${v.dataConfidence} and upstream is current (${stalenessDays ?? "?"}d), so this looks transient`;
+      console.log(`[warm-worker] skipping redis write for ${slug}: ${why} (totalCounted=${totalCounted} windowDays=${wd})`);
     }
   }
   return Date.now() - start;

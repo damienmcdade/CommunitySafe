@@ -6,6 +6,7 @@ import { riskLevelFromAreaCounts } from "../risk-bands.js";
 import type { KnownArea } from "../neighborhoods.js";
 import { USER_AGENT, readJson, fetchWithRetry } from "../lib/http.js";
 import { GENERATED_AREA_CENTROIDS } from "../area-centroids-generated.js";
+import { fetchPagesTolerant } from "../lib/paged.js";
 
 // Sacramento — Sacramento PD Report Data (current year).
 // ArcGIS FeatureServer on services5.arcgis.com (owner: City of Sacramento).
@@ -179,16 +180,9 @@ async function fetchPage(baseUrl: string, offset: number): Promise<SacRow[]> {
 async function fetchDataset(baseUrl: string): Promise<SacRow[]> {
   // Bounded concurrency=4 — same pattern as Cleveland/LV to avoid
   // rate-limiting the upstream ArcGIS tenant.
-  const results: SacRow[][] = new Array(PAGES);
-  let cursor = 0;
-  const workers = Array.from({ length: 4 }, async () => {
-    while (true) {
-      const i = cursor++;
-      if (i >= PAGES) return;
-      results[i] = await fetchPage(baseUrl, i * PAGE_SIZE).catch(() => [] as SacRow[]);
-    }
-  });
-  await Promise.all(workers);
+  const results = await fetchPagesTolerant<SacRow>(
+    "sacramento", PAGES, 4, (page) => fetchPage(baseUrl, page * PAGE_SIZE),
+  );
   return results.flat();
 }
 

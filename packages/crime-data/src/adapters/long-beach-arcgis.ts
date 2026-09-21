@@ -6,6 +6,7 @@ import type { KnownArea } from "../neighborhoods.js";
 import { USER_AGENT, readJson, fetchWithRetry } from "../lib/http.js";
 import { titleCaseOffense } from "../lib/titlecase-offense.js";
 import { longBeachPolygons } from "../data/long-beach-neighborhoods.js";
+import { fetchPagesTolerant } from "../lib/paged.js";
 
 // Long Beach, CA — LBPD "Police Crime Mapping" ArcGIS FeatureServer.
 // Incident-level NIBRS rows with point geometry; the city refreshes a
@@ -131,16 +132,9 @@ async function fetchPage(offset: number): Promise<LbFeature[]> {
 }
 
 async function fetchLongBeach(): Promise<Incident[]> {
-  const results: LbFeature[][] = new Array(PAGES);
-  let cursor = 0;
-  const workers = Array.from({ length: 4 }, async () => {
-    while (true) {
-      const i = cursor++;
-      if (i >= PAGES) return;
-      results[i] = await fetchPage(i * PAGE_SIZE).catch(() => [] as LbFeature[]);
-    }
-  });
-  await Promise.all(workers);
+  const results = await fetchPagesTolerant<LbFeature>(
+    "long-beach", PAGES, 4, (page) => fetchPage(page * PAGE_SIZE),
+  );
   const feats = results.flat();
   return feats
     .filter((f) => typeof f.attributes.ReportedDateTimeDate === "number")

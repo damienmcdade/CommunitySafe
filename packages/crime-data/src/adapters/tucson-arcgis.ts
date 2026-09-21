@@ -7,6 +7,7 @@ import { USER_AGENT, readJson, fetchWithRetry } from "../lib/http.js";
 import { titleCaseOffense } from "../lib/titlecase-offense.js";
 import { cityLocalToUtcIso } from "../lib/city-time.js";
 import { tucsonPolygons } from "../data/tucson-neighborhoods.js";
+import { fetchPagesTolerant } from "../lib/paged.js";
 
 // Tucson, AZ — Tucson Police Department "TPD Incidents (Public)" layer on the
 // City of Tucson ArcGIS Server (PublicMaps/OpenData_PublicSafety MapServer/24,
@@ -219,16 +220,9 @@ async function fetchPage(offset: number, sinceIso: string): Promise<TucsonFeatur
 
 async function fetchTucson(): Promise<Incident[]> {
   const sinceIso = new Date(Date.now() - WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
-  const results: TucsonFeature[][] = new Array(PAGES);
-  let cursor = 0;
-  const workers = Array.from({ length: 4 }, async () => {
-    while (true) {
-      const i = cursor++;
-      if (i >= PAGES) return;
-      results[i] = await fetchPage(i * PAGE_SIZE, sinceIso).catch(() => [] as TucsonFeature[]);
-    }
-  });
-  await Promise.all(workers);
+  const results = await fetchPagesTolerant<TucsonFeature>(
+    "tucson", PAGES, 4, (page) => fetchPage(page * PAGE_SIZE, sinceIso),
+  );
   const feats = results.flat();
   return feats
     .filter((f) => typeof f.attributes.DATE_OCCU === "number")

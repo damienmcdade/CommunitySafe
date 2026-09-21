@@ -6,6 +6,7 @@ import type { KnownArea } from "../neighborhoods.js";
 import { USER_AGENT, readJson, fetchWithRetry } from "../lib/http.js";
 import { titleCaseOffense } from "../lib/titlecase-offense.js";
 import { grandRapidsPolygons } from "../data/grand-rapids-neighborhoods.js";
+import { fetchPagesTolerant } from "../lib/paged.js";
 
 // Grand Rapids, MI — Grand Rapids Police Department (GRPD) incident feed on the
 // City of Grand Rapids ArcGIS Online org. The geocoded layer ("Sheet2_Geocoded3",
@@ -167,16 +168,9 @@ async function fetchGrandRapids(): Promise<Incident[]> {
     .toISOString()
     .slice(0, 19)
     .replace("T", " ");
-  const results: GrandRapidsFeature[][] = new Array(PAGES);
-  let cursor = 0;
-  const workers = Array.from({ length: 4 }, async () => {
-    while (true) {
-      const i = cursor++;
-      if (i >= PAGES) return;
-      results[i] = await fetchPage(i * PAGE_SIZE, sinceTs).catch(() => [] as GrandRapidsFeature[]);
-    }
-  });
-  await Promise.all(workers);
+  const results = await fetchPagesTolerant<GrandRapidsFeature>(
+    "grand-rapids", PAGES, 4, (page) => fetchPage(page * PAGE_SIZE, sinceTs),
+  );
   const feats = results.flat();
   return feats
     .filter((f) => typeof f.attributes.USER_DATEOFOFFENSE === "number")

@@ -6,6 +6,7 @@ import type { KnownArea } from "../neighborhoods.js";
 import { USER_AGENT, readJson, fetchWithRetry } from "../lib/http.js";
 import { titleCaseOffense } from "../lib/titlecase-offense.js";
 import { cityLocalToUtcIso } from "../lib/city-time.js";
+import { fetchPagesTolerant } from "../lib/paged.js";
 
 // Savannah, GA — Savannah Police Department public NIBRS incident feed
 // (City of Savannah ArcGIS Online, services3/0m9qmmEbiydeqFeD). Incident-level
@@ -197,16 +198,16 @@ async function fetchSavannah(): Promise<Incident[]> {
     .toISOString()
     .slice(0, 19)
     .replace("T", " ");
-  const results: SavannahFeature[][] = new Array(PAGES);
-  let cursor = 0;
-  const workers = Array.from({ length: 4 }, async () => {
-    while (true) {
-      const i = cursor++;
-      if (i >= PAGES) return;
-      results[i] = await fetchPage(i * PAGE_SIZE, sinceTs).catch(() => [] as SavannahFeature[]);
-    }
-  });
-  await Promise.all(workers);
+  // fix(prod sweep 2026-09-21): tolerate SOME failed pages, never ALL of them.
+  // The old loop caught every page individually, so when SAGIS put this layer
+  // behind a token (ArcGIS code 499 "Token Required") the fetch RESOLVED with
+  // zero rows instead of throwing — the outer handler's warning never ran, the
+  // last-good cache was never served, and a dead feed became indistinguishable
+  // from "no crime happened". Savannah sat in that state in production with a
+  // grade of "N/A" and nothing in the logs.
+  const results = await fetchPagesTolerant<SavannahFeature>(
+    "savannah", PAGES, 4, (page) => fetchPage(page * PAGE_SIZE, sinceTs),
+  );
   const feats = results.flat();
   return feats
     .filter((f) => typeof f.attributes.occurfrdate === "number" && (f.attributes.neighborhood ?? "").trim())

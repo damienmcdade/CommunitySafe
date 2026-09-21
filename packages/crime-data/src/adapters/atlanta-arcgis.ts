@@ -4,6 +4,7 @@ import { registerRowCache } from "../cache-registry.js";
 import { riskLevelFromAreaCounts } from "../risk-bands.js";
 import type { KnownArea } from "../neighborhoods.js";
 import { USER_AGENT, readJson, fetchWithRetry } from "../lib/http.js";
+import { fetchPagesTolerant } from "../lib/paged.js";
 
 // Atlanta — Atlanta PD Crimes (OpenDataWebsite_Crime_view).
 // ArcGIS FeatureServer on services3.arcgis.com (owner: RJStanionis0638
@@ -131,16 +132,9 @@ function mapRows(rows: AtlRow[]): Incident[] {
 // failure degrades to [] rather than failing the whole pull.
 async function fetchPageRange(startPage: number, endPage: number): Promise<Incident[]> {
   const count = endPage - startPage;
-  const results: AtlRow[][] = new Array(count);
-  let cursor = 0;
-  const workers = Array.from({ length: 4 }, async () => {
-    while (true) {
-      const i = cursor++;
-      if (i >= count) return;
-      results[i] = await fetchPage((startPage + i) * PAGE_SIZE).catch(() => [] as AtlRow[]);
-    }
-  });
-  await Promise.all(workers);
+  const results = await fetchPagesTolerant<AtlRow>(
+    "atlanta", count, 4, (page) => fetchPage((startPage + page) * PAGE_SIZE),
+  );
   return mapRows(results.flat());
 }
 

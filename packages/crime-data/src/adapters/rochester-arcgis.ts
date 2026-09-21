@@ -7,6 +7,7 @@ import { USER_AGENT, readJson, fetchWithRetry } from "../lib/http.js";
 import { titleCaseOffense } from "../lib/titlecase-offense.js";
 import { cityLocalToUtcIso } from "../lib/city-time.js";
 import { rochesterPolygons } from "../data/rochester-neighborhoods.js";
+import { fetchPagesTolerant } from "../lib/paged.js";
 
 // Rochester, NY — Rochester Police Department "RPD Part I Crime - 2011 to
 // Present" ArcGIS FeatureServer. Incident-level UCR Part I rows with point
@@ -220,16 +221,9 @@ async function fetchRochester(): Promise<Incident[]> {
     .toISOString()
     .slice(0, 19)
     .replace("T", " ");
-  const results: RochesterFeature[][] = new Array(PAGES);
-  let cursor = 0;
-  const workers = Array.from({ length: 4 }, async () => {
-    while (true) {
-      const i = cursor++;
-      if (i >= PAGES) return;
-      results[i] = await fetchPage(i * PAGE_SIZE, sinceTs).catch(() => [] as RochesterFeature[]);
-    }
-  });
-  await Promise.all(workers);
+  const results = await fetchPagesTolerant<RochesterFeature>(
+    "rochester", PAGES, 4, (page) => fetchPage(page * PAGE_SIZE, sinceTs),
+  );
   const feats = results.flat();
   return feats
     .filter((f) => typeof f.attributes.OccurredFrom_Timestamp === "number" || typeof f.attributes.OccurredFrom_Date_Year === "number")

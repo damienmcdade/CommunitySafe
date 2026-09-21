@@ -6,6 +6,7 @@ import type { KnownArea } from "../neighborhoods.js";
 import { USER_AGENT, readJson, fetchWithRetry } from "../lib/http.js";
 import { titleCaseOffense } from "../lib/titlecase-offense.js";
 import { albuquerquePolygons } from "../data/albuquerque-neighborhoods.js";
+import { fetchPagesTolerant } from "../lib/paged.js";
 
 // Albuquerque, NM — City of Albuquerque AGIS "Incidents" FeatureServer. APD
 // publishes a rolling ~6-month incident feed (~106k rows, point geometry) with
@@ -202,16 +203,9 @@ async function fetchAlbuquerque(): Promise<Incident[]> {
     .toISOString()
     .slice(0, 19)
     .replace("T", " ");
-  const results: AbqFeature[][] = new Array(PAGES);
-  let cursor = 0;
-  const workers = Array.from({ length: 6 }, async () => {
-    while (true) {
-      const i = cursor++;
-      if (i >= PAGES) return;
-      results[i] = await fetchPage(i * PAGE_SIZE, sinceTs).catch(() => [] as AbqFeature[]);
-    }
-  });
-  await Promise.all(workers);
+  const results = await fetchPagesTolerant<AbqFeature>(
+    "albuquerque", PAGES, 6, (page) => fetchPage(page * PAGE_SIZE, sinceTs),
+  );
   const feats = results.flat();
   return feats
     .filter((f) => typeof f.attributes.ReportDateTime === "number")

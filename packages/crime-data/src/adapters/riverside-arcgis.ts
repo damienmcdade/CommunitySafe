@@ -6,6 +6,7 @@ import type { KnownArea } from "../neighborhoods.js";
 import { USER_AGENT, readJson, fetchWithRetry } from "../lib/http.js";
 import { titleCaseOffense } from "../lib/titlecase-offense.js";
 import { cityLocalToUtcIso } from "../lib/city-time.js";
+import { fetchPagesTolerant } from "../lib/paged.js";
 
 // Riverside, CA — Riverside Police Department "Crime (Last Year to Date)"
 // ArcGIS FeatureServer (View_CrimesRPD layer 4). Incident-level NIBRS rows
@@ -149,16 +150,9 @@ async function fetchRiverside(): Promise<Incident[]> {
     .toISOString()
     .slice(0, 19)
     .replace("T", " ");
-  const results: RiversideFeature[][] = new Array(PAGES);
-  let cursor = 0;
-  const workers = Array.from({ length: 4 }, async () => {
-    while (true) {
-      const i = cursor++;
-      if (i >= PAGES) return;
-      results[i] = await fetchPage(i * PAGE_SIZE, sinceTs).catch(() => [] as RiversideFeature[]);
-    }
-  });
-  await Promise.all(workers);
+  const results = await fetchPagesTolerant<RiversideFeature>(
+    "riverside", PAGES, 4, (page) => fetchPage(page * PAGE_SIZE, sinceTs),
+  );
   const feats = results.flat();
   return feats
     .filter((f) => typeof f.attributes.offendate === "number" && (f.attributes.COMMUNITY ?? "").trim())
