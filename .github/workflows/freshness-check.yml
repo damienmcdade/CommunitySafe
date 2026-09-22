@@ -1,0 +1,45 @@
+name: Upstream Data Freshness
+
+# Watches the AGE of the data behind every city's grade.
+#
+# The 2026-09-21 sweep found four feeds that had been quietly rotting — San
+# Francisco (host migration), Boston (rotated CKAN export), Savannah (layer
+# moved behind a token) and Pittsburgh (resource replaced with a spreadsheet
+# pivot) — and nothing in CI noticed, in one case for five months.
+#
+# None of the existing checks could have caught them. sync-check compares
+# Vercel against Railway, and both serve the same stale data, so parity stays
+# perfect while both are wrong. prod-probe is manual and never fails. Every
+# endpoint returned HTTP 200 the entire time. Staleness is the only signal
+# that actually moves when an upstream feed dies.
+#
+# Daily is the right cadence: city open-data portals publish on their own
+# schedule (usually daily, sometimes weekly), so a feed that stops is visible
+# within a day without generating noise.
+
+on:
+  schedule:
+    - cron: "40 10 * * *" # 10:40 UTC daily, after the Boston refresh window
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "packages/crime-data/src/adapters/**"
+      - "tools/freshness-check.mjs"
+      - "tools/freshness-baseline.json"
+
+jobs:
+  freshness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      # --strict fails the run on a NEW degradation (an upstream changed or
+      # died) and also when a baselined city RECOVERS, so the baseline gets
+      # pruned instead of quietly becoming a list of excuses.
+      - name: Check upstream freshness
+        run: node tools/freshness-check.mjs --strict

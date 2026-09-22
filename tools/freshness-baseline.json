@@ -1,0 +1,11 @@
+{
+  "//": "Cities whose upstream feed is known to be behind or dead, with the reason and the date it was verified. tools/freshness-check.mjs fails on any city degraded WITHOUT an entry here, and also fails when a city listed here recovers — so this file stays a short, current list rather than growing into a pile of excuses. Before adding an entry, confirm the cause upstream; a host migration or a rotated export is OUR bug to fix, not a baseline entry.",
+  "known": {
+    "houston": "2026-09-21 — upstream, not fixable. HPD's HPD_NIBRS_Yearly_Cases service tops out at layer 0 = HPD_NIBRS_2024, and their rolling recent-crime layer publishes no usable coordinates, so it cannot feed rates (splicing a days-deep feed onto the yearly file would shrink the numerator and inflate the grade ~50x). The adapter states the vintage honestly instead. Re-check when HPD publishes 2025.",
+    "phoenix": "2026-09-21 — upstream. phoenixopendata.com serves an archival crime dataset; same shape of problem as Houston. Grade is disclosed as low confidence with the age in plain language.",
+    "pittsburgh": "2026-09-21 — upstream, no live source exists. WPRDC replaced the NIBRS-coded resource (bd41992a) with an XLSX pivot of monthly totals; the 30-day blotter datastore holds exactly 1 row from 2023; the UCR-coded archive (044f2016, 340k rows) ends in 2023 and the historical one ends in 2005. City ArcGIS has only homicides-through-2022 and zone boundaries. WPRDC's remaining police feeds are ARREST data, which measures policing activity rather than crime incidence and would distort grades. Re-check if WPRDC republishes an incident feed.",
+    "savannah": "2026-09-21 — upstream. SAGIS put the Crimes_public FeatureServer layer behind a token (ArcGIS code 499 'Token Required'), so anonymous access is gone. The remaining public services are ad-hoc violent-crime-only snapshots, which would skew grades if substituted. Re-check whether SAGIS republishes a public incident layer.",
+    "new-york": "2026-09-21 — upstream publish lag, self-correcting. NYPD's Socrata feed typically runs ~2-3 months behind; the score is labelled low confidence with the lag stated. Only escalate if it passes ~6 months.",
+    "salt-lake-city": "2026-09-21 — upstream publish lag, self-correcting. Same shape as New York."
+  }
+}
